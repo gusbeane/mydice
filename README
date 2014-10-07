@@ -1,20 +1,15 @@
-This code is provided with the CMake build system.
-In order to compile the code & install, make sure you have installed both GSL & FFTW3 libraries.
-Under standard installation process, just type
+[1]: https://bitbucket.org/vperret/dice/wiki/Content
+[2]: https://bitbucket.org/rteyssie/ramses
 
-cd build/
-cmake ..
-make
-make install
+## This is the [DICE](https://bitbucket.org/vperret/dice) bitbucket repository.
 
-If you have special build requirements, check
+DICE is an open source code to model initial conditions of idealised galaxies to study their secular evolution, or to study more complex interactions such as mergers or compact groups using N-Body/hydro codes.
+DICE is fully compatible with [Ramses][2] thanks to the dice-ramses patch.
 
-cmake --help
+You can go to the user's guide [here][1].
 
-If you want to delete temporary files & all the products of compilation, just type
-
-cd build/
-make clean
-rm -rf *
-
-It is recommended to use gsl-1.15 & fftw-3.3.2 or more recent versions
+Download the code by cloning the git repository using 
+```
+$ git clone https://bitbucket.org/vperret/dice
+```
+Please register also to the [DICE google group](http://groups.google.com/forum/#!forum/dice-project).
