@@ -1,0 +1,20 @@
+This code is provided with the CMake build system.
+In order to compile the code & install, make sure you have installed both GSL & FFTW3 libraries.
+Under standard installation process, just type
+
+cd build/
+cmake ..
+make
+make install
+
+If you have special build requirements, check
+
+cmake --help
+
+If you want to delete temporary files & all the products of compilation, just type
+
+cd build/
+make clean
+rm -rf *
+
+It is recommended to use gsl-1.15 & fftw-3.3.2 or more recent versions

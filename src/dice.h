@@ -1,0 +1,419 @@
+/*-----------------------------------------------------------------------------
+ /
+ / Filename: dice.h
+ / Author: Valentin Perret
+ / Author's email: perret.valentin@gmail.com
+ / Description: DICE creates galaxies.
+ /
+ /	       DICE uses the GNU Scientific Library (GSL). You can
+ /	       download the GSL source code from:
+ /
+ /		http://www.gnu.org/software/gsl
+ /
+ /	       or replace it with another math library.
+ /
+ / Copyright Information:
+ /
+ / Copyright (c) 2014       Valentin Perret
+ /
+ / This program is free software; you can redistribute it and/or modify
+ / it under the terms of the GNU General Public License as published by
+ / the Free Software Foundation; either version 2 of the License, or
+ / (at your option) any later version.
+ /
+ / This program is distributed in the hope that it will be useful,
+ / but WITHOUT ANY WARRANTY; without even the implied warranty of
+ / MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ / GNU General Public License for more details.
+ /
+ / You should have received a copy of the GNU General Public License
+ / along with this program; if not, write to the Free Software
+ / Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ /
+ / The license is also available at:
+ /
+ /		http://www.gnu.org/copyleft/gpl.html .
+ /
+ / Date: October 2014
+ /
+ *///---------------------------------------------------------------------------
+
+// Header files to include
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+#include <math.h>
+#include <string.h>
+#include <err.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_sf.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_integration.h>
+#include <gsl/gsl_deriv.h>
+#include <gsl/gsl_sf_ellint.h>
+#include <complex.h>
+#include <fftw3.h>
+#include "dice_config.h"
+
+#if USE_THREADS == 1
+	#include <omp.h>
+#endif
+
+#define MAXLEN_FILENAME  	100
+#define MAXLEN_FILELINE  	500
+#define MAX_COMP_NUMBER  	20
+#define GSL_WORKSPACE_SIZE	100000
+
+
+
+// A tolerance parameter for the GSL QAG integration.
+#define epsabs 1.0E-10
+#define epsrel 1.0E-7
+#define key 6
+
+// Some physical constants needed for the computation
+#define gamma					(5.0/3.0)		// adiabatic index of simulated gas (mono-atomic)
+#define gamma_minus1			(gamma-1.0)		// adiabatic index of simulated gas minus 1
+#define hydrogen_massfrac		0.76			// mass fraction of hydrogen, relevant only for radiative cooling
+#define boltzmann				1.3806e-16		// Boltzmann constant in [erg.K^-1] = [g.cm^2.s^-2.K^-1]
+#define protonmass				1.6726e-24		// proton mass in [g]
+#define pi						3.14159274101257	// pi = 4.0*atan(1.0)
+#define	G						6.67428E-8		// G = 6.67428E-8 [cm^3 g^-1 s^-2]
+#define H0						2.300952983428601E-18	// 7.1E6/(1.0E3*kpc) s^-1 or 71.0 [km s^-1 Mpc^-1]
+#define omega_m					0.30			// Baryons density parameter
+#define omega_l					0.70			// Dark energy density parameter
+#define omega_k					0.00			// Spatial curvature density parameter
+#define unit_mass				1.989E43		// 1.989E43 = 1E10 [Solar masses]
+#define	kpc						3.085678E21		// 1 kpc = 3.085678E21 [cm]
+#define unit_velocity_in_cm_per_s	1e5			// km.s^-1 in [cm.s^-1]
+#define unit_length_in_cm		3.085678e21		// kpc in [cm]
+#define unit_mass_in_g			1.989e43		// 1E10 solar mass in [g]
+#define unit_time			(unit_length_in_cm/unit_velocity_in_cm_per_s)
+#define unit_energy			(unit_mass_in_g*(unit_length_in_cm*unit_length_in_cm)/(unit_time*unit_time))
+#define unit_nh				3.099634414		// nh.cm^-3 in 10E10 msol.kpc^-3
+
+// Global variables for the GSL random number environment.
+const gsl_rng_type *T;
+int random_number_set;
+gsl_rng **r;
+
+gsl_integration_workspace **w;
+
+// This is a type definition of a galaxy. The thought here is to create galaxies
+// as objects and, hopefully, make the code extremely clean. It is essentially a
+// a collection of arrays and constants.
+typedef struct {
+	// Redshift of the galaxy
+	double redshift;
+	// Spin parameter of the galaxy
+	double lambda;
+	// Spin fraction of the disk
+	double j_d;
+	// Total mass of the galactic model
+	double total_mass;
+	// Total number of components
+	int n_component;
+	int *selected_comp;
+	// Component quantities
+	unsigned long int 	*comp_npart;
+	unsigned long int 	*comp_npart_pot;
+	unsigned long int 	*comp_start_part;
+	double 				*comp_mass_frac;
+	double 				*comp_mass;
+	int 				*comp_model;
+	double 				*comp_cutted_mass;
+	double 				*comp_scale_length;
+	double 				*comp_concentration;
+	double 				*comp_scale_height;
+	double 				*comp_cut;
+	double 				*comp_flat;
+	double 				*comp_mcmc_step;
+	double 				*comp_mcmc_step_hydro;
+	double 				*comp_vmax;
+	int 				*comp_type;
+	int 				*comp_bool;
+	double 				*comp_streaming_fraction;
+	double 				*comp_cut_dens;
+	double 				*comp_theta_sph;
+	double 				*comp_phi_sph;
+	double 				*comp_metal;
+	double 				*comp_t_init;
+	double 				*comp_u_init;
+	double 				*comp_cs_init;
+	double 				*comp_mean_age;
+	double 				*comp_min_age;
+	// Virial quantities
+	double v200;
+	double r200;
+	double m200;
+	// Limit for the mininum value of the Toomre parameter
+	double Q_lim;
+	// True minimum value of the Toomre parameter
+	double Q_min;
+	// Coordinates vectors
+	double *x;
+	double *y;
+	double *z;
+	double *r_cyl;
+	double *theta_cyl;
+	double *r_sph;
+	double *theta_sph;
+	double *phi_sph;
+	// Galaxy's barycenter coordinates
+	double xc;
+	double yc;
+	double zc;
+	// Velocities vectors
+	double *vel_x;
+	double *vel_y;
+	double *vel_z;
+	// Galaxy's barycenter velocity
+	double vel_xc;
+	double vel_yc;
+	double vel_zc;
+	// Galaxy's spin orientation spherical angles
+	double spin;
+	double incl;
+	// Mass vector
+	double *mass;
+	// Density vector
+	double *rho;
+	// Internal energy vector
+	double *u;
+	// Age vector
+	double *age;
+	// Metallicity vector
+	double *metal;
+	// Particle Mesh potential grid
+	double ***potential;
+	// Gas midplane density grid
+	double **midplane_dens;
+	// Potential grid cell size vector [kpc]
+	double space[3];
+	// Gas midplane density grid cell size vector [kpc]
+	double space_dens[2];
+	// Number of particles per particle type
+	unsigned long int num_part[4];
+	unsigned long int num_part_pot[4];
+	// Total potential grid size [kpc]
+	double boxsize;
+	// Total gas midplane density grid size [kpc]
+	double boxsize_dens;
+	// Number of cells in the potential grid
+	unsigned long int ngrid;
+	// Number of cells in the midplane density grid
+	unsigned long int ngrid_dens;
+	// Level of refinement of the potential grid
+	int level_grid;
+	// Number of cells in the potential grid after padding
+	int ngrid_padded;
+	// Storage array
+	double **storage1;
+	// Identifier of particle
+	unsigned long int *index;
+	unsigned long int *id;
+	// Total number of particles
+	unsigned long int ntot_part;
+	unsigned long int ntot_part_stars;
+	unsigned long int ntot_part_pot;
+	// Boolean variable checking the computation of the potential
+	int potential_defined;
+	// Boolean which enable the axisymmetric drift approximation for the stellar disk
+	int axisymmetric_drift;
+	// Seed for random number generator
+	long seed;
+	// Dispersion extinction coefficient
+	double DispExtCoeff;
+	// Pseudo density boolean
+	int *pseudo;
+} galaxy;
+
+//Gadget2-style header for Gadget2 snapshots.
+struct io_header_1 {
+	//char fill[256-6*4-6*8-2*8-2*4-6*4-2*4-4*8];
+	int npart[6];                        /*!< number of particles of each type in this file */
+	double mass[6];                      /*!< mass of particles of each type. If 0, then the masses are explicitly
+                                          stored in the mass-block of the snapshot file, otherwise they are omitted */
+	double time;                         /*!< time of snapshot file */
+	double redshift;                     /*!< redshift of snapshot file */
+	int flag_sfr;                        /*!< flags whether the simulation was including star formation */
+	int flag_feedback;                   /*!< flags whether feedback was included (obsolete) */
+	unsigned int npartTotal[6];          /*!< total number of particles of each type in this snapshot. This can be
+                                          different from npart if one is dealing with a multi-file snapshot. */
+	int flag_cooling;                    /*!< flags whether cooling was included  */
+	int num_files;                       /*!< number of files in multi-file snapshot */
+	double BoxSize;                      /*!< box-size of simulation in case periodic boundaries were used */
+	double Omega0;                       /*!< matter density in units of critical density */
+	double OmegaLambda;                  /*!< cosmological constant parameter */
+	double HubbleParam;                  /*!< Hubble parameter in units of 100 km/sec/Mpc */
+	int flag_stellarage;                 /*!< flags whether the file contains formation times of star particles */
+	int flag_metals;                     /*!< flags whether the file contains metallicity values for gas and star particles */
+	unsigned int npartTotalHighWord[6];  /*!< High word of the total number of particles of each type */
+	int  flag_entropy_instead_u;         /*!< flags that IC-file contains entropy instead of u */   
+	char fill[60]; 
+} header1;
+
+//Gadget2-style particle data structure.
+struct particle_data {
+	float Pos[3];
+	float Vel[3];
+	float Mass;
+	int Type;
+	float Pot;
+	float U;
+	float Rho;
+	float Ne;
+	float Metal;
+	float Age;
+} *P;
+
+// Global variables such as the parameters of the Keplerian system, or the number of galaxies to generate.
+struct GlobalVars {
+	// Variable containing the parameter file's name
+	char ParameterFile[MAXLEN_FILENAME];
+	char GalaxyFiles[64][MAXLEN_FILENAME];
+	char Filename[MAXLEN_FILENAME];
+	// Variable contained in the DICE parameter file
+	char ICformat[MAXLEN_FILENAME];
+	double Eccentricity;
+	double Rinit;
+	double Rperi;
+	int SetKeplerian;
+	double OrbitPlaneTheta;
+	double OrbitPlanePhi;
+	int Ngal;
+	// Number of threads to launch when using fftw3_threads library
+	int Nthreads;
+	int GasHydrostaticEq;
+	int GasHydrostaticEqIter;
+	int MeanPartDist;
+	int AcceptImaginary;
+	int OutputRc;
+	int MaxCompNumber;
+	int RamsesNml;
+} AllVars;
+
+// Structure containing the lines of the Ramses Group definitions
+// This is useful for writing dynamically the content of this parameter block
+struct RamsesGroupNml {
+	char line0[MAXLEN_FILELINE];
+	char line1[MAXLEN_FILELINE];
+	char line2[MAXLEN_FILELINE];
+	char line3[MAXLEN_FILELINE];
+	char line4[MAXLEN_FILELINE];
+	char line5[MAXLEN_FILELINE];
+	char line6[MAXLEN_FILELINE];
+	char line7[MAXLEN_FILELINE];
+	char line8[MAXLEN_FILELINE];
+	char line9[MAXLEN_FILELINE];
+	char line10[MAXLEN_FILELINE];
+	char line11[MAXLEN_FILELINE];
+	char line12[MAXLEN_FILELINE];
+	char line13[MAXLEN_FILELINE];
+	char line14[MAXLEN_FILELINE];
+	char line15[MAXLEN_FILELINE];
+	char line16[MAXLEN_FILELINE];
+	char line17[MAXLEN_FILELINE];
+	char line18[MAXLEN_FILELINE];
+	char line19[MAXLEN_FILELINE];
+	char line20[MAXLEN_FILELINE];
+} nml_file;
+
+// ------------------------------------------
+// These are the function prototypes for DICE.
+// ------------------------------------------
+// Initialization and destruction functions
+int create_galaxy(galaxy *, char *, int);
+void allocate_galaxy_storage_variable(galaxy *, int);
+void allocate_dispersion_grid();
+void destroy_dispersion_grid();
+int set_galaxy_coords(galaxy *);
+int set_hydro_equilibrium(galaxy *, int);
+int set_galaxy_velocity(galaxy *, int);
+void destroy_galaxy(galaxy *, int);
+void destroy_galaxy_system(galaxy *, int);
+int create_galaxy_system(galaxy *, galaxy *, galaxy *);
+int rotate_galaxy(galaxy *, double, double);
+int rotate_component(galaxy *, double, double, int);
+int set_galaxy_trajectory(galaxy *);
+int copy_galaxy(galaxy *, galaxy *, int);
+void set_orbit_keplerian(galaxy *, galaxy*, double, double, double, double, double);
+
+// Structure functions
+double fdistrib(galaxy *, double, double, double, int, int);
+double density_functions_pool(galaxy *, double, double, double, int, int, int);
+void mcmc_metropolis_hasting(galaxy *, int, int);
+
+double surface_density_func(galaxy *, double, double, int, int);
+static double integrand_density_func(double, void *);
+double cumulative_mass_func(galaxy *, double, int);
+static double d_cumulative_mass_func(double, void *);
+
+static double integrand_density_gas_func(double, void *);
+double pseudo_density_gas_func(galaxy *, double, double, double, int, int);
+double midplane_density_gas_func(galaxy *, gsl_integration_workspace *, double, double, int);
+static double dmidplane_density_gas_func(double, void *);
+void fill_midplane_dens_grid(galaxy *, int);
+double get_midplane_density(galaxy *, double, double);
+
+double disk_scale_length_func(galaxy *);
+double j_d_func(galaxy *);
+static double dj_d_func(double, void *);
+double f_c_func(double);
+double g_c_func(double);
+static double dg_c_func(double, void *);
+double f_s_func(double, double);
+double mean_interparticle_distance(galaxy *, int);
+void lower_resolution(galaxy *);
+
+// Velocity functions
+double v_c_func(galaxy *,double);
+double v_c_exp_disk_func(galaxy *,double);
+double v2a_z_func(galaxy *, gsl_integration_workspace *, int);
+static double dv2a_z_func(double, void *);
+double v2a_theta_func(galaxy *, double, int);
+double sigma2_theta_func(galaxy *, double, double);
+double v2a_z_toomre(galaxy *, double, double, int);
+double rho_v2a_r_func(double, void *);
+double v2_theta_gas_func(galaxy *, double, double, int);
+double gas_density_wrapper_func(double, void *);
+
+// Potential and force functions
+int set_galaxy_potential(galaxy *, int);
+double galaxy_potential_func(galaxy *, double, double, double);
+double galaxy_zforce_func(galaxy *, double);
+double galaxy_rforce_func(galaxy *, double);
+double galaxyr_potential_wrapper_func(double, void *);
+double galaxyz_potential_wrapper_func(double, void *);
+double potential_deriv_wrapper_func(double, void *);
+
+// Input, output, and manipulation functions
+void write_dice_version();
+int parse_config_file(char *);
+int parse_galaxy_file(galaxy *, char *);
+void write_galaxy_position(galaxy *);
+void write_galaxy_position_disk(galaxy *);
+void write_galaxy_position_halo(galaxy *);
+void write_galaxy_velocity(galaxy *,int);
+void write_galaxy_velocity_disk(galaxy *);
+void write_galaxy_velocity_halo(galaxy *);
+void write_galaxy_potential(galaxy *,double, double, double);
+void write_galaxy_potential_grid(galaxy *, int);
+void write_galaxy_rotation_curve(galaxy *, double);
+int write_gadget_ics(galaxy *, char *);
+void copy_potential(galaxy *, galaxy *, int);
+int load_snapshot(char *, int);
+int allocate_memory(int);
+int reordering(int, int *);
+int unload_snapshot();
+void init_ramses_nml(void);
+void update_ramses_nml(galaxy *, int);
+int compare_galaxies(galaxy *, galaxy *);
+
+// Toolbox functions and definitions
+double min(double, double);
+typedef double (*function_to_derivate)(double, void *);
+double deriv_central(galaxy *, double, double, function_to_derivate);
+double deriv_forward(galaxy *, double, double, function_to_derivate);

@@ -1,0 +1,8 @@
+This folder contains a set of input example files
+To run DICE, and to start generating ICs, just type
+Warning: This example requires at least 8Gb of memory, and even more on OSX systems.
+Lower the level_grid parameter in order to use less memory
+
+	dice dice.config
+
+
