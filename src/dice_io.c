@@ -819,7 +819,6 @@ int write_gadget_ics(galaxy *gal, char *fname) {
 			}
 		}
 	}
-		printf("HERE\n");
     
 	for(i=0, pc=1; i<files; i++, pc=pc_new){
 		if(files>1) sprintf(buf,"%s.g1.%d",fname,(int)i);
