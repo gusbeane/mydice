@@ -11,6 +11,8 @@ j_d		 	0.04
 lambda		 	0.04
 # Refinement level of the PM grid 
 level_grid		7
+# Refinement level of the plane plane density grid 
+level_grid_dens		7
 # Size of the PM grid [kpc]
 boxsize		 	200.0
 # Minimal value for the Toomre parameter
@@ -37,7 +39,7 @@ spin			0.
 # Inclination of the disk compare to XY plane [degree]
 incl 			0.
 # Seed for the random number generator
-seed			1246
+seed			12467
 
 #######################
 # Components parameters

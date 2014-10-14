@@ -500,6 +500,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	mandatory[nt] = 1;
 	id[nt++] = INT;
 	
+	strcpy(tag[nt], "level_grid_dens");
+	addr[nt] = &gal->level_grid_dens;
+	gal->level_grid_dens=7;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
 	strcpy(tag[nt], "boxsize");
 	addr[nt] = &gal->boxsize;
 	read[nt] = 0;

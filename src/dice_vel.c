@@ -236,13 +236,14 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 	radius 							= fabs(radius);
 	gal->selected_comp[tid] 		= component;
 	// Set the derivative step
-	h 						= 0.1*gal->comp_scale_length[component];
+	h 						= 2.*gal->space_dens[0];
 	density_derivative 		= deriv_forward(gal,radius,h,gas_density_wrapper_func);
 	v_c2 					= pow(v_c_func(gal,radius),2.0);
 	pressure_force 			= radius*kpc*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);//-3.0*pow(gal->cs_init,2.0);
+	// If the derivate fails
+	if(pressure_force>0) 	pressure_force = 0.;
 	v2_theta_gas 			= v_c2 + pressure_force;
-	if(v2_theta_gas<0) v2_theta_gas=0.;
-			
+	if(v2_theta_gas<0) v2_theta_gas = 0.;
 	return v2_theta_gas;
 }
 

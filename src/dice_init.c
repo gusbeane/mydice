@@ -191,7 +191,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	// Padding potential grid
 	gal->ngrid 			= pow(2,gal->level_grid);
 	gal->ngrid_padded 	= 2*gal->ngrid;
-	gal->ngrid_dens 	= pow(2,gal->level_grid);
+	gal->ngrid_dens 	= pow(2,gal->level_grid_dens);
 	// Create the random number generator environment, if not already done
 	if (random_number_set != 1) {
 		gsl_rng_env_setup();
@@ -383,6 +383,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		printf("/////\t-Gas fraction:\t%10.3lf\n",gas_fraction);
 		printf("/////\t-Potential PM-grid has dimensions [nx=%d,ny=%d,nz=%d] \n",gal->ngrid,gal->ngrid,gal->ngrid);
 		printf("/////\t-Dimensions are zero-padded to [nx=%d,ny=%d,nz=%d] \n",gal->ngrid_padded,gal->ngrid_padded,gal->ngrid_padded);
+		printf("/////\t-Density grid has dimensions [nx=%d,ny=%d,nz=%d] \n",gal->ngrid_dens,gal->ngrid_dens,gal->ngrid_dens);
 	}
 	fflush(stdout);
 
@@ -669,8 +670,8 @@ int set_hydro_equilibrium(galaxy *gal, int n_iter) {
 				}
 				acceptance /= gal->comp_npart_pot[k];
 				printf(" -> Acceptance = %lf\n",acceptance);
-				if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n\t\t\tLower mcmc_step in the galaxy parameter file.\n");
-				if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n\t\t\tIncrease mcmc_step in the galaxy parameter file.\n");
+				if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n/////\t\t\tLower mcmc_step in the galaxy parameter file.\n");
+				if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n/////\t\t\tIncrease mcmc_step in the galaxy parameter file.\n");
 			}
 			// Final gas midplane density
 			fill_midplane_dens_grid(gal,k);
@@ -1176,6 +1177,7 @@ int create_galaxy_system(galaxy *gal_1, galaxy *gal_2, galaxy *gal_3) {
 	}
 	
     gal_3->ntot_part 		= gal_1->ntot_part+gal_2->ntot_part;
+    gal_3->ntot_part_stars 	= gal_1->ntot_part_stars+gal_2->ntot_part_stars;
     gal_3->num_part[0] 		= gal_1->num_part[0]+gal_2->num_part[0];
     gal_3->num_part[1] 		= gal_1->num_part[1]+gal_2->num_part[1];
     gal_3->num_part[2] 		= gal_1->num_part[2]+gal_2->num_part[2];

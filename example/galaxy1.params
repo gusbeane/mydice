@@ -11,6 +11,8 @@ j_d		 	0.04
 lambda		 	0.04
 # Refinement level of the PM grid 
 level_grid		7
+# Refinement level of the plane plane density grid 
+level_grid_dens		7
 # Size of the PM grid [kpc]
 boxsize		 	200.0
 # Minimal value for the Toomre parameter

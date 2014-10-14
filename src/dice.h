@@ -207,6 +207,8 @@ typedef struct {
 	unsigned long int ngrid_dens;
 	// Level of refinement of the potential grid
 	int level_grid;
+	// Level of refinement of the gas density grid
+	int level_grid_dens;
 	// Number of cells in the potential grid after padding
 	int ngrid_padded;
 	// Storage array
