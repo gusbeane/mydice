@@ -542,7 +542,9 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			gal->u[i] 			= gal->comp_u_init[j];
 			gal->rho[i]			= 0.;
 			gal->metal[i]		= gal->comp_metal[j];
-			gal->age[i]			= (2*gal->comp_mean_age[j]-gal->comp_min_age[j])*gsl_rng_uniform_pos(r[0])+gal->comp_min_age[j];
+			// Age is actually stored as time of formation
+			// ICs are generated for t=0 therefore formation time is negative
+			gal->age[i]			= -((2*gal->comp_mean_age[j]-gal->comp_min_age[j])*gsl_rng_uniform_pos(r[0])+gal->comp_min_age[j]);
 		}
 	}
 	// No problems detected
