@@ -1,28 +1,51 @@
-seed 		123123
+# Seed for the random number generator
+seed 		123456
 
+##############
+# Stream up
+##############
+# Model for the stream density profile
+# Available models:
+# 1 = Uniform density cone
+# 2 = Exponential density cone
 model1		2
+# Number of particles for the stream 1 
 npart1		3000000
+# Opening angle of the stream [degree]
 opening_angle1	20.
+# Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
+# expressed in units of the component scale length. Default value is 0.5.
 mcmc_step1	0.01
+# Spherical angle for rotation [degree]
 theta_sph1	0.
-dens1		0.01
 phi_sph1	0.
+# Stream central density [nH/cm^3]
+dens1		0.01
+# Stream metallicity [Zsolar]
 metal1		0.001
+# Initial temperature [K]
 t_init1		1e5
+# Cartesian position of cone's peak [kpc]
 xc1		0.
 yc1		0.
 zc1		0.
+# Velocity dispersion of the gas [km/s]
 sigma_vel1	10.0
+# Length of the stream [kpc]
 length1		100.
+# Density scale factor
 scale1		0.1
 
+##############
+# Stream down
+##############
 model2		2
 npart2		3000000
 opening_angle2	20.
 mcmc_step2	0.01
 theta_sph2	0.
-dens2		0.01
 phi_sph2	180.
+dens2		0.01
 metal2		0.001
 t_init2		1e5
 xc2		0.

@@ -63,7 +63,6 @@
 
 #define MAXLEN_FILENAME  	100
 #define MAXLEN_FILELINE  	500
-#define MAX_COMP_NUMBER  	20
 #define GSL_WORKSPACE_SIZE	100000
 
 
@@ -81,24 +80,20 @@
 #define protonmass				1.6726e-24		// proton mass in [g]
 #define pi						3.14159274101257	// pi = 4.0*atan(1.0)
 #define	G						6.67428E-8		// G = 6.67428E-8 [cm^3 g^-1 s^-2]
-#define H0						2.300952983428601E-18	// 7.1E6/(1.0E3*kpc) s^-1 or 71.0 [km s^-1 Mpc^-1]
-#define omega_m					0.30			// Baryons density parameter
-#define omega_l					0.70			// Dark energy density parameter
-#define omega_k					0.00			// Spatial curvature density parameter
-#define unit_mass				1.989E43		// 1.989E43 = 1E10 [Solar masses]
 #define	kpc						3.085678E21		// 1 kpc = 3.085678E21 [cm]
-#define unit_velocity_in_cm_per_s	1e5			// km.s^-1 in [cm.s^-1]
-#define unit_length_in_cm		3.085678e21		// kpc in [cm]
-#define unit_mass_in_g			1.989e43		// 1E10 solar mass in [g]
-#define unit_time			(unit_length_in_cm/unit_velocity_in_cm_per_s)
-#define unit_energy			(unit_mass_in_g*(unit_length_in_cm*unit_length_in_cm)/(unit_time*unit_time))
-#define unit_nh				3.099634414		// nh.cm^-3 in 10E10 msol.kpc^-3
+#define unit_mass				1.989E43		// 1.989E43 = 1E10 [Solar masses]
+#define unit_velocity			1e5				// km.s^-1 in [cm.s^-1]
+#define unit_length				3.085678e21		// kpc in [cm]
+#define unit_time				(unit_length/unit_velocity)
+#define unit_energy				(unit_mass*(unit_length*unit_length)/(unit_time*unit_time))
+#define unit_dens				(unit_mass/(unit_length*unit_length*unit_length))
+#define unit_nh					(hydrogen_massfrac/protonmass*unit_dens)
+
 
 // Global variables for the GSL random number environment.
 const gsl_rng_type *T;
 int random_number_set;
 gsl_rng **r;
-
 gsl_integration_workspace **w;
 
 // This is a type definition of a galaxy. The thought here is to create galaxies
@@ -117,6 +112,7 @@ typedef struct {
 	int n_component;
 	int *selected_comp;
 	// Component quantities
+	char				**comp_profile_name;
 	unsigned long int 	*comp_npart;
 	unsigned long int 	*comp_npart_pot;
 	unsigned long int 	*comp_start_part;
@@ -144,14 +140,16 @@ typedef struct {
 	double 				*comp_cs_init;
 	double 				*comp_mean_age;
 	double 				*comp_min_age;
+	double 				*comp_alpha;
+	double 				*comp_disp_ext;
+	double				*comp_scale_dens;
+	double				*comp_radius_nfw;
+	double 				*comp_Q_lim;
+	double				*comp_Q_min;
 	// Virial quantities
 	double v200;
 	double r200;
 	double m200;
-	// Limit for the mininum value of the Toomre parameter
-	double Q_lim;
-	// True minimum value of the Toomre parameter
-	double Q_min;
 	// Coordinates vectors
 	double *x;
 	double *y;
@@ -212,7 +210,7 @@ typedef struct {
 	// Number of cells in the potential grid after padding
 	int ngrid_padded;
 	// Storage array
-	double **storage1;
+	double **storage;
 	// Identifier of particle
 	unsigned long int *index;
 	unsigned long int *id;
@@ -226,11 +224,67 @@ typedef struct {
 	int axisymmetric_drift;
 	// Seed for random number generator
 	long seed;
-	// Dispersion extinction coefficient
-	double DispExtCoeff;
 	// Pseudo density boolean
 	int *pseudo;
 } galaxy;
+
+// This is a type definition of a stream. The thought here is to create streams
+// as objects and, hopefully, make the code extremely clean. It is essentially a
+// a collection of arrays and constants.
+typedef struct {
+	int *selected_comp;
+	// Stream's peak coordinates
+	double *comp_xc;
+	double *comp_yc;
+	double *comp_zc;
+	double *comp_mass;
+	double *comp_dens;
+	double *comp_opening_angle;
+	double *comp_sigma_vel;
+	double *comp_t_init;
+	// Stream's spin orientation spherical angles
+	double *comp_theta_sph;
+	double *comp_phi_sph;
+	double *comp_length;
+	double *comp_scale;
+	unsigned long int *comp_npart;
+	int	*comp_bool;
+	int	*comp_model;
+	double *comp_mcmc_step;
+	double *comp_metal;
+	double *comp_u_init;
+	double *comp_cs_init;
+	unsigned long int *comp_start_part;
+	char **comp_profile_name;
+	// Coordinates vectors
+	double *x;
+	double *y;
+	double *z;
+	double *r_cyl;
+	double *theta_cyl;
+	double *r_sph;
+	double *theta_sph;
+	double *phi_sph;
+	// Mass vector
+	double *mass;
+	// Density vector
+	double *rho;
+	// Internal energy vector
+	double *u;
+	// Metallicity vector
+	double *metal;
+	// Velocities vectors
+	double *vel_x;
+	double *vel_y;
+	double *vel_z;
+	unsigned long int *id;
+	// Storage array
+	double **storage;
+	unsigned long int ntot_part;
+	double total_mass;
+	int n_component;
+	long seed;
+} stream;
 
 //Gadget2-style header for Gadget2 snapshots.
 struct io_header_1 {
@@ -276,6 +330,7 @@ struct GlobalVars {
 	// Variable containing the parameter file's name
 	char ParameterFile[MAXLEN_FILENAME];
 	char GalaxyFiles[64][MAXLEN_FILENAME];
+	char StreamFiles[64][MAXLEN_FILENAME];
 	char Filename[MAXLEN_FILENAME];
 	// Variable contained in the DICE parameter file
 	char ICformat[MAXLEN_FILENAME];
@@ -286,6 +341,7 @@ struct GlobalVars {
 	double OrbitPlaneTheta;
 	double OrbitPlanePhi;
 	int Ngal;
+	int Nstream;
 	// Number of threads to launch when using fftw3_threads library
 	int Nthreads;
 	int GasHydrostaticEq;
@@ -294,46 +350,27 @@ struct GlobalVars {
 	int AcceptImaginary;
 	int OutputRc;
 	int MaxCompNumber;
-	int RamsesNml;
+	double H0;
+	double Omega_m;
+	double Omega_l;
+	double Omega_k;
 } AllVars;
-
-// Structure containing the lines of the Ramses Group definitions
-// This is useful for writing dynamically the content of this parameter block
-struct RamsesGroupNml {
-	char line0[MAXLEN_FILELINE];
-	char line1[MAXLEN_FILELINE];
-	char line2[MAXLEN_FILELINE];
-	char line3[MAXLEN_FILELINE];
-	char line4[MAXLEN_FILELINE];
-	char line5[MAXLEN_FILELINE];
-	char line6[MAXLEN_FILELINE];
-	char line7[MAXLEN_FILELINE];
-	char line8[MAXLEN_FILELINE];
-	char line9[MAXLEN_FILELINE];
-	char line10[MAXLEN_FILELINE];
-	char line11[MAXLEN_FILELINE];
-	char line12[MAXLEN_FILELINE];
-	char line13[MAXLEN_FILELINE];
-	char line14[MAXLEN_FILELINE];
-	char line15[MAXLEN_FILELINE];
-	char line16[MAXLEN_FILELINE];
-	char line17[MAXLEN_FILELINE];
-	char line18[MAXLEN_FILELINE];
-	char line19[MAXLEN_FILELINE];
-	char line20[MAXLEN_FILELINE];
-} nml_file;
 
 // ------------------------------------------
 // These are the function prototypes for DICE.
 // ------------------------------------------
 // Initialization and destruction functions
+int allocate_component_arrays(galaxy *);
+int allocate_variable_arrays(galaxy *);
+int allocate_component_arrays_stream(stream *);
+int allocate_variable_arrays_stream(stream *);
 int create_galaxy(galaxy *, char *, int);
 void allocate_galaxy_storage_variable(galaxy *, int);
+void allocate_stream_storage_variable(stream *, int);
 void allocate_dispersion_grid();
 void destroy_dispersion_grid();
 int set_galaxy_coords(galaxy *);
-int set_hydro_equilibrium(galaxy *, int);
-int set_galaxy_velocity(galaxy *, int);
+int set_galaxy_velocity(galaxy *);
 void destroy_galaxy(galaxy *, int);
 void destroy_galaxy_system(galaxy *, int);
 int create_galaxy_system(galaxy *, galaxy *, galaxy *);
@@ -342,16 +379,30 @@ int rotate_component(galaxy *, double, double, int);
 int set_galaxy_trajectory(galaxy *);
 int copy_galaxy(galaxy *, galaxy *, int);
 void set_orbit_keplerian(galaxy *, galaxy*, double, double, double, double, double);
+int add_stream_to_system(stream *, galaxy *, galaxy *);
+int set_stream_coords(stream *);
+int set_stream_velocity(stream *);
+int rotate_stream(stream *, double, double, int);
+int position_stream(stream *, double, double, double, int);
 
 // Structure functions
 double fdistrib(galaxy *, double, double, double, int, int);
 double density_functions_pool(galaxy *, double, double, double, int, int, int);
 void mcmc_metropolis_hasting(galaxy *, int, int);
+void mcmc_metropolis_hasting_stream(stream *, int , int); 
+int set_hydro_equilibrium(galaxy *, int);
+double density_functions_stream_pool(stream *, double, double, double, int, int);
+double fdistrib_stream(stream *, double, double, double, int, int);
 
 double surface_density_func(galaxy *, double, double, int, int);
 static double integrand_density_func(double, void *);
 double cumulative_mass_func(galaxy *, double, int);
 static double d_cumulative_mass_func(double, void *);
+
+double surface_density_func_stream(stream *, double, double, int);
+static double integrand_density_func_stream(double, void *);
+double cumulative_mass_func_stream(stream *, double, int);
+static double d_cumulative_mass_func_stream(double, void *);
 
 static double integrand_density_gas_func(double, void *);
 double pseudo_density_gas_func(galaxy *, double, double, double, int, int);
@@ -412,10 +463,10 @@ int reordering(int, int *);
 int unload_snapshot();
 void init_ramses_nml(void);
 void update_ramses_nml(galaxy *, int);
-int compare_galaxies(galaxy *, galaxy *);
 
 // Toolbox functions and definitions
 double min(double, double);
+double max(double, double);
 typedef double (*function_to_derivate)(double, void *);
 double deriv_central(galaxy *, double, double, function_to_derivate);
 double deriv_forward(galaxy *, double, double, function_to_derivate);

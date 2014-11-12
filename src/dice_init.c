@@ -41,352 +41,157 @@
 // Include the DICE header
 #include "dice.h"
 
-// Create a galaxy
-int create_galaxy(galaxy *gal, char *fname, int info) {
+// Allocate component arrays.
+int allocate_component_arrays(galaxy *gal) {
+	int i;
 	
-	unsigned long int i;
-	int j,nt;
-	// Molecular weigth t compute the gas internal energy
-	double molecular_weight;
-	// Hubble parameter
-	double H;
-	// Seed for the random number generator
-	long seed;
-	double halo_mass,disk_mass,gas_mass,bulge_mass;
-	double cutted_halo_mass,cutted_disk_mass,cutted_gas_mass,cutted_bulge_mass;
-	double halo_npart,disk_npart,gas_npart,bulge_npart;
-	double max_gas_radius;
-	double baryonic_fraction;
-	double BD_fraction,BT_fraction,gas_fraction;
-	double effective_mass_factor;
-		
-	// Allocate component arrays.
+	if (!(gal->comp_profile_name=(char **)malloc(AllVars.MaxCompNumber*sizeof(char *)))) {
+		fprintf(stderr,"Unable to allocate comp_profile_name array.\n");
+		return -1;
+	}
+	for (i = 0; i < AllVars.MaxCompNumber; ++i) {
+    	if(!(gal->comp_profile_name[i] = (char *)malloc(200))) {
+    		fprintf(stderr,"Unable to allocate comp_profile_name array.\n");
+			return -1;
+    	}
+	}
 	if (!(gal->comp_mass=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mass array.\n");
+		fprintf(stderr,"Unable to allocate comp_mass array.\n");
 		return -1;
 	}
 	if (!(gal->comp_model=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
+		fprintf(stderr,"Unable to allocate comp_model array.\n");
 		return -1;
 	}
 	if (!(gal->comp_npart=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_npart array.\n");
+		fprintf(stderr,"Unable to allocate comp_npart array.\n");
 		return -1;
 	}
 	if (!(gal->comp_npart_pot=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_npart_pot array.\n");
+		fprintf(stderr,"Unable to allocate comp_npart_pot array.\n");
 		return -1;
 	}
 	if (!(gal->comp_start_part=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_start_part array.\n");
+		fprintf(stderr,"Unable to allocate comp_start_part array.\n");
 		return -1;
 	}
 	if (!(gal->comp_cutted_mass=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cutted_mass array.\n");
+		fprintf(stderr,"Unable to allocate comp_cutted_mass array.\n");
 		return -1;
 	}
 	if (!(gal->comp_scale_length=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_scale_length array.\n");
+		fprintf(stderr,"Unable to allocate comp_scale_length array.\n");
 		return -1;
 	}
 	if (!(gal->comp_scale_height=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_scale_height array.\n");
+		fprintf(stderr,"Unable to allocate comp_scale_height array.\n");
 		return -1;
 	}
 	if (!(gal->comp_cut=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cut array.\n");
+		fprintf(stderr,"Unable to allocate comp_cut array.\n");
 		return -1;
 	}
 	if (!(gal->comp_flat=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_flat array.\n");
+		fprintf(stderr,"Unable to allocate comp_flat array.\n");
 		return -1;
 	}
 	if (!(gal->comp_mcmc_step=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mcmc_step array.\n");
+		fprintf(stderr,"Unable to allocate comp_mcmc_step array.\n");
 		return -1;
 	}
 	if (!(gal->comp_mcmc_step_hydro=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mcmc_step array.\n");
+		fprintf(stderr,"Unable to allocate comp_mcmc_step array.\n");
 		return -1;
 	}
 	if (!(gal->comp_vmax=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_vmax array.\n");
+		fprintf(stderr,"Unable to allocate comp_vmax array.\n");
 		return -1;
 	}
 	if (!(gal->comp_mass_frac=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mass_frac array.\n");
+		fprintf(stderr,"Unable to allocate comp_mass_frac array.\n");
 		return -1;
 	}
 	if (!(gal->comp_type=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_type array.\n");
+		fprintf(stderr,"Unable to allocate comp_type array.\n");
 		return -1;
 	}
 	if (!(gal->comp_bool=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_bool array.\n");
+		fprintf(stderr,"Unable to allocate comp_bool array.\n");
 		return -1;
 	}
 	if (!(gal->comp_cut_dens=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cut_dens array.\n");
+		fprintf(stderr,"Unable to allocate comp_cut_dens array.\n");
 		return -1;
 	}
 	if (!(gal->comp_concentration=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_concentration array.\n");
+		fprintf(stderr,"Unable to allocate comp_concentration array.\n");
 		return -1;
 	}
 	if (!(gal->comp_streaming_fraction=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_streaming_fraction array.\n");
+		fprintf(stderr,"Unable to allocate comp_streaming_fraction array.\n");
 		return -1;
 	}
 	if (!(gal->comp_theta_sph=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_theta_sph array.\n");
+		fprintf(stderr,"Unable to allocate comp_theta_sph array.\n");
 		return -1;
 	}
 	if (!(gal->comp_phi_sph=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_phi_sph array.\n");
+		fprintf(stderr,"Unable to allocate comp_phi_sph array.\n");
 		return -1;
 	}
 	if (!(gal->comp_metal=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_metal array.\n");
+		fprintf(stderr,"Unable to allocate comp_metal array.\n");
 		return -1;
 	}
 	if (!(gal->comp_t_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_t_init array.\n");
+		fprintf(stderr,"Unable to allocate comp_t_init array.\n");
 		return -1;
 	}
 	if (!(gal->comp_u_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_u_init array.\n");
+		fprintf(stderr,"Unable to allocate comp_u_init array.\n");
 		return -1;
 	}
 	if (!(gal->comp_cs_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cs_init array.\n");
+		fprintf(stderr,"Unable to allocate comp_cs_init array.\n");
 		return -1;
 	}
 	if (!(gal->comp_mean_age=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mean_age array.\n");
+		fprintf(stderr,"Unable to allocate comp_mean_age array.\n");
 		return -1;
 	}
 	if (!(gal->comp_min_age=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_min_age array.\n");
+		fprintf(stderr,"Unable to allocate comp_min_age array.\n");
 		return -1;
 	}
-
-	// Parse the galaxy parameters file
-	if(parse_galaxy_file(gal,fname) != 0) {
-		fprintf(stderr,"Unable to find the galaxy parameters file\n");
+	if (!(gal->comp_alpha=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate comp_alpha array.\n");
 		return -1;
 	}
-
-	// Allocate pseudo all the threads.
-	if (!(gal->pseudo=calloc(AllVars.Nthreads,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate pseudo-density switch.\n");
+	if (!(gal->comp_disp_ext=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate comp_disp_ext array.\n");
 		return -1;
 	}
-	
-	// Allocate component selector all the threads.
-	if (!(gal->selected_comp=calloc(AllVars.Nthreads,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate pseudo-density switch.\n");
+	if (!(gal->comp_scale_dens=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate comp_scale_nfw array.\n");
 		return -1;
 	}
-    
-	// Padding potential grid
-	gal->ngrid 			= pow(2,gal->level_grid);
-	gal->ngrid_padded 	= 2*gal->ngrid;
-	gal->ngrid_dens 	= pow(2,gal->level_grid_dens);
-	// Create the random number generator environment, if not already done
-	if (random_number_set != 1) {
-		gsl_rng_env_setup();
-		T = gsl_rng_mt19937;
-		r = (gsl_rng **) malloc(AllVars.Nthreads * sizeof(gsl_rng *));
-		for(i=0;i<AllVars.Nthreads;i++) {
-			r[i] = gsl_rng_alloc(T);
-			gsl_rng_set(r[i],gal->seed);
-		}
-		random_number_set = 1;
+	if (!(gal->comp_radius_nfw=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate comp_radius_nfw array.\n");
+		return -1;
 	}
-
-	// Set a bunch of constants that defines the galaxy's structure.
-	// Set the Hubble parameter
-	H = sqrt(H0*H0*(omega_m*pow(1+gal->redshift,3.0)+omega_k*pow(1+gal->redshift,2.0)+omega_l));
-	// Get the Virial velocity from the parser
-	gal->v200 = gal->v200*1E5;
-	// Set the Virial mass
-	gal->m200 = (gal->v200*gal->v200*gal->v200)/(10.0*G*H);
-	// Set the Virial radius
-	gal->r200 = gal->v200/(10.0*H*kpc);
-    
-	// Reset Q_min to some arbitrary value so it can be calculated later.
-	gal->Q_min = 100.0;
-
-	// Set the size of the cell for the Potential-Mesh (PM) computation
-	gal->space[0] 		= gal->boxsize/((double)gal->ngrid);
-	gal->space[1] 		= gal->boxsize/((double)gal->ngrid);
-	gal->space[2] 		= gal->boxsize/((double)gal->ngrid);
-	
-	gal->boxsize_dens 	= 0.;
-	for(i=0; i<AllVars.MaxCompNumber; i++){
-		if(gal->comp_type[i]==0 && 2.0*gal->comp_cut[i]>gal->boxsize_dens){
-			gal->boxsize_dens = 2.1*gal->comp_cut[i];
-		}
+	if (!(gal->comp_Q_lim=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate comp_Q_lim array.\n");
+		return -1;
 	}
-
-	gal->space_dens[0] 	= gal->boxsize_dens/((double)gal->ngrid_dens);
-	gal->space_dens[1] 	= gal->boxsize_dens/((double)gal->ngrid_dens);
-
-	allocate_galaxy_storage_variable(gal,10);
-	
-	// Set the GSL QAG integration workspace
-	w = (gsl_integration_workspace **) malloc(AllVars.Nthreads * sizeof(gsl_integration_workspace *));
-	for(i=0;i<AllVars.Nthreads;i++) {
-		w[i] = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
+	if (!(gal->comp_Q_min=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate comp_Q_min array.\n");
+		return -1;
 	}
-	
-	// Initialisations
-	gal->ntot_part 			= (unsigned long int)0;
-	gal->comp_start_part[0] = (unsigned long int)0;
-	gal->total_mass 		= 0.;
-	max_gas_radius			= 0.0;
-	halo_mass				= 0.0;
-	disk_mass				= 0.0;
-	gas_mass				= 0.0;
-	bulge_mass				= 0.0;
-	cutted_halo_mass		= 0.0;
-	cutted_disk_mass		= 0.0;
-	cutted_gas_mass			= 0.0;
-	cutted_bulge_mass		= 0.0;
-	gal->num_part[0]		= 0;
-	gal->num_part[1]		= 0;
-	gal->num_part[2]		= 0;
-	gal->num_part[3]		= 0;
-	gal->num_part_pot[0]	= 0;
-	gal->num_part_pot[1]	= 0;
-	gal->num_part_pot[2]	= 0;
-	gal->num_part_pot[3]	= 0;
-	effective_mass_factor	= 0.;
-	
-	// Do not work with pseudo densities yet
-	for(i=0; i<AllVars.Nthreads; i++) gal->pseudo[i] = 0;
-	// Set up component properties
-	for(i=0; i<AllVars.MaxCompNumber; i++){
-		// Total number of particules
-		if(gal->comp_npart_pot[i]==0) gal->comp_npart_pot[i] = gal->comp_npart[i];
-		if(gal->comp_npart[i]==0) gal->comp_npart_pot[i] = 0;
-		gal->ntot_part_pot 				+= gal->comp_npart_pot[i];
-		gal->ntot_part 					+= gal->comp_npart[i];
-		if(gal->comp_type[i]>1) gal->ntot_part_stars += gal->comp_npart[i];
-		effective_mass_factor			+= gal->comp_mass_frac[i];
-		// Set the start index for each component
-		if(i>0) gal->comp_start_part[i] = gal->comp_start_part[i-1]+gal->comp_npart_pot[i-1];
-		// Computing mass component
-		gal->comp_mass[i] 			= gal->m200*gal->comp_mass_frac[i];
-		// Set the halo scalelength
-		if(gal->comp_concentration[i]>0 && gal->comp_type[i]==1) {
-			gal->comp_scale_length[i] = gal->r200/gal->comp_concentration[i];
-		}
-		// Set the component scale height
-		gal->comp_scale_height[i] 	= gal->comp_flat[i]*gal->comp_scale_length[i];
+	return 0;
+}
 
-		// We check how many components are present in the galaxy
-		// in order to compute masses
-		// Booleans to test the presence of a given component
-		if(gal->comp_npart[i] > 0) {
-			gal->comp_bool[i] = 1;
-			gal->n_component++;
-		}
-		else gal->comp_bool[i] 		= 0;
-		gal->comp_cut_dens[i] 		= 0.0;
-		gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],0.,0.,0,gal->comp_model[i],i);
-		gsl_set_error_handler_off();
-		gal->comp_cutted_mass[i] 	= cumulative_mass_func(gal,gal->comp_cut[i],i);
-		gal->total_mass				+= gal->comp_cutted_mass[i];
-
-		// Check for disk scalelength values lower or equal to 0
-		// If it is the case, compute the disk scalelength according to Mo et al. 1998
-		//if(gal->comp_scale_length[i] <= 0 && (gal->comp_type[i]==1 || gal->comp_type[i]==2)) gal->comp_scale_length[i] = disk_scale_length_func(gal);
-		if(gal->comp_type[i]==0 && gal->comp_scale_length[i]>max_gas_radius) max_gas_radius = gal->comp_scale_length[i];
-		if(gal->comp_type[j]==1 && gal->lambda>=0) gal->comp_streaming_fraction[j] = f_s_func(gal->comp_concentration[j],gal->lambda);
-		// Checking total mass
-		if(gal->comp_type[i]==0) gas_mass 			+= gal->comp_bool[i]*gal->comp_mass[i];
-		if(gal->comp_type[i]==1) halo_mass 			+= gal->comp_bool[i]*gal->comp_mass[i];
-		if(gal->comp_type[i]==2) disk_mass 			+= gal->comp_bool[i]*gal->comp_mass[i];
-		if(gal->comp_type[i]==3) bulge_mass 		+= gal->comp_bool[i]*gal->comp_mass[i];
-		// Checking total cutted mass
-		if(gal->comp_type[i]==0) cutted_gas_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
-		if(gal->comp_type[i]==1) cutted_halo_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
-		if(gal->comp_type[i]==2) cutted_disk_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
-		if(gal->comp_type[i]==3) cutted_bulge_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
-		// Checking particle number
-		if(gal->comp_type[i]==0) gal->num_part[0] 	+= gal->comp_npart[i];
-		if(gal->comp_type[i]==1) gal->num_part[1] 	+= gal->comp_npart[i];
-		if(gal->comp_type[i]==2) gal->num_part[2] 	+= gal->comp_npart[i];
-		if(gal->comp_type[i]==3) gal->num_part[3] 	+= gal->comp_npart[i];
-		if(gal->comp_type[i]==0) gal->num_part_pot[0] 	+= gal->comp_npart_pot[i];
-		if(gal->comp_type[i]==1) gal->num_part_pot[1] 	+= gal->comp_npart_pot[i];
-		if(gal->comp_type[i]==2) gal->num_part_pot[2] 	+= gal->comp_npart_pot[i];
-		if(gal->comp_type[i]==3) gal->num_part_pot[3] 	+= gal->comp_npart_pot[i];
-		if(gal->comp_type[i]==0){
-			// Set the gas specific internal energy
-			// We assume the gas is in an isothermal state
-			gal->comp_u_init[i] = (boltzmann / protonmass) * gal->comp_t_init[i];
-			gal->comp_u_init[i] *= unit_mass_in_g / unit_energy;
-			gal->comp_u_init[i] *= (1.0 / gamma_minus1);
-			// Assuming full ionization (HII)
-			/*if(gal->t_init > 1.0e4)
-    		    molecular_weight = 4./(8.-5.*(1.-hydrogen_massfrac));
-			// Assuming neutral gas (HI)
-			else
-    		    molecular_weight = 4./(1.+3.*hydrogen_massfrac);*/
-    		molecular_weight = 4./(1.+3.*hydrogen_massfrac);
-			gal->comp_u_init[i] /= molecular_weight;
-			// Computing isothermal sound speed
-			gal->comp_cs_init[i] = sqrt(gamma_minus1*gal->comp_u_init[i]*unit_energy/unit_mass_in_g);
-		}
-	}
-    
-    baryonic_fraction 				= (disk_mass+gas_mass+bulge_mass)/gal->total_mass;
-    BT_fraction 				= cutted_bulge_mass/(cutted_bulge_mass+cutted_disk_mass);
-    BD_fraction 				= cutted_bulge_mass/cutted_disk_mass;
-    gas_fraction				= cutted_gas_mass/(cutted_disk_mass+cutted_gas_mass);
-    
-
-    
-	// Print some information to screen.
-	if (info != 0) {
-		printf("/////\t-Redshift = %6.2lf\n",gal->redshift);
-		printf("/////\t-V200 = %6.2lf km/s\n",gal->v200/1E5);
-		printf("/////\t-R200 = %.3lf kpc\n",gal->r200);
-		printf("/////\t-M200 = %6.2lf*1E10 solar mass\n",gal->m200/unit_mass);
-		printf("/////\t-M200 [effective] = %6.2lf*1E10 solar mass\n",gal->m200*effective_mass_factor/unit_mass);
-		printf("/////\t\t-Disk mass: \t%10.3lf*1E10 solar mass\n",disk_mass/unit_mass);
-		printf("/////\t\t-Halo mass: \t%10.3lf*1E10 solar mass\n",halo_mass/unit_mass);
-		printf("/////\t\t-Gas mass: \t%10.3lf*1E10 solar mass\n",gas_mass/unit_mass);
-		printf("/////\t\t-Bulge mass: \t%10.3lf*1E10 solar mass\n",bulge_mass/unit_mass);
-		printf("/////\t\t-Total stellar mass: \t%10.3lf*1E10 solar mass\n",(bulge_mass+disk_mass)/unit_mass);
-		printf("/////\t-Total cutted mass = %6.2lf*1E10 solar mass.\n",gal->total_mass/unit_mass);
-		printf("/////\t\t-Cutted Disk mass: \t%10.3lf*1E10 solar mass\n",cutted_disk_mass/unit_mass);
-		printf("/////\t\t-Cutted Halo mass: \t%10.3lf*1E10 solar mass\n",cutted_halo_mass/unit_mass);
-		printf("/////\t\t-Cutted Gas mass: \t%10.3lf*1E10 solar mass\n",cutted_gas_mass/unit_mass);
-		printf("/////\t\t-Cutted Bulge mass: \t%10.3lf*1E10 solar mass\n",cutted_bulge_mass/unit_mass);
-		printf("/////\t\t-Total cutted stellar mass: \t%10.3lf*1E10 solar mass\n",(cutted_bulge_mass+cutted_disk_mass)/unit_mass);
-		printf("/////\t-%ld particles:\n",gal->ntot_part);
-		printf("/////\t\t-%ld Gas particles\n",gal->num_part[0]);
-		printf("/////\t\t-%ld Dark matter particles\n",gal->num_part[1]);
-		printf("/////\t\t-%ld Stellar disk particles\n",gal->num_part[2]);
-		printf("/////\t\t-%ld Stellar bulge particles\n",gal->num_part[3]);
-		printf("/////\t-%ld particles for potential computation:\n",gal->ntot_part_pot);
-		printf("/////\t\t-%ld Gas particles\n",gal->num_part_pot[0]);
-		printf("/////\t\t-%ld Dark matter particles\n",gal->num_part_pot[1]);
-		printf("/////\t\t-%ld Stellar disk particles\n",gal->num_part_pot[2]);
-		printf("/////\t\t-%ld Stellar bulge particles\n",gal->num_part_pot[3]);
-		printf("/////\t-Baryonic fraction:\t%10.3lf\n",baryonic_fraction);
-		printf("/////\t-BD ratio:\t%10.3lf\n",BD_fraction);
-		printf("/////\t-BT ratio:\t%10.3lf\n",BT_fraction);
-		printf("/////\t-Gas fraction:\t%10.3lf\n",gas_fraction);
-		printf("/////\t-Potential PM-grid has dimensions [nx=%d,ny=%d,nz=%d] \n",gal->ngrid,gal->ngrid,gal->ngrid);
-		printf("/////\t-Dimensions are zero-padded to [nx=%d,ny=%d,nz=%d] \n",gal->ngrid_padded,gal->ngrid_padded,gal->ngrid_padded);
-		printf("/////\t-Density grid has dimensions [nx=%d,ny=%d,nz=%d] \n",gal->ngrid_dens,gal->ngrid_dens,gal->ngrid_dens);
-	}
-	fflush(stdout);
-
+int allocate_variable_arrays(galaxy *gal) {
+	int i,j;
 	// Allocate particle id numbers array.
 	if (!(gal->id=calloc(gal->ntot_part_pot,sizeof(unsigned long int)))) {
 		fprintf(stderr,"Unable to allocate particle ID numbers.\n");
@@ -530,11 +335,463 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		fprintf(stderr,"Unable to allocate particle index.\n");
 		return -1;
 	}
+	return 0;
+}
+
+// Allocate component arrays.
+int allocate_component_arrays_stream(stream *st) { 
+	int i;
+	
+	if (!(st->comp_profile_name=(char **)malloc(AllVars.MaxCompNumber*sizeof(char *)))) {
+		fprintf(stderr,"Unable to allocate comp_profile_name array.\n");
+		return -1;
+	}
+	for (i = 0; i < AllVars.MaxCompNumber; ++i) {
+    	if(!(st->comp_profile_name[i] = (char *)malloc(200))) {
+    		fprintf(stderr,"Unable to allocate comp_profile_name array.\n");
+			return -1;
+    	}
+	}
+	if (!(st->comp_mass=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_mass array.\n");
+		return -1;
+	}
+	if (!(st->comp_dens=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_dens array.\n");
+		return -1;
+	}
+	if (!(st->comp_model=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
+		return -1;
+	}
+	if (!(st->comp_npart=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
+		fprintf(stderr,"Unable to allocate particle comp_npart array.\n");
+		return -1;
+	}
+	if (!(st->comp_start_part=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
+		fprintf(stderr,"Unable to allocate particle comp_start_part array.\n");
+		return -1;
+	}
+	if (!(st->comp_mcmc_step=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_mcmc_step array.\n");
+		return -1;
+	}
+	if (!(st->comp_bool=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+		fprintf(stderr,"Unable to allocate particle comp_bool array.\n");
+		return -1;
+	}
+	if (!(st->comp_theta_sph=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_theta_sph array.\n");
+		return -1;
+	}
+	if (!(st->comp_phi_sph=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_phi_sph array.\n");
+		return -1;
+	}
+	if (!(st->comp_metal=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_metal array.\n");
+		return -1;
+	}
+	if (!(st->comp_t_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_t_init array.\n");
+		return -1;
+	}
+	if (!(st->comp_u_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_u_init array.\n");
+		return -1;
+	}
+	if (!(st->comp_cs_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_cs_init array.\n");
+		return -1;
+	}
+	if (!(st->comp_xc=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_xc array.\n");
+		return -1;
+	}
+	if (!(st->comp_yc=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_xc array.\n");
+		return -1;
+	}
+	if (!(st->comp_zc=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_xc array.\n");
+		return -1;
+	}
+	if (!(st->comp_opening_angle=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_opening_angle array.\n");
+		return -1;
+	}
+	if (!(st->comp_length=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_length array.\n");
+		return -1;
+	}
+	if (!(st->comp_scale=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_scale array.\n");
+		return -1;
+	}
+	if (!(st->comp_sigma_vel=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle comp_sigma_vel array.\n");
+		return -1;
+	}
+	return 0;
+}
+
+
+int allocate_variable_arrays_stream(stream *st) {
+	// Allocate particle id numbers array.
+	if (!(st->id=calloc(st->ntot_part,sizeof(unsigned long int)))) {
+		fprintf(stderr,"Unable to allocate particle ID numbers.\n");
+		return -1;
+	}
+
+	// Allocate x coordinates for all the particles.
+	if (!(st->x=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle x coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate y coordinates for all the particles.
+	if (!(st->y=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle y coordinates.\n");
+		return -1;
+	}
+
+	// Allocate z coordinates for all the particles.
+	if (!(st->z=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle z coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate cylindrical radius for all the particles.
+	if (!(st->r_cyl=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle z coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate cylindrical azimuthal angle for all the particles.
+	if (!(st->theta_cyl=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle z coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate spherical radius for all the particles.
+	if (!(st->r_sph=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle z coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate spherical azimuthal angle for all the particles.
+	if (!(st->theta_sph=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle z coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate spherical polar angle for all the particles.
+	if (!(st->phi_sph=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle z coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate x velocities for all the particles.
+	if (!(st->vel_x=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle x coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate y velocities for all the particles.
+	if (!(st->vel_y=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle y coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate z velocities for all the particles.
+	if (!(st->vel_z=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle z coordinates.\n");
+		return -1;
+	}
+    
+	// Allocate masses for all the particles.
+	if (!(st->mass=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle masses.\n");
+		return -1;
+	}
+    
+	// Allocate internal energies for all the particles.
+	if (!(st->u=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle internal energy.\n");
+		return -1;
+	}
+	
+	// Allocate metallicity array for particles.
+	if (!(st->metal=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle metal.\n");
+		return -1;
+	}
+	
+	// Allocate density array for all particles.
+	if (!(st->rho=calloc(st->ntot_part,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate particle age.\n");
+		return -1;
+	}
+	return 0;
+}
+
+
+
+// Create a galaxy
+int create_galaxy(galaxy *gal, char *fname, int info) {
+	
+	unsigned long int i;
+	int j,nt;
+	// Molecular weigth t compute the gas internal energy
+	double molecular_weight;
+	// Hubble parameter
+	double H;
+	// Seed for the random number generator
+	long seed;
+	double cutted_halo_mass,cutted_disk_mass,cutted_gas_mass,cutted_bulge_mass;
+	double halo_npart,disk_npart,gas_npart,bulge_npart;
+	double max_gas_radius;
+	double baryonic_fraction;
+	double BD_fraction,BT_fraction,gas_fraction;
+	double effective_mass_factor;
+	double rho_crit, delta_c, rho0_nfw, rho_scale_nfw, m_scale_nfw;
+		
+	if(allocate_component_arrays(gal)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+	}	
+
+	// Parse the galaxy parameters file
+	if(parse_galaxy_file(gal,fname) != 0) {
+		fprintf(stderr,"Unable to find the galaxy parameters file\n");
+		return -1;
+	}
+
+	// Allocate pseudo all the threads.
+	if (!(gal->pseudo=calloc(AllVars.Nthreads,sizeof(int)))) {
+		fprintf(stderr,"Unable to allocate pseudo-density switch.\n");
+		return -1;
+	}
+	
+	// Allocate component selector all the threads.
+	if (!(gal->selected_comp=calloc(AllVars.Nthreads,sizeof(int)))) {
+		fprintf(stderr,"Unable to allocate pseudo-density switch.\n");
+		return -1;
+	}
+    
+	// Padding potential grid
+	gal->ngrid 			= pow(2,gal->level_grid);
+	gal->ngrid_padded 	= 2*gal->ngrid;
+	gal->ngrid_dens 	= pow(2,gal->level_grid_dens);
+	// Create the random number generator environment, if not already done
+	if (random_number_set != 1) {
+		gsl_rng_env_setup();
+		T = gsl_rng_mt19937;
+		r = (gsl_rng **) malloc(AllVars.Nthreads * sizeof(gsl_rng *));
+		for(i=0;i<AllVars.Nthreads;i++) {
+			r[i] = gsl_rng_alloc(T);
+			gsl_rng_set(r[i],gal->seed);
+		}
+		random_number_set = 1;
+	}
+
+	// Set a bunch of constants that defines the galaxy's structure.
+	// Set the Hubble parameter from the Friedmann equation
+	H = sqrt(pow(AllVars.H0/(1e3*unit_length)*unit_velocity,2.0)*(AllVars.Omega_m*pow(1+gal->redshift,3.0)+AllVars.Omega_k*pow(1+gal->redshift,2.0)+AllVars.Omega_l));
+	// Get the Virial velocity from the parser
+	gal->v200 = gal->v200*1E5;
+	// Set the Virial mass
+	gal->m200 = (gal->v200*gal->v200*gal->v200)/(10.0*G*H);
+	// Set the Virial radius
+	gal->r200 = gal->v200/(10.0*H*kpc);
+    
+    gal->v200 = gal->v200/1E5;
+    gal->m200 = gal->m200/unit_mass;
+    
+	// Set the size of the cell for the Potential-Mesh (PM) computation
+	gal->space[0] 		= gal->boxsize/((double)gal->ngrid);
+	gal->space[1] 		= gal->boxsize/((double)gal->ngrid);
+	gal->space[2] 		= gal->boxsize/((double)gal->ngrid);
+	
+	gal->boxsize_dens 	= 0.;
+	for(i=0; i<AllVars.MaxCompNumber; i++){
+		if(gal->comp_type[i]==0 && 2.0*gal->comp_cut[i]>gal->boxsize_dens){
+			gal->boxsize_dens = 2.1*gal->comp_cut[i];
+		}
+	}
+
+	gal->space_dens[0] 	= gal->boxsize_dens/((double)gal->ngrid_dens);
+	gal->space_dens[1] 	= gal->boxsize_dens/((double)gal->ngrid_dens);
+
+	allocate_galaxy_storage_variable(gal,10);
 	
 
+	
+	// Initialisations
+	gal->ntot_part 			= (unsigned long int)0;
+	gal->comp_start_part[0] = (unsigned long int)0;
+	gal->total_mass 		= 0.;
+	max_gas_radius			= 0.0;
+	cutted_halo_mass		= 0.0;
+	cutted_disk_mass		= 0.0;
+	cutted_gas_mass			= 0.0;
+	cutted_bulge_mass		= 0.0;
+	gal->num_part[0]		= 0;
+	gal->num_part[1]		= 0;
+	gal->num_part[2]		= 0;
+	gal->num_part[3]		= 0;
+	gal->num_part_pot[0]	= 0;
+	gal->num_part_pot[1]	= 0;
+	gal->num_part_pot[2]	= 0;
+	gal->num_part_pot[3]	= 0;
+	effective_mass_factor	= 0.;
+	
+	// Do not work with pseudo densities yet
+	for(i=0; i<AllVars.Nthreads; i++) gal->pseudo[i] = 0;
+	// Set up component properties
+	for(i=0; i<AllVars.MaxCompNumber; i++){
+		// Total number of particules
+		if(gal->comp_npart_pot[i]==0) gal->comp_npart_pot[i] = gal->comp_npart[i];
+		if(gal->comp_npart[i]==0) gal->comp_npart_pot[i] = 0;
+		gal->ntot_part_pot 				+= gal->comp_npart_pot[i];
+		gal->ntot_part 					+= gal->comp_npart[i];
+		if(gal->comp_type[i]>1) gal->ntot_part_stars += gal->comp_npart[i];
+		effective_mass_factor			+= gal->comp_mass_frac[i];
+		// Set the start index for each component
+		if(i>0) gal->comp_start_part[i] = gal->comp_start_part[i-1]+gal->comp_npart_pot[i-1];
+		// Computing mass component
+		if(gal->comp_mass_frac[i]>0) gal->comp_mass[i] = gal->m200*gal->comp_mass_frac[i];
+		// Set scalelength according to concentration parameter if defined
+		if(gal->comp_concentration[i]>0.&&gal->comp_scale_length[i]<=0.) {
+			gal->comp_scale_length[i] = gal->r200/gal->comp_concentration[i];
+		}
+		if(gal->comp_concentration[i]==0.&&gal->comp_scale_length[i]>0.) {
+			gal->comp_concentration[i] = gal->r200/gal->comp_scale_length[i];
+		}
+		// Set the component scale height
+		gal->comp_scale_height[i] 	= gal->comp_flat[i]*gal->comp_scale_length[i];
+		
+		// Reset Q_min to some arbitrary value so it can be calculated later.
+		gal->comp_Q_min[i] = 1000.0;
+
+		// We check how many components are present in the galaxy
+		// in order to compute masses
+		// Booleans to test the presence of a given component
+		if(gal->comp_npart[i] > 0) {
+			gal->comp_bool[i] = 1;
+			gal->n_component++;
+		}
+		else gal->comp_bool[i] 		= 0;
+		// Computing the mass of the component after cuts
+		
+		
+		if(gal->comp_bool[i]) {
+			// Case where the final cutted mass is defined by the user
+			if(gal->comp_radius_nfw[i]==-1.0) {
+				gal->comp_scale_dens[i]		= 1.0;
+				gal->comp_cut_dens[i] 		= 0.0;
+				gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],0.,0.,0,gal->comp_model[i],i);
+				gal->comp_scale_dens[i] 	= gal->comp_mass[i]/cumulative_mass_func(gal,gal->comp_cut[i],i);
+			} else {
+			// Case where the final cutted mass is defined by a scaling with respect to a NFW halo density
+				gal->comp_scale_dens[i]		= 1.0;
+				m_scale_nfw 				= sqrt(pow(gal->comp_radius_nfw[i]/gal->comp_scale_length[i],2.0));
+				rho_crit 					= (gal->m200*gal->comp_mass_frac[i]/200.)*(3.0/(4.0*pi*pow(gal->r200,3.0)));
+    			delta_c 					= (200./3.)*pow(gal->comp_concentration[i],3.0)/
+    										  (log(1.0+gal->comp_concentration[i])-gal->comp_concentration[i]/(1.0+gal->comp_concentration[i]));
+    			rho0_nfw 					= rho_crit*delta_c;
+    			rho_scale_nfw 				= rho0_nfw/(m_scale_nfw*pow(1.0+m_scale_nfw,2.0));
+    			gal->comp_scale_dens[i] 	= rho_scale_nfw/density_functions_pool(gal,gal->comp_radius_nfw[i],0.,0.,0,gal->comp_model[i],i);
+			}
+		}
+		gal->comp_cut_dens[i] 		= 0.0;
+		gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],0.,0.,0,gal->comp_model[i],i);
+		gsl_set_error_handler_off();
+		gal->comp_cutted_mass[i] 	= cumulative_mass_func(gal,gal->comp_cut[i],i);
+		gal->total_mass				+= gal->comp_cutted_mass[i];
+
+		// Check for disk scalelength values lower or equal to 0
+		// If it is the case, compute the disk scalelength according to Mo et al. 1998
+		//if(gal->comp_scale_length[i] <= 0 && (gal->comp_type[i]==1 || gal->comp_type[i]==2)) gal->comp_scale_length[i] = disk_scale_length_func(gal);
+		if(gal->comp_type[i]==0 && gal->comp_scale_length[i]>max_gas_radius) max_gas_radius = gal->comp_scale_length[i];
+		if(gal->comp_type[j]==1 && gal->lambda>=0) gal->comp_streaming_fraction[j] = f_s_func(gal->comp_concentration[j],gal->lambda);
+		// Checking total cutted mass
+		if(gal->comp_type[i]==0) cutted_gas_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
+		if(gal->comp_type[i]==1) cutted_halo_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
+		if(gal->comp_type[i]==2) cutted_disk_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
+		if(gal->comp_type[i]==3) cutted_bulge_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
+		// Checking particle number
+		if(gal->comp_type[i]==0) gal->num_part[0] 	+= gal->comp_npart[i];
+		if(gal->comp_type[i]==1) gal->num_part[1] 	+= gal->comp_npart[i];
+		if(gal->comp_type[i]==2) gal->num_part[2] 	+= gal->comp_npart[i];
+		if(gal->comp_type[i]==3) gal->num_part[3] 	+= gal->comp_npart[i];
+		if(gal->comp_type[i]==0) gal->num_part_pot[0] 	+= gal->comp_npart_pot[i];
+		if(gal->comp_type[i]==1) gal->num_part_pot[1] 	+= gal->comp_npart_pot[i];
+		if(gal->comp_type[i]==2) gal->num_part_pot[2] 	+= gal->comp_npart_pot[i];
+		if(gal->comp_type[i]==3) gal->num_part_pot[3] 	+= gal->comp_npart_pot[i];
+		if(gal->comp_type[i]==0) {
+			// Set the gas specific internal energy
+			// We assume the gas is in an isothermal state
+			gal->comp_u_init[i] = (boltzmann / protonmass) * gal->comp_t_init[i];
+			gal->comp_u_init[i] *= unit_mass / unit_energy;
+			gal->comp_u_init[i] *= (1.0 / gamma_minus1);
+			// Assuming full ionization (HII)
+			/*if(gal->t_init > 1.0e4)
+    		    molecular_weight = 4./(8.-5.*(1.-hydrogen_massfrac));
+			// Assuming neutral gas (HI)
+			else
+    		    molecular_weight = 4./(1.+3.*hydrogen_massfrac);*/
+    		molecular_weight = 4./(1.+3.*hydrogen_massfrac);
+			gal->comp_u_init[i] /= molecular_weight;
+			// Computing isothermal sound speed
+			gal->comp_cs_init[i] = sqrt(gamma_minus1*gal->comp_u_init[i]*unit_energy/unit_mass);
+		}
+	}
+    
+    baryonic_fraction 			= (cutted_disk_mass+cutted_gas_mass+cutted_bulge_mass)/gal->m200;
+    BT_fraction 				= cutted_bulge_mass/(cutted_bulge_mass+cutted_disk_mass);
+    BD_fraction 				= cutted_bulge_mass/cutted_disk_mass;
+    gas_fraction				= cutted_gas_mass/(cutted_disk_mass+cutted_gas_mass);
+    
+
+    
+	// Print some information to screen.
+	if (info != 0) {
+		printf("/////\t-Redshift = %6.2lf\n",gal->redshift);
+		printf("/////\t-V200 = %6.2lf km/s\n",gal->v200);
+		printf("/////\t-R200 = %.3lf kpc\n",gal->r200);
+		printf("/////\t-M200 = %6.2lf*1E10 solar mass\n",gal->m200);
+		printf("/////\t-M200 [effective] = %6.2lf*1E10 solar mass\n",gal->m200*effective_mass_factor);
+		printf("/////\t-Total cutted mass = %6.2lf*1E10 solar mass.\n",gal->total_mass);
+		printf("/////\t\t-Cutted Disk mass: \t%10.3lf*1E10 solar mass\n",cutted_disk_mass);
+		printf("/////\t\t-Cutted Halo mass: \t%10.3lf*1E10 solar mass\n",cutted_halo_mass);
+		printf("/////\t\t-Cutted Gas mass: \t%10.3lf*1E10 solar mass\n",cutted_gas_mass);
+		printf("/////\t\t-Cutted Bulge mass: \t%10.3lf*1E10 solar mass\n",cutted_bulge_mass);
+		printf("/////\t\t-Cutted Stellar mass: \t%10.3lf*1E10 solar mass\n",(cutted_bulge_mass+cutted_disk_mass));
+		printf("/////\t-%ld particles:\n",gal->ntot_part);
+		printf("/////\t\t-%ld Gas particles\n",gal->num_part[0]);
+		printf("/////\t\t-%ld Dark matter particles\n",gal->num_part[1]);
+		printf("/////\t\t-%ld Stellar disk particles\n",gal->num_part[2]);
+		printf("/////\t\t-%ld Stellar bulge particles\n",gal->num_part[3]);
+		printf("/////\t-%ld particles for potential computation:\n",gal->ntot_part_pot);
+		printf("/////\t\t-%ld Gas particles\n",gal->num_part_pot[0]);
+		printf("/////\t\t-%ld Dark matter particles\n",gal->num_part_pot[1]);
+		printf("/////\t\t-%ld Stellar disk particles\n",gal->num_part_pot[2]);
+		printf("/////\t\t-%ld Stellar bulge particles\n",gal->num_part_pot[3]);
+		printf("/////\t-Baryonic fraction:\t%10.3lf\n",baryonic_fraction);
+		if(gal->num_part[0]>0&&gal->num_part[2]>0)printf("/////\t-Gas fraction:\t\t%10.3lf\n",gas_fraction);
+		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t-BD ratio:\t\t%10.3lf\n",BD_fraction);
+		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t-BT ratio:\t\t%10.3lf\n",BT_fraction);
+		printf("/////\t-Potential PM-grid dimension: \t\t[%d,%d,%d] \n",gal->ngrid,gal->ngrid,gal->ngrid);
+		if(AllVars.GasHydrostaticEq) printf("/////\t-Midplane density grid dimension: \t[%d,%d] \n",gal->ngrid_dens,gal->ngrid_dens);
+	}
+	fflush(stdout);
+	
+	if(allocate_variable_arrays(gal)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+	}	
     
     for (j=0; j<AllVars.MaxCompNumber; j++) {
-    	if(gal->comp_npart[j]>0) printf("/////\tComponent %d -> particle mass %.2e solar mass\n",j+1,(gal->comp_cutted_mass[j]*1.0E10)/(gal->comp_npart_pot[j]*unit_mass));
+    	if(gal->comp_npart[j]>0) printf("/////\tComponent %d -> particle mass %.2e solar mass\n",j+1,(gal->comp_cutted_mass[j]*1.0E10)/(gal->comp_npart_pot[j]));
 		// Filling the arrays of the &galaxy structure
 		for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
 			gal->mass[i] 		= gal->comp_cutted_mass[j]/gal->comp_npart_pot[j];
@@ -552,18 +809,145 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 }
 
 
+// Create streams
+int create_stream(stream *st, char *fname, int info) {
+	
+	unsigned long int i;
+	int j,nt;
+	double molecular_weight;
+	double base;
+	// Seed for the random number generator
+	long seed;
+		
+	if(allocate_component_arrays_stream(st)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+	}	
+
+	// Parse the galaxy parameters file
+	if(parse_stream_file(st,fname) != 0) {
+		fprintf(stderr,"Unable to find the galaxy parameters file\n");
+		return -1;
+	}
+	
+	// Allocate component selector all the threads.
+	if (!(st->selected_comp=calloc(AllVars.Nthreads,sizeof(int)))) {
+		fprintf(stderr,"Unable to allocate pseudo-density switch.\n");
+		return -1;
+	}
+
+	// Create the random number generator environment, if not already done
+	if (random_number_set != 1) {
+		gsl_rng_env_setup();
+		T = gsl_rng_mt19937;
+		r = (gsl_rng **) malloc(AllVars.Nthreads * sizeof(gsl_rng *));
+		for(i=0;i<AllVars.Nthreads;i++) {
+			r[i] = gsl_rng_alloc(T);
+			gsl_rng_set(r[i],st->seed);
+		}
+		random_number_set = 1;
+	}
+
+	allocate_stream_storage_variable(st,10);
+
+	st->ntot_part 			= (unsigned long int)0;
+	st->comp_start_part[0] 	= (unsigned long int)0;
+	st->total_mass			= 0.;
+	// Set up component properties
+	for(i=0; i<AllVars.MaxCompNumber; i++){
+	
+		// Total number of particules
+		st->ntot_part += st->comp_npart[i];
+		// Set the start index for each component
+		if(i>0) st->comp_start_part[i] = st->comp_start_part[i-1]+st->comp_npart[i-1];
+
+		// We check how many components are present in the galaxy
+		// in order to compute masses
+		// Booleans to test the presence of a given component
+		if(st->comp_npart[i] > 0) {
+			st->comp_bool[i] = 1;
+			st->n_component++;
+		}
+		else st->comp_bool[i] 		= 0;
+
+		if(st->comp_bool[i]) {
+	    	base	= 2*st->comp_length[i]*atan(pi/180.*st->comp_opening_angle[i]/2.);
+			st->comp_mass[i] = cumulative_mass_func_stream(st,base,i);
+			st->total_mass += st->comp_bool[i]*st->comp_mass[i];
+			// Set the gas specific internal energy
+			// We assume the gas is in an isothermal state
+			st->comp_u_init[i] = (boltzmann / protonmass) * st->comp_t_init[i];
+			st->comp_u_init[i] *= unit_mass / unit_energy;
+			st->comp_u_init[i] *= (1.0 / gamma_minus1);
+			// Assuming full ionization (HII)
+			/*if(gal->t_init > 1.0e4)
+    		    molecular_weight = 4./(8.-5.*(1.-hydrogen_massfrac));
+			// Assuming neutral gas (HI)
+			else
+    		    molecular_weight = 4./(1.+3.*hydrogen_massfrac);*/
+    		molecular_weight = 4./(1.+3.*hydrogen_massfrac);
+			st->comp_u_init[i] /= molecular_weight;
+			// Computing isothermal sound speed
+			st->comp_cs_init[i] = sqrt(gamma_minus1*st->comp_u_init[i]*unit_energy/unit_mass);
+		}
+	}
+    
+	// Print some information to screen.
+	if (info != 0) {
+		printf("/////\t-Gas mass: \t%10.3lf*1E10 solar mass\n",st->total_mass);
+		printf("/////\t-%ld particles\n",st->ntot_part);
+	}
+	fflush(stdout);
+
+	if(allocate_variable_arrays_stream(st)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+	}	
+    
+    for (j=0; j<AllVars.MaxCompNumber; j++) {
+    	if(st->comp_npart[j]>0) printf("/////\tComponent %d -> particle mass %.2e solar mass\n",j+1,(st->comp_mass[j]*1.0E10)/(st->comp_npart[j]));
+		// Filling the arrays of the &galaxy structure
+		for (i = st->comp_start_part[j]; i < st->comp_start_part[j] + st->comp_npart[j]; i++) {
+			st->mass[i] 		= st->comp_mass[j]/st->comp_npart[j];
+			st->id[i] 			= i;
+			st->u[i] 			= st->comp_u_init[j];
+			st->rho[i]			= 0.;
+			st->metal[i]		= st->comp_metal[j];
+		}
+	}
+	// No problems detected
+	return 0;
+}
+
 // Use this to allocate the galaxy storage variable on the fly.
 void allocate_galaxy_storage_variable(galaxy *gal, int size) {
 	int i;
 	
 	// Allocate the storage array.
-	if (!(gal->storage1=calloc(size,sizeof(double)))) {
+	if (!(gal->storage=calloc(size,sizeof(double)))) {
 		fprintf(stderr,"Unable to allocate storage array.\n");
 		return;
 	}
 	for (i = 0; i < size; ++i) {
 		// y-axis
-		if (!(gal->storage1[i] = calloc(AllVars.Nthreads,sizeof(double *)))) {
+		if (!(gal->storage[i] = calloc(AllVars.Nthreads,sizeof(double *)))) {
+			fprintf(stderr,"Unable to allocate storage array.\n");
+			return ;
+		}
+	}
+	return;
+}
+
+// Use this to allocate the stream storage variable on the fly.
+void allocate_stream_storage_variable(stream *st, int size) {
+	int i;
+	
+	// Allocate the storage array.
+	if (!(st->storage=calloc(size,sizeof(double)))) {
+		fprintf(stderr,"Unable to allocate storage array.\n");
+		return;
+	}
+	for (i = 0; i < size; ++i) {
+		// y-axis
+		if (!(st->storage[i] = calloc(AllVars.Nthreads,sizeof(double *)))) {
 			fprintf(stderr,"Unable to allocate storage array.\n");
 			return ;
 		}
@@ -578,12 +962,12 @@ void allocate_galaxy_storage_variable(galaxy *gal, int size) {
 int set_galaxy_coords(galaxy *gal) {
 	int i,j;
 	
-	printf("/////\tSetting particles position\n");
+	printf("/////\tSetting coordinates\n");
 	fflush(stdout);
 
 	for(i=0; i<AllVars.MaxCompNumber; i++) {
 		if(gal->comp_npart[i]>0) {
-			printf("/////\t\t-Setting component %d particles positions ",i+1);
+			printf("/////\t\t-Setting component %d coordinates [%s profile]\n",i+1,gal->comp_profile_name[i]);
 			fflush(stdout);
 			mcmc_metropolis_hasting(gal,i,gal->comp_model[i]);
 			rotate_component(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i],i);
@@ -600,98 +984,38 @@ int set_galaxy_coords(galaxy *gal) {
 	return 0;
 }
 
-// This function modify the z component of the gaseous particles according to an iterative
-// algorithm to reach the hydrostatic equilibrium of the disk. This function was inspired by
-// Springel, Di Matteo er al. 2005 method.
-int set_hydro_equilibrium(galaxy *gal, int n_iter) {
+// Set the positions of the particles in the galaxy to be consistent with the
+// various particle distributions. This function uses the Metropolis algorithm
+// to allocate particle positions from the distribution functions of each
+// galaxy component.
+int set_stream_coords(stream *st) {
+	int i,j;
 	
-	unsigned long int i,j,k;
-	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius, delta_pot;
-	double theta, phi, randval, x, y, z, step, proposal, acceptance;
-    
-	printf("/////\tTargeting gas azimuthal hydrostatic equilibrium:\n");
-
+	printf("/////\tSetting coordinates\n");
 	fflush(stdout);
-	// Allow to use pseudo density functions
-	for(i=0;i<AllVars.Nthreads;i++) gal->pseudo[i] = 1;
-	for(k=0; k<AllVars.MaxCompNumber; k++) {
-		// Looking for gas particles
-		if(gal->comp_type[k]==0 && gal->comp_npart_pot[k]>0) {
-			printf("/////\t\tRecomputing gas particles position for component %d\n",k);
-			// Starting equilibrium iterations
-			for(j = 0; j < n_iter; ++j) {
-				printf("/////\t\t\tIteration %ld",j+1);
-				fflush(stdout);
-				// Now that we've got gas particles positions, we can compute the full potential.
-				if(set_galaxy_potential(gal,0) != 0) {
-					fprintf(stderr,"\nUnable to set the potential. Aborting.\n");
-					return -1;
-				}
-				// Now, we have to set the gaseous disk density at (0.,0.,0.).
-				// We have to make a guess: we use the disk density function to compute a realistic rho_gas(r=0,z=0).
-				z0 = gal->comp_scale_height[k];
-				// The MCMC algorithm is repeated 10 times to ensure convergence
-				// Filling the Markov Chain
-				acceptance = 0;
-				fill_midplane_dens_grid(gal,k);
-				gal->index[0] = gal->comp_start_part[k];
-				gal->z[gal->comp_start_part[k]] = 0.0;
-				// Recomputing density cut
-				//gal->comp_cut_dens[k] = pseudo_density_gas_func(gal,0.99*gal->comp_cut[k],0.0,0.0,0,k);
-				for(i = gal->comp_start_part[k]+1; i < gal->comp_start_part[k] + gal->comp_npart_pot[k]; ++i) {
-					// Generating a proposal
-					// Step is chosen as if the azimuthal distribution is sech^2(z/h)
-					// Then there is an analytical solution to set hydro equilibrium
-					// h = sqrt(cs^2/2*pi*G*rho0)
-					// The Gaussian step is scaled by gal->comp_mcmc_step_hydro[k]
-					x = gal->x[i];
-					y = gal->y[i];
-					z = gal->z[i-1];
-					step = gal->comp_mcmc_step_hydro[k]*sqrt(pow(gal->comp_cs_init[k],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,x,y,0.0,0,k)))/kpc;
-					// Computing the probability of the proposal
-					// according to the updated potential value
-					proposal 	= z + gsl_ran_gaussian(r[0],step);
-					pi_x 		= pseudo_density_gas_func(gal,x,y,z,0,k);
-					pi_y 		= pseudo_density_gas_func(gal,x,y,proposal,0,k);
-					q_x  		= gsl_ran_gaussian_pdf(proposal-z,step);
-					q_y  		= gsl_ran_gaussian_pdf(z-proposal,step);
-					prob 		= min(1.0,(pi_y/pi_x)*(q_x/q_y));
-					// Draw a uniform random value to test the acceptance of the proposal
-					randval = gsl_rng_uniform_pos(r[0]);
-					if (randval <= prob) {
-						gal->z[i] = proposal;
-						acceptance += 1.0;
-						// Updating coordinates values
-						gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
-						gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
-					} else {
-						gal->z[i] 			= z;
-						gal->r_sph[i]       = sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
-						gal->phi_sph[i]     = acos(gal->z[i]/gal->r_sph[i]);
-					}
-				}
-				acceptance /= gal->comp_npart_pot[k];
-				printf(" -> Acceptance = %lf\n",acceptance);
-				if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n/////\t\t\tLower mcmc_step in the galaxy parameter file.\n");
-				if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n/////\t\t\tIncrease mcmc_step in the galaxy parameter file.\n");
-			}
-			// Final gas midplane density
-			fill_midplane_dens_grid(gal,k);
+
+	for(i=0; i<AllVars.MaxCompNumber; i++) {
+		if(st->comp_npart[i]>0) {
+			printf("/////\t\t-Setting component %d coordinates [%s profile]\n",i+1,st->comp_profile_name[i]);
+			fflush(stdout);
+			mcmc_metropolis_hasting_stream(st,i,st->comp_model[i]);
+			rotate_stream(st,st->comp_theta_sph[i],st->comp_phi_sph[i],i);
+			position_stream(st,st->comp_xc[i],st->comp_yc[i],st->comp_zc[i],i);
 		}
 	}
+	// Be nice to the memory
 	return 0;
 }
 
 // Set the velocities of the particles for each component in the galaxy.
 // User can choose between cold/hot particles, ie. without velocity dispersion/with velocity dispersion
 // This computation is inspired from the work of Springel et al. 2005 & Hernquist 1993
-int set_galaxy_velocity(galaxy *gal, int vel_type) {
+int set_galaxy_velocity(galaxy *gal) {
     
 	unsigned long int i,j;
 	int status,warning,k;
-	double v_c, v_theta, v_r, v_z;
-	double f_s, sigma_theta;
-	double v2a_r, v2a_theta, v2_theta, va_theta, vel_x, vel_y, vel_z, streaming_fraction;
+	double v_c, v_r, v_theta, v_z;
+	double v2a_r, v2a_theta, v2_theta, v2a_z, v2a_z_new, va_theta, sigma_theta, vel_x, vel_y, vel_z;
 	double vesc[4*gal->ngrid], mass_in_shell;
     
 	// Warning init
@@ -714,9 +1038,9 @@ int set_galaxy_velocity(galaxy *gal, int vel_type) {
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
 		// Particle velocities.
 		if(gal->comp_npart[j]>0) {
-			printf("/////\t\t-Setting component %d particles velocities\n",j+1);
+			printf("/////\t\t-Setting component %d velocities\n",j+1);
 			fflush(stdout);
-			#pragma omp parallel for private(v2a_r,v2a_theta,sigma_theta,va_theta,v_c,v_r,v_theta,v_z,vel_x,vel_y,vel_z)
+			#pragma omp parallel for private(v_c, v_r, v_theta, v_z, v2a_r, v2a_theta, v2_theta, va_theta, sigma_theta, vel_x, vel_y, vel_z) shared(j,gal)
 			for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j]+gal->comp_npart[j]; ++i) {
 				// Get thread ID
 				#if USE_THREADS == 1
@@ -724,14 +1048,13 @@ int set_galaxy_velocity(galaxy *gal, int vel_type) {
 				#else
             		int tid = 0;
 				#endif
-				double v2a_z;
 				gal->index[tid] = i;
 
-				
 				// Specific case of gas particles
 				if(gal->comp_type[j]==0) {
 					if(AllVars.GasHydrostaticEq) gal->pseudo[tid] = 1; 
 					v2_theta = v2_theta_gas_func(gal,gal->r_cyl[i],gal->z[i],j);
+
 					// No velocity dispersion is needed because we are dealing with a fluid
 					// ie. collisional particles
 					v_r 	= 0.;
@@ -742,16 +1065,15 @@ int set_galaxy_velocity(galaxy *gal, int vel_type) {
 					gal->vel_x[i] = (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]))/1.0E5;
 					gal->vel_y[i] = (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]))/1.0E5;
 					gal->vel_z[i] = v_z/1.0E5;
-					
 				} else {
 					v_c 		= v_c_func(gal,fabs(gal->r_cyl[i]));
 					v2a_z 		= v2a_z_func(gal,w[tid],j);
 					// Enforce Q>Q_min
-					if(gal->Q_min>0 && gal->comp_type[j]==1) v2a_z = v2a_z_toomre(gal,fabs(gal->r_cyl[i]),v2a_z,j);
+					v2a_z_new = v2a_z_toomre(gal,fabs(gal->r_cyl[i]),v2a_z,j);
+					if(gal->comp_Q_lim[j]>0) v2a_z = v2a_z_new;
 					v2a_r = v2a_z;
-            	
-					if(gal->comp_type[j]==2 && gal->DispExtCoeff>0. && gal->DispExtCoeff<1.0) {
-						double disp_softening = (1.0-exp(-fabs(gal->r_cyl[i])/(-(1.0/log(1.0-gal->DispExtCoeff))*gal->comp_scale_length[j])));
+					if(gal->comp_disp_ext[j]>0. && gal->comp_disp_ext[j]<1.0) {
+						double disp_softening = (1.0-exp(-fabs(gal->r_cyl[i])/(-(1.0/log(1.0-gal->comp_disp_ext[j]))*gal->comp_scale_length[j])));
 						v2a_r *= disp_softening;
 						//v2a_z = v2a_r;
 					}
@@ -775,56 +1097,40 @@ int set_galaxy_velocity(galaxy *gal, int vel_type) {
 					v_r 	= gsl_ran_gaussian(r[tid],sqrt(v2a_r));
 					v_theta = gsl_ran_gaussian(r[tid],sigma_theta)+va_theta;
 					v_z 	= gsl_ran_gaussian(r[tid],sqrt(v2a_z));
-
-					// Make sure to divide by 1.0E5 to put the velocities in km/s.
-					vel_x = (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]))/1.0E5;
-					vel_y = (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]))/1.0E5;
-					vel_z = v_z/1.0E5;
-				
 				
 					// Escape velocity
-					int vesc_index = (int)(gal->r_sph[i]/(gal->space[0]/4.));
+					//int vesc_index = (int)(gal->r_sph[i]/(gal->space[0]/4.));
             	
 					// Let's ensure that the particle velocity is lower than gal->disk_vmax times the escape velocity
 					int ct = 0;
-					//printf("%le %lf %lf \n",gal->r_sph[i],sqrt(vel_x*vel_x+vel_y*vel_y+vel_z*vel_z),gal->disk_vmax*vesc[vesc_index]);
-					/*while(sqrt(vel_x*vel_x+vel_y*vel_y+vel_z*vel_z) >= gal->disk_vmax*vesc[vesc_index]) {
-            	 	if(ct >= 100) break;
-            	 	v_r 	= gsl_ran_gaussian(r[tid],sqrt(v2a_r));
-             		v_theta = gsl_ran_gaussian(r[tid],sigma_theta)+va_theta;
-             		v_z 	= gsl_ran_gaussian(r[tid],sqrt(v2a_z));
-             		vel_x 	= (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]))/1.0E5;
-             		vel_y 	= (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]))/1.0E5;
-             		vel_z 	= v_z/1.0E5;
-             		ct++;
-					}*/
-					ct = 0;
-					while(fabs(v_r) > gal->comp_vmax[j]*v_c/*vesc[vesc_index]*/ && gal->r_cyl[i]>gal->comp_scale_length[j]) {
+					
+					while(fabs(v_r) > gal->comp_vmax[j]*v_c) {
 						if(ct >= 10000) {
-							v_r = 2.0*gal->comp_vmax[j]*v_c/*vesc[vesc_index]*/*(gsl_rng_uniform_pos(r[tid])-0.5);
+							v_r = 2.0*gal->comp_vmax[j]*v_c*(gsl_rng_uniform_pos(r[tid])-0.5);
 							break;
 						}
-						v_r 	= gsl_ran_gaussian(r[tid],sqrt(v2a_r));
+						v_r = gsl_ran_gaussian(r[tid],sqrt(v2a_r));
 						ct++;
 					}
 					ct = 0;
-					while(fabs(v_theta-va_theta) > gal->comp_vmax[j]*v_c/*vesc[vesc_index]*/ && gal->r_cyl[i]>gal->comp_scale_length[j]) {
+					while(fabs(v_theta-va_theta) > gal->comp_vmax[j]*v_c) {
 						if(ct >= 10000) {
-							v_theta = 2.0*gal->comp_vmax[j]*v_c/*vesc[vesc_index]*/*(gsl_rng_uniform_pos(r[tid])-0.5)+va_theta;
+							v_theta = 2.0*gal->comp_vmax[j]*v_c*(gsl_rng_uniform_pos(r[tid])-0.5)+va_theta;
 							break;
 						}
 						v_theta = gsl_ran_gaussian(r[tid],sigma_theta)+va_theta;
 						ct++;
 					}
 					ct = 0;
-					while(fabs(v_z) > gal->comp_vmax[j]*v_c/*vesc[vesc_index]*/ && gal->r_cyl[i]>gal->comp_scale_length[j]) {
+					while(fabs(v_z) > gal->comp_vmax[j]*v_c) {
 						if(ct >= 10000) {
-							v_z = 2.0*gal->comp_vmax[j]*v_c/*vesc[vesc_index]*/*(gsl_rng_uniform_pos(r[tid])-0.5);
+							v_z = 2.0*gal->comp_vmax[j]*v_c*(gsl_rng_uniform_pos(r[tid])-0.5);
 							break;
 						}
 						v_z = gsl_ran_gaussian(r[tid],sqrt(v2a_z));
 						ct++;
 					}
+					
             
 					vel_x 	= (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]))/1.0E5;
 					vel_y 	= (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]))/1.0E5;
@@ -835,13 +1141,14 @@ int set_galaxy_velocity(galaxy *gal, int vel_type) {
 					gal->vel_z[i] = vel_z;
 				}
 			}
-			//if(gal->comp_type[j]==2) printf(" --> Toomre parameter minimum: Q = %f\n",gal->Q_min);
+			#pragma omp barrier
+			if(gal->comp_Q_lim[j]>0.) printf("/////\t\t-> Toomre parameter minimum: Q = %.2lf\n",gal->comp_Q_min[j]);
 		}
 	}
 
 	if(warning) printf("/////\t\tWarning: The potential derivative seems unstable. Increase particule number.\n");
 	// Be nice to memory
-	free(gal->storage1);
+	free(gal->storage);
     
 	if(AllVars.OutputRc==1){
 		double maxrad;
@@ -852,6 +1159,44 @@ int set_galaxy_velocity(galaxy *gal, int vel_type) {
 	}
 	return 0;
 }
+
+
+// Set the velocities of the particles for each component in the stream.
+// User can choose between cold/hot particles, ie. without velocity dispersion/with velocity dispersion
+// This computation is inspired from the work of Springel et al. 2005 & Hernquist 1993
+int set_stream_velocity(stream *st) {
+    
+	unsigned long int i,j;
+	int status,warning,k;
+	double v_c, v_theta, v_r, v_z;
+	double sigma_theta;
+	double v2a_r, v2a_theta, v2_theta, va_theta, vel_x, vel_y, vel_z, streaming_fraction;
+    
+	// Here we compute the velocity of the particles
+	// assuming a Gaussian shaped velocity distribution function.
+	// This method is much more realistic, and ensures disk stability
+	// against axisymetric perturbations.
+	printf("/////\tSetting velocities\n");
+	fflush(stdout);
+
+    // Loop over components
+	for(j=0; j<AllVars.MaxCompNumber; j++) {
+		// Particle velocities.
+		if(st->comp_npart[j]>0) {
+			printf("/////\t\t-Setting component %d particles velocities\n",j+1);
+			fflush(stdout);
+			for (i = st->comp_start_part[j]; i < st->comp_start_part[j]+st->comp_npart[j]; ++i) {
+				//Make sure to divide by 1.0E5 to put the velocities in km/s.
+				st->vel_x[i] = gsl_ran_gaussian(r[0],st->comp_sigma_vel[j]);
+				st->vel_y[i] = gsl_ran_gaussian(r[0],st->comp_sigma_vel[j]);
+				st->vel_z[i] = gsl_ran_gaussian(r[0],st->comp_sigma_vel[j]);
+			}
+		}
+	}
+	// Be nice to memory
+	return 0;
+}
+
 
 // Be kind to the memory, destroy a galaxy...
 void destroy_galaxy(galaxy *gal, int info) {
@@ -878,6 +1223,10 @@ void destroy_galaxy(galaxy *gal, int info) {
 	free(gal->vel_x);
 	free(gal->vel_y);
 	free(gal->vel_z);
+	free(gal->u);
+	free(gal->rho);
+	free(gal->age);
+	free(gal->metal);
 	if (info != 0) printf("///// All memory unallocated.\n");
 	return;
 }
@@ -895,6 +1244,10 @@ void destroy_galaxy_system(galaxy *gal, int info) {
 	free(gal->vel_x);
 	free(gal->vel_y);
 	free(gal->vel_z);
+	free(gal->u);
+	free(gal->rho);
+	free(gal->age);
+	free(gal->metal);
 	if (info != 0) printf("///// All memory unallocated.\n");
     return;
 }
@@ -971,6 +1324,57 @@ int rotate_component(galaxy *gal, double alpha, double delta, int component) {
 	return 0;
 }
 
+// This function intend to perform rotation onto a galaxy, in order to test
+// different combination of ICs for galaxy colision simulations.
+// The orientation angles should be specified in degrees.
+int rotate_stream(stream *st, double alpha, double delta, int component) {
+	
+	unsigned long int i;
+	double x_temp, y_temp, z_temp;
+	double vx_temp, vy_temp, vz_temp;
+	// Alpha is the spin angle
+	// Delta is the inclination of the disk compare to the XY plane
+	alpha = alpha*pi/180.;
+	delta = delta*pi/180.;
+	for(i = st->comp_start_part[component]; i<st->comp_start_part[component]+st->comp_npart[component]; ++i) {
+		//Rotation around Y axis
+        x_temp			= cos(delta)*st->x[i]+sin(delta)*st->z[i];
+        z_temp			= cos(delta)*st->z[i]-sin(delta)*st->x[i];
+        vx_temp			= cos(delta)*st->vel_x[i]+sin(delta)*st->vel_z[i];
+        vz_temp			= cos(delta)*st->vel_z[i]-sin(delta)*st->vel_x[i];
+		st->x[i] 		= x_temp;
+        st->z[i] 		= z_temp;
+		st->vel_x[i] 	= vx_temp;
+		st->vel_z[i] 	= vz_temp;
+        //Rotation around Z axis
+        x_temp			= cos(alpha)*st->x[i]+sin(alpha)*st->y[i];
+        y_temp			= cos(alpha)*st->y[i]-sin(alpha)*st->x[i];
+        vx_temp			= cos(alpha)*st->vel_x[i]+sin(alpha)*st->vel_y[i];
+        vy_temp			= cos(alpha)*st->vel_y[i]-sin(alpha)*st->vel_x[i];
+        st->x[i] 		= x_temp;
+        st->y[i] 		= y_temp;
+		st->vel_x[i] 	= vx_temp;
+		st->vel_y[i] 	= vy_temp;
+	}
+	return 0;
+}
+
+// This function intend to perform rotation onto a galaxy, in order to test
+// different combination of ICs for galaxy colision simulations.
+// The orientation angles should be specified in degrees.
+int position_stream(stream *st, double xc, double yc, double zc, int component) {
+	
+	unsigned long int i;
+
+	for(i = st->comp_start_part[component]; i<st->comp_start_part[component]+st->comp_npart[component]; ++i) {
+		st->x[i] 		+= xc;
+		st->y[i] 		+= yc;
+        st->z[i] 		+= zc;
+
+	}
+	return 0;
+}
+
 
 // This function intend to setup the gloabal postion velocity vectors of a galaxy, in order to test
 // different combination of ICs for galaxy colision simulations.
@@ -1002,136 +1406,31 @@ int create_galaxy_system(galaxy *gal_1, galaxy *gal_2, galaxy *gal_3) {
 	unsigned long int i,a;
 	int j,k;
 
-	// Allocate component arrays.
-	if (!(gal_3->comp_mass=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mass array.\n");
-		return -1;
+	if(allocate_component_arrays(gal_3)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
 	}
-	if (!(gal_3->comp_model=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_npart=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_npart_pot=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_start_part=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_cutted_mass=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle cutted_comp_mass array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_scale_length=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_scale_length array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_scale_height=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_scale_height array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_cut=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cut array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_flat=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_flat array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_mcmc_step=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mcmc_step array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_mcmc_step_hydro=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mcmc_step array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_vmax=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_vmax array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_mass_frac=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mass_frac array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_type=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_type array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_bool=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_bool array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_cut_dens=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cut_dens array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_concentration=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_concentration array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_streaming_fraction=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_streaming_fraction array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_theta_sph=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_theta_sph array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_phi_sph=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_phi_sph array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_metal=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_metal array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_t_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_t_init array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_u_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_u_init array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_cs_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cs_init array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_mean_age=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mean_age array.\n");
-		return -1;
-	}
-	if (!(gal_3->comp_min_age=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_min_age array.\n");
-		return -1;
-	}
+	
 	// Create the galaxy system first!
 	j=0;
 	for(k=0;k<AllVars.MaxCompNumber;k++) {
 		if(gal_1->comp_npart[k]>0) {
-			gal_3->comp_npart[j]			= gal_1->comp_npart[k];
-			gal_3->comp_npart_pot[j]		= gal_1->comp_npart_pot[k];
-			gal_3->comp_start_part[j]		= gal_1->comp_start_part[k];
-			gal_3->comp_mass_frac[j]		= gal_1->comp_mass_frac[k];
-			gal_3->comp_mass[j] 			= gal_1->comp_mass[k];
-			gal_3->comp_model[j]			= gal_1->comp_model[k];
-			gal_3->comp_cutted_mass[j]		= gal_1->comp_cutted_mass[k];
-			gal_3->comp_scale_length[j]		= gal_1->comp_scale_length[k];
-			gal_3->comp_concentration[j]	= gal_1->comp_concentration[k];
-			gal_3->comp_scale_height[j] 	= gal_1->comp_scale_height[k];
-			gal_3->comp_cut[j]             	= gal_1->comp_cut[k];
-			gal_3->comp_flat[j]				= gal_1->comp_flat[k];
-			gal_3->comp_mcmc_step[j]		= gal_1->comp_mcmc_step[k];
-			gal_3->comp_mcmc_step_hydro[j]	= gal_1->comp_mcmc_step_hydro[k];
-			gal_3->comp_vmax[j] 			= gal_1->comp_vmax[k];
-			gal_3->comp_type[j] 			= gal_1->comp_type[k];
-			gal_3->comp_bool[j] 			= gal_1->comp_bool[k];
+			gal_3->comp_npart[j]				= gal_1->comp_npart[k];
+			gal_3->comp_npart_pot[j]			= gal_1->comp_npart_pot[k];
+			gal_3->comp_start_part[j]			= gal_1->comp_start_part[k];
+			gal_3->comp_mass_frac[j]			= gal_1->comp_mass_frac[k];
+			gal_3->comp_mass[j] 				= gal_1->comp_mass[k];
+			gal_3->comp_model[j]				= gal_1->comp_model[k];
+			gal_3->comp_cutted_mass[j]			= gal_1->comp_cutted_mass[k];
+			gal_3->comp_scale_length[j]			= gal_1->comp_scale_length[k];
+			gal_3->comp_concentration[j]		= gal_1->comp_concentration[k];
+			gal_3->comp_scale_height[j] 		= gal_1->comp_scale_height[k];
+			gal_3->comp_cut[j]             		= gal_1->comp_cut[k];
+			gal_3->comp_flat[j]					= gal_1->comp_flat[k];
+			gal_3->comp_mcmc_step[j]			= gal_1->comp_mcmc_step[k];
+			gal_3->comp_mcmc_step_hydro[j]		= gal_1->comp_mcmc_step_hydro[k];
+			gal_3->comp_vmax[j] 				= gal_1->comp_vmax[k];
+			gal_3->comp_type[j] 				= gal_1->comp_type[k];
+			gal_3->comp_bool[j] 				= gal_1->comp_bool[k];
 			gal_3->comp_streaming_fraction[j] 	= gal_1->comp_streaming_fraction[k];
 			gal_3->comp_cut_dens[j]				= gal_1->comp_cut_dens[k];
 			gal_3->comp_theta_sph[j]			= gal_1->comp_theta_sph[k];
@@ -1142,28 +1441,30 @@ int create_galaxy_system(galaxy *gal_1, galaxy *gal_2, galaxy *gal_3) {
 			gal_3->comp_cs_init[j]				= gal_1->comp_cs_init[k];
 			gal_3->comp_mean_age[j]				= gal_1->comp_mean_age[k];
 			gal_3->comp_min_age[j]				= gal_1->comp_min_age[k];
+			gal_3->comp_alpha[j]				= gal_1->comp_alpha[k];
+			gal_3->comp_disp_ext[j]				= gal_1->comp_disp_ext[k];
 			j++;
 		}
 	}
 	for(k=0;k<AllVars.MaxCompNumber;k++) {
 		if(gal_2->comp_npart[k]>0) {
-			gal_3->comp_npart[j]			= gal_2->comp_npart[k];
-			gal_3->comp_npart_pot[j]		= gal_2->comp_npart_pot[k];
-			gal_3->comp_start_part[j]		= gal_1->ntot_part_pot+gal_2->comp_start_part[k];
-			gal_3->comp_mass_frac[j]		= gal_2->comp_mass_frac[k];
-			gal_3->comp_mass[j] 			= gal_2->comp_mass[k];
-			gal_3->comp_model[j]			= gal_2->comp_model[k];
-			gal_3->comp_cutted_mass[j]		= gal_2->comp_cutted_mass[k];
-			gal_3->comp_scale_length[j]		= gal_2->comp_scale_length[k];
-			gal_3->comp_concentration[j]	= gal_2->comp_concentration[k];
-			gal_3->comp_scale_height[j] 	= gal_2->comp_scale_height[k];
-			gal_3->comp_cut[j]             	= gal_2->comp_cut[k];
-			gal_3->comp_flat[j]				= gal_2->comp_flat[k];
-			gal_3->comp_mcmc_step[j]		= gal_2->comp_mcmc_step[k];
-			gal_3->comp_mcmc_step_hydro[j]	= gal_2->comp_mcmc_step_hydro[k];
-			gal_3->comp_vmax[j] 			= gal_2->comp_vmax[k];
-			gal_3->comp_type[j] 			= gal_2->comp_type[k];
-			gal_3->comp_bool[j] 			= gal_2->comp_bool[k];
+			gal_3->comp_npart[j]				= gal_2->comp_npart[k];
+			gal_3->comp_npart_pot[j]			= gal_2->comp_npart_pot[k];
+			gal_3->comp_start_part[j]			= gal_1->ntot_part_pot+gal_2->comp_start_part[k];
+			gal_3->comp_mass_frac[j]			= gal_2->comp_mass_frac[k];
+			gal_3->comp_mass[j] 				= gal_2->comp_mass[k];
+			gal_3->comp_model[j]				= gal_2->comp_model[k];
+			gal_3->comp_cutted_mass[j]			= gal_2->comp_cutted_mass[k];
+			gal_3->comp_scale_length[j]			= gal_2->comp_scale_length[k];
+			gal_3->comp_concentration[j]		= gal_2->comp_concentration[k];
+			gal_3->comp_scale_height[j] 		= gal_2->comp_scale_height[k];
+			gal_3->comp_cut[j]             		= gal_2->comp_cut[k];
+			gal_3->comp_flat[j]					= gal_2->comp_flat[k];
+			gal_3->comp_mcmc_step[j]			= gal_2->comp_mcmc_step[k];
+			gal_3->comp_mcmc_step_hydro[j]		= gal_2->comp_mcmc_step_hydro[k];
+			gal_3->comp_vmax[j] 				= gal_2->comp_vmax[k];
+			gal_3->comp_type[j] 				= gal_2->comp_type[k];
+			gal_3->comp_bool[j] 				= gal_2->comp_bool[k];
 			gal_3->comp_streaming_fraction[j] 	= gal_2->comp_streaming_fraction[k];
 			gal_3->comp_cut_dens[j]				= gal_2->comp_cut_dens[k];
 			gal_3->comp_theta_sph[j]			= gal_2->comp_theta_sph[k];
@@ -1174,6 +1475,8 @@ int create_galaxy_system(galaxy *gal_1, galaxy *gal_2, galaxy *gal_3) {
 			gal_3->comp_cs_init[j]				= gal_2->comp_cs_init[k];
 			gal_3->comp_mean_age[j]				= gal_2->comp_mean_age[k];
 			gal_3->comp_min_age[j]				= gal_2->comp_min_age[k];
+			gal_3->comp_alpha[j]				= gal_2->comp_alpha[j];
+			gal_3->comp_disp_ext[j]				= gal_2->comp_disp_ext[j];
 			j++;
 		}
 	}
@@ -1191,66 +1494,10 @@ int create_galaxy_system(galaxy *gal_1, galaxy *gal_2, galaxy *gal_3) {
     gal_3->num_part_pot[2] 	= gal_1->num_part_pot[2]+gal_2->num_part_pot[2];
     gal_3->num_part_pot[3] 	= gal_1->num_part_pot[3]+gal_2->num_part_pot[3]; 
     
-    // Allocate particle id numbers array.
-    if (!(gal_3->id=calloc(gal_3->ntot_part_pot,sizeof(unsigned long int)))) {
-        fprintf(stderr,"Unable to allocate particle ID numbers.\n");
-        return -1;
-	}
-	// Allocate x coordinates for all the particles.
-	if (!(gal_3->x=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle x coordinates.\n");
-        return -1;
-	}
-	// Allocate y coordinates for all the particles.
-	if (!(gal_3->y=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle y coordinates.\n");
-        return -1;
-	}
-	// Allocate z coordinates for all the particles.
-	if (!(gal_3->z=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle z coordinates.\n");
-        return -1;
-	}
-	// Allocate x velocities for all the particles.
-	if (!(gal_3->vel_x=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle x coordinates.\n");
-        return -1;
-	}
-	// Allocate y velocities for all the particles.
-    if (!(gal_3->vel_y=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle y coordinates.\n");
-        return -1;
-    }
-    // Allocate z velocities for all the particles.
-    if (!(gal_3->vel_z=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle z coordinates.\n");
-        return -1;
-    }
-    // Allocate masses for all the particles.
-    if (!(gal_3->mass=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle masses.\n");
-        return -1;
-    }
-    // Allocate internal energy for all the particles.
-    if (!(gal_3->u=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle internal energy.\n");
-        return -1;
-    }
-	// Allocate metallicity array for particles.
-	if (!(gal_3->metal=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle metal.\n");
-		return -1;
-	}
-	// Allocate age array for all particles.
-	if (!(gal_3->age=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle age.\n");
-		return -1;
-	}
-	// Allocate density array for all particles.
-	if (!(gal_3->rho=calloc(gal_3->ntot_part_pot,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle age.\n");
-		return -1;
-	}
+    if(allocate_variable_arrays(gal_3)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+	}	
+
     // Turn off the galaxy potential.
     gal_3->potential_defined = 0;
 		
@@ -1289,6 +1536,181 @@ int create_galaxy_system(galaxy *gal_1, galaxy *gal_2, galaxy *gal_3) {
     return 0;
 }
 
+// In order to perform a galaxy collision, it is necessary to combine
+// two galaxies into one set of orbiting galaxies. The orbits should
+// be defined by a user-defined orbit or the set_orbit_parabolic()
+// function and the following function should be called to combine
+// the galaxies into one object.
+//
+// It is necessary to allocate the different parts of the memory here
+// because this galactic system does not have quantities like halo
+// or disk scale lengths. These are quantities in the parent galaxy,
+// not the galaxy-orbit-galaxy combination.
+int add_stream_to_system(stream *st_1, galaxy *gal_2, galaxy *gal_3) {
+	unsigned long int i,a;
+	int j,k;
+
+	if(allocate_component_arrays(gal_3)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+		return -1;
+	}
+	
+	// Create the galaxy system first!
+	j=0;
+	for(k=0;k<AllVars.MaxCompNumber;k++) {
+		if(gal_2->comp_npart[k]>0) {
+			gal_3->comp_npart[j]				= gal_2->comp_npart[k];
+			gal_3->comp_npart_pot[j]			= gal_2->comp_npart_pot[k];
+			gal_3->comp_start_part[j]			= gal_2->comp_start_part[k];
+			gal_3->comp_mass_frac[j]			= gal_2->comp_mass_frac[k];
+			gal_3->comp_mass[j] 				= gal_2->comp_mass[k];
+			gal_3->comp_model[j]				= gal_2->comp_model[k];
+			gal_3->comp_cutted_mass[j]			= gal_2->comp_cutted_mass[k];
+			gal_3->comp_scale_length[j]			= gal_2->comp_scale_length[k];
+			gal_3->comp_concentration[j]		= gal_2->comp_concentration[k];
+			gal_3->comp_scale_height[j] 		= gal_2->comp_scale_height[k];
+			gal_3->comp_cut[j]             		= gal_2->comp_cut[k];
+			gal_3->comp_flat[j]					= gal_2->comp_flat[k];
+			gal_3->comp_mcmc_step[j]			= gal_2->comp_mcmc_step[k];
+			gal_3->comp_mcmc_step_hydro[j]		= gal_2->comp_mcmc_step_hydro[k];
+			gal_3->comp_vmax[j] 				= gal_2->comp_vmax[k];
+			gal_3->comp_type[j] 				= gal_2->comp_type[k];
+			gal_3->comp_bool[j] 				= gal_2->comp_bool[k];
+			gal_3->comp_streaming_fraction[j] 	= gal_2->comp_streaming_fraction[k];
+			gal_3->comp_cut_dens[j]				= gal_2->comp_cut_dens[k];
+			gal_3->comp_theta_sph[j]			= gal_2->comp_theta_sph[k];
+			gal_3->comp_phi_sph[j]				= gal_2->comp_phi_sph[k];
+			gal_3->comp_metal[j]				= gal_2->comp_metal[k];
+			gal_3->comp_t_init[j]				= gal_2->comp_t_init[k];
+			gal_3->comp_u_init[j]				= gal_2->comp_u_init[k];
+			gal_3->comp_cs_init[j]				= gal_2->comp_cs_init[k];
+			gal_3->comp_mean_age[j]				= gal_2->comp_mean_age[k];
+			gal_3->comp_min_age[j]				= gal_2->comp_min_age[k];
+			gal_3->comp_alpha[j]				= gal_2->comp_alpha[k];
+			gal_3->comp_disp_ext[j]				= gal_2->comp_disp_ext[k];
+			j++;
+		}
+	}
+	// Adding stream gas particles to the next available comp index
+	if(j>=AllVars.MaxCompNumber) {
+		fprintf(stderr,"No more free component. Increase MaxCompNumber\n");
+		return -1;
+	}
+	gal_3->comp_type[j] 		= 0;
+	gal_3->comp_npart[j] 		= st_1->ntot_part;
+	gal_3->comp_start_part[j] 	= gal_2->ntot_part_pot;	
+	
+    gal_3->ntot_part 		= st_1->ntot_part+gal_2->ntot_part;
+    gal_3->ntot_part_stars 	= gal_2->ntot_part_stars;
+    gal_3->num_part[0] 		= gal_2->num_part[0]+st_1->ntot_part;
+    gal_3->num_part[1] 		= gal_2->num_part[1];
+    gal_3->num_part[2] 		= gal_2->num_part[2];
+    gal_3->num_part[3] 		= gal_2->num_part[3]; 
+    
+    gal_3->ntot_part_pot 	= st_1->ntot_part+gal_2->ntot_part_pot;
+    gal_3->num_part_pot[0] 	= st_1->ntot_part+gal_2->num_part_pot[0];
+    gal_3->num_part_pot[1] 	= gal_2->num_part_pot[1];
+    gal_3->num_part_pot[2] 	= gal_2->num_part_pot[2];
+    gal_3->num_part_pot[3] 	= gal_2->num_part_pot[3]; 
+
+	if(allocate_variable_arrays(gal_3)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+		return -1;
+	}	
+
+    // Turn off the galaxy potential.
+    gal_3->potential_defined = 0;
+		
+    // Copy all of the galaxy information.
+	a = 0;
+    for (i = 0; i < gal_2->ntot_part_pot; ++i) {
+        gal_3->mass[a] 		= gal_2->mass[i];
+	    gal_3->id[a] 		= a;
+	    gal_3->x[a] 		= gal_2->x[i];
+	    gal_3->y[a] 		= gal_2->y[i];
+	    gal_3->z[a] 		= gal_2->z[i];
+	    gal_3->vel_x[a] 	= gal_2->vel_x[i];
+   	    gal_3->vel_y[a] 	= gal_2->vel_y[i];
+   	    gal_3->vel_z[a] 	= gal_2->vel_z[i];
+   	    gal_3->u[a]			= gal_2->u[i];
+	    gal_3->rho[a]		= gal_2->rho[i];
+	    gal_3->metal[a]		= gal_2->metal[i];
+	    gal_3->age[a]		= gal_2->age[i];
+		a++;
+   	}
+	for (i = 0; i < st_1->ntot_part; ++i) {
+        gal_3->mass[a] 		= st_1->mass[i];
+        gal_3->id[a] 		= a;
+	    gal_3->x[a] 		= st_1->x[i];
+	    gal_3->y[a] 		= st_1->y[i];
+	    gal_3->z[a] 		= st_1->z[i];
+	    gal_3->vel_x[a] 	= st_1->vel_x[i];
+	    gal_3->vel_y[a] 	= st_1->vel_y[i];
+	    gal_3->vel_z[a] 	= st_1->vel_z[i];
+	    gal_3->u[a]			= st_1->u[i];
+	    gal_3->rho[a]		= st_1->rho[i];
+	    gal_3->metal[a]		= st_1->metal[i];
+		a++;
+    }
+    
+    return 0;
+}
+
+int stream_to_galaxy(stream *st, galaxy *gal) {
+	unsigned long int i,a;
+	int j,k;
+
+	if(allocate_component_arrays(gal)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+		return -1;
+	}
+	
+	gal->comp_type[0] 		= 0;
+	gal->comp_npart[0] 		= st->ntot_part;
+	gal->comp_start_part[0] = 0;	
+	
+    gal->ntot_part 			= st->ntot_part;
+    gal->ntot_part_stars 	= 0;
+    gal->num_part[0] 		= st->ntot_part;
+    gal->num_part[1] 		= 0;
+    gal->num_part[2] 		= 0;
+    gal->num_part[3] 		= 0; 
+    
+    gal->ntot_part_pot 		= st->ntot_part;
+    gal->num_part_pot[0] 	= st->ntot_part;
+    gal->num_part_pot[1] 	= 0;
+    gal->num_part_pot[2] 	= 0;
+    gal->num_part_pot[3] 	= 0; 
+
+	if(allocate_variable_arrays(gal)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+		return -1;
+	}	
+
+    // Turn off the galaxy potential.
+    gal->potential_defined = 0;
+		
+    // Copy all of the galaxy information.
+	a = 0;
+    for (i = 0; i < st->ntot_part; ++i) {
+        gal->mass[a] 	= st->mass[i];
+	    gal->id[a] 		= a;
+	    gal->x[a] 		= st->x[i];
+	    gal->y[a] 		= st->y[i];
+	    gal->z[a] 		= st->z[i];
+	    gal->vel_x[a] 	= st->vel_x[i];
+   	    gal->vel_y[a] 	= st->vel_y[i];
+   	    gal->vel_z[a] 	= st->vel_z[i];
+   	    gal->u[a]		= st->u[i];
+	    gal->rho[a]		= st->rho[i];
+	    gal->metal[a]	= st->metal[i];
+		a++;
+   	}
+    
+    return 0;
+}
+
+
 // Copy a galaxy strucuture into a new one
 int copy_galaxy(galaxy *gal_1, galaxy *gal_2, int info) {
     
@@ -1298,115 +1720,9 @@ int copy_galaxy(galaxy *gal_1, galaxy *gal_2, int info) {
 	destroy_galaxy(gal_2,0);
 	// Copy all the non-pointers structures variables
 	*gal_2 = *gal_1;
-		
-	// Allocate component arrays.
-	if (!(gal_2->comp_mass=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mass array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_model=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_npart=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_npart_pot=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_start_part=calloc(AllVars.MaxCompNumber,sizeof(unsigned long int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_model array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_cutted_mass=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle cutted_comp_mass array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_scale_length=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_scale_length array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_scale_height=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_scale_height array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_cut=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cut array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_flat=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_flat array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_mcmc_step=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mcmc_step array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_mcmc_step_hydro=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mcmc_step array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_vmax=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_vmax array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_mass_frac=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mass_frac array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_type=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_type array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_bool=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"Unable to allocate particle comp_bool array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_cut_dens=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cut_dens array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_concentration=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_concentration array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_streaming_fraction=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_streaming_fraction array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_theta_sph=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_theta_sph array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_phi_sph=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_phi_sph array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_metal=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_metal array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_t_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_t_init array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_u_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_u_init array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_cs_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_cs_init array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_mean_age=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_mean_age array.\n");
-		return -1;
-	}
-	if (!(gal_2->comp_min_age=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle comp_min_age array.\n");
-		return -1;
+	
+	if(allocate_component_arrays(gal_2)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
 	}
 	
 	for (j = 0; j < AllVars.MaxCompNumber; ++j) {
@@ -1437,67 +1753,13 @@ int copy_galaxy(galaxy *gal_1, galaxy *gal_2, int info) {
 		gal_2->comp_cs_init[j]				= gal_1->comp_cs_init[j];
 		gal_2->comp_mean_age[j]				= gal_1->comp_mean_age[j];
 		gal_2->comp_min_age[j]				= gal_1->comp_min_age[j];
+		gal_2->comp_alpha[j]				= gal_1->comp_alpha[j];
+		gal_2->comp_disp_ext[j]				= gal_1->comp_disp_ext[j];
 	}
-	// Allocate particle id numbers array.
-    if (!(gal_2->id=calloc(gal_2->ntot_part_pot,sizeof(unsigned long int)))) {
-        fprintf(stderr,"Unable to allocate particle ID numbers.\n");
-        return -1;
-	}
-	// Allocate x coordinates for all the particles.
-	if (!(gal_2->x=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle x coordinates.\n");
-        return -1;
-	}
-	// Allocate y coordinates for all the particles.
-	if (!(gal_2->y=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle y coordinates.\n");
-        return -1;
-	}
-	// Allocate z coordinates for all the particles.
-	if (!(gal_2->z=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle z coordinates.\n");
-        return -1;
-	}
-	// Allocate x velocities for all the particles.
-	if (!(gal_2->vel_x=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle x coordinates.\n");
-        return -1;
-	}
-	// Allocate y velocities for all the particles.
-    if (!(gal_2->vel_y=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle y coordinates.\n");
-        return -1;
-    }
-    // Allocate z velocities for all the particles.
-    if (!(gal_2->vel_z=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle z coordinates.\n");
-        return -1;
-    }
-    // Allocate masses for all the particles.
-    if (!(gal_2->mass=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle masses.\n");
-        return -1;
-    }
-    // Allocate internal energy for all the particles.
-    if (!(gal_2->u=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"Unable to allocate particle internal energy.\n");
-        return -1;
-    }
-	// Allocate metallicity array for particles.
-	if (!(gal_2->metal=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle metal.\n");
-		return -1;
-	}
-	// Allocate age array for all particles.
-	if (!(gal_2->age=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle age.\n");
-		return -1;
-	}
-	// Allocate density array for all particles.
-	if (!(gal_2->rho=calloc(gal_2->ntot_part_pot,sizeof(double)))) {
-		fprintf(stderr,"Unable to allocate particle age.\n");
-		return -1;
-	}
+	
+	if(allocate_variable_arrays(gal_2)!=0) {
+		fprintf(stderr,"Allocation of component arrays failed\n");
+	}	
     
 	gal_2->potential_defined = 0;
 	
@@ -1511,9 +1773,14 @@ int copy_galaxy(galaxy *gal_1, galaxy *gal_2, int info) {
 		gal_2->vel_z[i] = gal_1->vel_z[i];
 		gal_2->mass[i] 	= gal_1->mass[i];
 		gal_2->u[i] 	= gal_1->u[i];
+	    gal_2->rho[i]	= gal_1->rho[i];
+	    gal_2->metal[i]	= gal_1->metal[i];
+	    gal_2->age[i]	= gal_1->age[i];
 	}
 	return 0;
 }
+
+
 
 
 // This function places two galaxies on a Keplerian orbit in the x,y
@@ -1530,8 +1797,8 @@ void set_orbit_keplerian(galaxy *gal_1, galaxy *gal_2, double sep, double per, d
 	degtorad = pi/180.;
 	// Mu is the standard gravitational parameter, calculated here in
 	// terms of the reduced mass.
-	m1 = gal_1->total_mass/unit_mass;
-	m2 = gal_2->total_mass/unit_mass;
+	m1 = gal_1->total_mass;
+	m2 = gal_2->total_mass;
 	mu = (m1*m2)/(m1+m2);
 	if(per > sep) {
 		fprintf(stderr,"Warning: The pericentral distance must be lower than the initial distance.");
@@ -1565,7 +1832,7 @@ void set_orbit_keplerian(galaxy *gal_1, galaxy *gal_2, double sep, double per, d
 		}
 	}
 	
-	kappa = G*(gal_1->total_mass+gal_2->total_mass);
+	kappa = G*unit_mass*(gal_1->total_mass+gal_2->total_mass);
     
 	x_1 =  (radius1)*cos(nu1);
 	y_1 =  (radius1)*sin(nu1);

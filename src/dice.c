@@ -45,10 +45,10 @@
 // The All-Powerful & All-Mighty Main!
 int main (int argc, char **argv) {
 
-	int i, j, k, ngal, N;
+	int i, j, k, l, ngal, N;
 	// Galaxy pointers
 	galaxy *gal, *pgal, *stack1, *stack2;
-	
+	stream *st;
 	// Set some important variables: The number of disk particles and
 	// the number of halo particles, the disk mass fraction, the disk
 	// angular momentum fraction, the spin parameter, the halo 
@@ -61,7 +61,7 @@ int main (int argc, char **argv) {
 	printf("/////  \\ \\____-  \\ \\_\\  \\ \\_____\\  \\ \\_____\\	\n");
 	printf("/////   \\/____/   \\/_/   \\/_____/   \\/_____/		\n");
 
-	printf("/////\n///// This is D.I.C.E. (Disk Initial Conditions Environment)\n");
+	printf("/////\n///// D.I.C.E. (Disk Initial Conditions Environment)\n");
 	write_dice_version();
 	// Looking for the galaxy parameter file
 	fflush(stdout);
@@ -93,6 +93,10 @@ int main (int argc, char **argv) {
 	        fprintf(stderr,"Unable to allocate galaxy. Aborting.\n");
 	        return 0;
 	}
+	if (!(st=calloc(1,sizeof(stream)))) {
+	        fprintf(stderr,"Unable to allocate stream. Aborting.\n");
+	        return 0;
+	}
 	// Checking threads number
 	if (AllVars.Nthreads <= 0) {
 		printf("///// Nthreads value should be greater than 0\n");
@@ -102,14 +106,18 @@ int main (int argc, char **argv) {
 	// Set the OpenMP thread number
 	#if USE_THREADS == 1
 		omp_set_num_threads(AllVars.Nthreads);
-		printf("///// Set %d OpenMP threads\n",AllVars.Nthreads);
+		printf("///// %d OpenMP threads\n",AllVars.Nthreads);
 	#else
 		AllVars.Nthreads = 1;
 	#endif
+	// Set the GSL QAG integration workspace
+	w = (gsl_integration_workspace **) malloc(AllVars.Nthreads * sizeof(gsl_integration_workspace *));
+	for(i=0;i<AllVars.Nthreads;i++) {
+		w[i] = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
+	}
 	if (AllVars.Ngal == 1) printf("///// Found %d galaxy to generate\n",AllVars.Ngal);
 	else printf("///// Found %d galaxies to generate\n",AllVars.Ngal);
 	fflush(stdout);
-	if(AllVars.RamsesNml==1) init_ramses_nml();
 	for(k=0; k<AllVars.Ngal; k++) {
 		// Provide values for the free parameters of the galaxy. If the galaxy can
 		// not be created, return an error.
@@ -120,7 +128,7 @@ int main (int argc, char **argv) {
 		if(k>0) {
 			// If the new galaxy is the same as the previous one
 			// Then there is no need to recompute everything
-			if(compare_galaxies(gal,pgal) == 1) {
+			if(strcmp(AllVars.GalaxyFiles[k],AllVars.GalaxyFiles[k-1]) == 0) {
 				printf("/////\tSame galaxy! Using previous computation.\n");
 				if(copy_galaxy(pgal,gal,0) != 0) {
 					printf("/////Unable to copy galaxy. Aborting.\n");
@@ -139,7 +147,7 @@ int main (int argc, char **argv) {
 					printf("/////Unable to set the potential. Aborting.\n");
 					exit(0);
 				}
-				if(set_galaxy_velocity(gal,1) != 0) {
+				if(set_galaxy_velocity(gal) != 0) {
 					printf("/////Unable to set the velocities. Aborting.\n");
 					exit(0);
 				}
@@ -156,15 +164,12 @@ int main (int argc, char **argv) {
 				fprintf(stderr,"Unable to set the potential. Aborting.\n");
 				exit(0);
 			}
-			if(set_galaxy_velocity(gal,1) != 0) {
+			if(set_galaxy_velocity(gal) != 0) {
 				fprintf(stderr,"Unable to set the velocities. Aborting.\n");
 				exit(0);
 			}
 			lower_resolution(gal);
 		}
-		// In case where the output format is RamsesGroup
-		// we need to update the content of the parameter block &DICE of the namelist
-		if(AllVars.RamsesNml==1) update_ramses_nml(gal,k);
 		// Apply rotation using spherical reference frame
 		rotate_galaxy(gal,gal->spin,gal->incl);
 		if(k == 1 && AllVars.SetKeplerian == 1) {
@@ -209,10 +214,59 @@ int main (int argc, char **argv) {
 			}
 		}
 	}
+
+	if(AllVars.Nstream>0&&AllVars.Ngal==0) {
+		//fprintf(stderr,"Unable to set streams without any galaxy. Aborting.\n");
+		//exit(0);
+	}
+	if (AllVars.Nstream == 1) printf("///// Found %d stream to generate\n",AllVars.Nstream);
+	if (AllVars.Nstream > 1) printf("///// Found %d streams to generate\n",AllVars.Nstream);
+	for(l=0; l<AllVars.Nstream; l++) {
+		// Provide values for the free parameters of the galaxy. If the galaxy can
+		// not be created, return an error.
+		if ((i = create_stream(st,AllVars.StreamFiles[l],1))!= 0) {
+		        fprintf(stderr,"Unable to create galaxy. Aborting.\n");
+		        exit(0);
+		}
+		// If the new galaxy is different from the previous one
+		// Let's recompute everything
+		if ((i = set_stream_coords(st)) != 0) {
+		        fprintf(stderr,"Unable to set coordinates. Aborting.\n");
+		        exit(0);
+		}
+		if(set_stream_velocity(st) != 0) {
+			fprintf(stderr,"Unable to set the velocities. Aborting.\n");
+			exit(0);
+		}
+		if(k>0||l>0){
+			// If a galaxy has been created previously
+			// let's stack the result of the previous computation in &stack2
+			printf("///// Adding stream to system\n");
+			if(add_stream_to_system(st,stack1,stack2) != 0) {
+				fprintf(stderr,"Unable to add stream to the galaxy system. Aborting.\n");
+				exit(0);
+			}
+			printf("///// Copying galaxy system to the stack\n");
+			if(copy_galaxy(stack2,stack1,0) != 0) {
+				fprintf(stderr,"Unable to copy galaxy. Aborting.\n");
+				exit(0);
+			}
+		} else {
+			printf("///// Creating system from streams\n");
+			if(stream_to_galaxy(st,stack1,0) != 0) {
+				fprintf(stderr,"Unable to create galaxy from stream. Aborting.\n");
+				exit(0);
+			}
+		}
+	}	
+	
 	// Write initial conditions for the massively parallel N-body code Gadget2.
 	// If you do not use Gadget, do not use this function -- the output is binary!
-	if(k == 1) write_gadget_ics(gal,AllVars.Filename);
-	else write_gadget_ics(stack2,AllVars.Filename);
+	if(k+l==1) {
+		write_gadget_ics(stack1,AllVars.Filename);
+	} else {
+		write_gadget_ics(stack2,AllVars.Filename);
+	}
 	// Destroy a galaxy. If the galaxy can not be destroyed, return an error. This
 	// function will SEGFAULT if the arrays in the galaxy can not be freed.
 	printf("///// Cleaning memory\n");
@@ -228,7 +282,7 @@ int main (int argc, char **argv) {
 		gsl_integration_workspace_free(w[i]);
 	}
 	free(r);
-	printf("///// Your ICs have been created successfully!\n");
+	printf("///// ICs successfully created\n");
 	return 0;
 }
 

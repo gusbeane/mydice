@@ -56,15 +56,15 @@ double max(double a, double b) {
 double deriv_central(galaxy *gal, double x, double h, function_to_derivate F){
 	double new_x,f1,f2,f3,f4,derivative;
 
-    	new_x = x+2.0*h;
-    	f1 = F(new_x,gal);
-    	new_x = x+h;
-    	f2 = F(new_x,gal);
-    	new_x = x-h;
-    	f3 = F(new_x,gal);
-    	new_x = x-2.0*h;
-    	f4 = F(new_x,gal);
-    	derivative = (-f1 + 8.0*f2 - 8.0*f3 + f4)/(12.0*h*kpc);
+    new_x = x+2.0*h;
+    f1 = F(new_x,gal);
+    new_x = x+h;
+    f2 = F(new_x,gal);
+    new_x = x-h;
+    f3 = F(new_x,gal);
+    new_x = x-2.0*h;
+    f4 = F(new_x,gal);
+    derivative = (-f1 + 8.0*f2 - 8.0*f3 + f4)/(12.0*h*kpc);
 
 	return derivative;
 }
@@ -73,10 +73,10 @@ double deriv_central(galaxy *gal, double x, double h, function_to_derivate F){
 double deriv_forward(galaxy *gal, double x, double h, function_to_derivate F){
 	double new_x,f1,f2,f3,f4,derivative;
 
-    	f1 = F(x,gal);
-    	new_x = x+h;
-    	f2 = F(new_x,gal);
+    f1 = F(x,gal);
+    new_x = x+h;
+    f2 = F(new_x,gal);
     
-    	derivative = (f2-f1)/(h*kpc);
+    derivative = (f2-f1)/(h*kpc);
 	return derivative;
 }

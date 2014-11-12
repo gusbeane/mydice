@@ -3,8 +3,8 @@ cmake_minimum_required (VERSION 2.6)
 project (DICE)
 
 # Set the version number
-set (DICE_VERSION_MAJOR 2)
-set (DICE_VERSION_MINOR 1)
+set (DICE_VERSION_MAJOR 3)
+set (DICE_VERSION_MINOR 0)
 set (DICE_VERSION "${DICE_VERSION_MAJOR}.${DICE_VERSION_MINOR}")
 
 # Say hello

@@ -59,8 +59,8 @@ double v2a_z_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 	F.function 	= &dv2a_z_func;
 	F.params 	= gal;
 	
-	gal->selected_comp[tid] 	= component;
-	infinity 			= 10.*gal->comp_scale_height[gal->selected_comp[tid]];
+	gal->selected_comp[tid] = component;
+	infinity = 10.*gal->comp_scale_height[gal->selected_comp[tid]];
 	gsl_integration_qag(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&integral,&error);
     
     rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
@@ -109,7 +109,7 @@ static double dv2a_z_func(double z, void *params) {
 // 5-point stencil method.
 double v2a_theta_func(galaxy *gal, double radius, int component) {
     
-	double z, theta, h, v2a_theta, res, rho;
+	double z, theta, h, v2a_theta, res, rho, abserr;
     double derivative;
 	int tid;
 	
@@ -159,7 +159,7 @@ double rho_v2a_r_func(double radius, void *params) {
 double v2a_z_toomre(galaxy *gal, double radius, double v2a_z, int component) {
     
 	double gamma_sqrd, kappa_sqrd, h, force, dforcedr, Q, surface_density;
-	double res;
+	double abserr;
 	int tid;
     
 	#if USE_THREADS == 1
@@ -173,7 +173,7 @@ double v2a_z_toomre(galaxy *gal, double radius, double v2a_z, int component) {
 	// Calculate force and force derivative
 	force 			= potential_deriv_wrapper_func(radius,gal);
 	dforcedr 		= deriv_forward(gal,radius,h,potential_deriv_wrapper_func);
-	
+
 	kappa_sqrd 		= 3.0*force/(radius*kpc) + dforcedr;
 	gamma_sqrd 		= 4.0*force/(kappa_sqrd*radius*kpc);
 	// We take into account the contribution of the gas to the stability of the system
@@ -184,11 +184,11 @@ double v2a_z_toomre(galaxy *gal, double radius, double v2a_z, int component) {
 		Q = sqrt(v2a_z*fabs(kappa_sqrd))/(3.36*G*surface_density);
 	}
 	// Check the value of the Toomre parameter
-	if(Q < gal->Q_lim && gal->comp_type[component]==0){
-		v2a_z 		= pow(gal->Q_lim*3.36*G*surface_density,2.0)/(fabs(kappa_sqrd));
-		Q 			= gal->Q_lim;
+	if(Q < gal->comp_Q_lim[component]){
+		v2a_z 		= pow(gal->comp_Q_lim[component]*3.36*G*surface_density,2.0)/(fabs(kappa_sqrd));
+		Q 			= gal->comp_Q_lim[component];
 	}
-	gal->Q_min 		= (Q < gal->Q_min && Q > 0.0) ? Q : gal->Q_min;
+	gal->comp_Q_min[component] = (Q < gal->comp_Q_min[component] && Q > 0.0) ? Q : gal->comp_Q_min[component];
     
 	return v2a_z;
 }
@@ -198,7 +198,7 @@ double v2a_z_toomre(galaxy *gal, double radius, double v2a_z, int component) {
 double sigma2_theta_disk_func(galaxy *gal, double radius, double v2a_z) {
     
 	double gamma_sqrd, kappa_sqrd, h, force, dforcedr, Q, surface_density;
-	double res;
+	double res, abserr;
     
 	// Set the derivative step
 	h = gal->space[0];
@@ -206,7 +206,7 @@ double sigma2_theta_disk_func(galaxy *gal, double radius, double v2a_z) {
 	force = potential_deriv_wrapper_func(radius,gal);
 	dforcedr = deriv_forward(gal,radius,h,potential_deriv_wrapper_func);
 	
-	kappa_sqrd = 3.0*force/(radius*kpc) + dforcedr;
+	kappa_sqrd = 3.0*force/(radius*kpc)+dforcedr;
 	gamma_sqrd = 4.0*force/(kappa_sqrd*radius*kpc);
     
 	res = (v2a_z/gamma_sqrd);
@@ -225,7 +225,6 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 	double v2_theta_gas, v_c2, pressure_force;
 	double h, abserr, density_derivative;
 	int tid;
-	gsl_function F;
     
     #if USE_THREADS == 1
     	tid = omp_get_thread_num();
@@ -233,11 +232,11 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
     	tid = 0;
 	#endif
     
-	radius 							= fabs(radius);
-	gal->selected_comp[tid] 		= component;
+	radius 					= fabs(radius);
+	gal->selected_comp[tid] = component;
 	// Set the derivative step
-	h 						= 2.*gal->space_dens[0];
-	density_derivative 		= deriv_forward(gal,radius,h,gas_density_wrapper_func);
+	h 						= 1.5*gal->space_dens[0];
+	density_derivative 		= deriv_central(gal,radius,h,gas_density_wrapper_func);
 	v_c2 					= pow(v_c_func(gal,radius),2.0);
 	pressure_force 			= radius*kpc*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);//-3.0*pow(gal->cs_init,2.0);
 	// If the derivate fails
@@ -304,11 +303,11 @@ double v_c_func(galaxy *gal, double radius) {
 // Disk_potential function returns the potential of the stellar disk + gaseous disk.
 double galaxy_rforce_func(galaxy *gal, double radius) {
 	
-	double force, h;
+	double force, h, abserr;
 	
-	h = 3.0*gal->space[0];
+	h = 1.5*gal->space[0];
 	
-	force = deriv_forward(gal,radius,h,galaxyr_potential_wrapper_func);
+	force = deriv_central(gal,radius,h,galaxyr_potential_wrapper_func);
 	
 	return force;
 }
@@ -324,11 +323,11 @@ double galaxy_rforce_func(galaxy *gal, double radius) {
 // Disk_potential function returns the potential of the stellar disk + gaseous disk.
 double galaxy_zforce_func(galaxy *gal, double z) {
 	
-	double force, h;
+	double force, h, abserr;
 	
-	h = 3.0*gal->space[2];
+	h = 1.5*gal->space[2];
 	
-	force = deriv_forward(gal,z,h,galaxyz_potential_wrapper_func);
+	force = deriv_central(gal,z,h,galaxyz_potential_wrapper_func);
 	
 	return force;
 }

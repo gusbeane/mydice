@@ -42,7 +42,7 @@
 
 // This function prints the release date of the current version of DICE.
 void write_dice_version() {
-	printf("///// DICE version %d.%d \n",DICE_VERSION_MAJOR,DICE_VERSION_MINOR);
+	printf("///// Version %d.%d \n",DICE_VERSION_MAJOR,DICE_VERSION_MINOR);
 	return;
 }
 
@@ -110,12 +110,31 @@ int parse_config_file(char *fname) {
 		}
 		fclose(fd);
 	}
-	if(j == 0) {
-		fprintf(stderr,"////// Error - No galaxy parameters files specified.\n");
+
+	AllVars.Ngal = j;
+	
+	if((fd = fopen(fname,"r"))) {
+		j = 0;
+		while(!feof(fd)) {
+			*buf = 0;
+			fgets(buf, 200, fd);
+			if(sscanf(buf, "%s%s", buf1, buf2) < 2) continue;
+			if(buf1[0] == '%') continue;
+			if(strcmp(buf1,"Stream") == 0) {
+				strcpy(AllVars.StreamFiles[j],buf2);
+				j++;
+                
+			}
+            
+		}
+		fclose(fd);
+	}
+	AllVars.Nstream = j;
+	
+	if(AllVars.Ngal+AllVars.Nstream == 0) {
+		fprintf(stderr,"////// Error - No galaxy/stream parameters files specified.\n");
 		return -1;
 	}
-	AllVars.Ngal = j;
-	//if(AllVars.Ngal != 2) AllVars.SetKeplerian = 0;
 
 	nt = 0;
 	
@@ -209,12 +228,34 @@ int parse_config_file(char *fname) {
 	mandatory[nt] = 1;
 	id[nt++] = STRING;
 	
-	strcpy(tag[nt], "RamsesNml");
-	AllVars.RamsesNml = 0;
-	addr[nt] = &AllVars.RamsesNml;
+	// Default values for cosmological parameters is Planck cosmology
+	strcpy(tag[nt], "H0");
+	addr[nt] = &AllVars.H0;
+	AllVars.H0 = 67.77;
 	read[nt] = 0;
 	mandatory[nt] = 0;
-	id[nt++] = INT;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "OmegaM");
+	addr[nt] = &AllVars.Omega_m;
+	AllVars.Omega_l = 0.30712;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "OmegaL");
+	addr[nt] = &AllVars.Omega_l;
+	AllVars.Omega_l = 0.691391;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "OmegaK");
+	addr[nt] = &AllVars.Omega_k;
+	AllVars.Omega_k = 0.00;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
     
 	printf("///// Reading DICE config file: %s\n",fname);
 	if((fd = fopen(fname, "r"))) {
@@ -222,7 +263,7 @@ int parse_config_file(char *fname) {
 			*buf = 0;
 			fgets(buf, 200, fd);
 			if(sscanf(buf, "%s%s", buf1, buf2) < 2) continue;
-			if(buf1[0] == '%' || buf1[0] == '#' || strcmp(buf1,"Galaxy") == 0) continue;
+			if(buf1[0] == '%' || buf1[0] == '#' || strcmp(buf1,"Galaxy") == 0 || strcmp(buf1,"Stream") == 0) continue;
 			for(i = 0, j = -1; i < nt; i++)
 				if(strcmp(buf1, tag[i]) == 0) {
 					j = i;
@@ -277,16 +318,16 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	400
+	#define MAXTAGS	23*AllVars.MaxCompNumber+17
 	
 	FILE *fd;
 	int i,j,n;
-	char buf[300], buf1[300], buf2[300];
+	char buf[400], buf1[400], buf2[400];
 	int nt;
 	int id[MAXTAGS];
 	void *addr[MAXTAGS];
-	char tag[MAXTAGS][100];
-	char temp_tag[100];
+	char tag[MAXTAGS][400];
+	char temp_tag[400];
 	int read[MAXTAGS];
 	int mandatory[MAXTAGS];
 	int errorFlag = 0;
@@ -336,6 +377,86 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	read[nt] = 0;
 	mandatory[nt] = 1;
 	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "level_grid");
+	addr[nt] = &gal->level_grid;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = INT;
+	
+	strcpy(tag[nt], "level_grid_dens");
+	addr[nt] = &gal->level_grid_dens;
+	gal->level_grid_dens=7;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
+	strcpy(tag[nt], "boxsize");
+	addr[nt] = &gal->boxsize;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "axisymmetric_drift");
+	addr[nt] = &gal->axisymmetric_drift;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = INT;
+	
+	strcpy(tag[nt], "xc");
+	addr[nt] = &gal->xc;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "yc");
+	addr[nt] = &gal->yc;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "zc");
+	addr[nt] = &gal->zc;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "vel_xc");
+	addr[nt] = &gal->vel_xc;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "vel_yc");
+	addr[nt] = &gal->vel_yc;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "vel_zc");
+	addr[nt] = &gal->vel_zc;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "spin");
+	addr[nt] = &gal->spin;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "incl");
+	addr[nt] = &gal->incl;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "seed");
+	gal->seed = time(NULL);
+	addr[nt] = &gal->seed;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
 	
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
 	
@@ -432,8 +553,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		gal->comp_concentration[j] = 0.;
 		addr[nt] = &gal->comp_concentration[j];
 		read[nt] = 0;
-		if(j==0) mandatory[nt] = 1;
-		else mandatory[nt] = 0;
+		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
 						
 		n = sprintf(temp_tag,"streaming_fraction%d",j+1);
@@ -492,100 +612,39 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"alpha%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		gal->comp_alpha[j] = 1.0;
+		addr[nt] = &gal->comp_alpha[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"disp_ext%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_disp_ext[j] = 1.0;
+		addr[nt] = &gal->comp_disp_ext[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"radius_nfw%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_radius_nfw[j] = -1.0;
+		addr[nt] = &gal->comp_radius_nfw[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"Q_lim%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_Q_lim[j] = 0.;
+		addr[nt] = &gal->comp_Q_lim[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
 	}
-	
-	strcpy(tag[nt], "level_grid");
-	addr[nt] = &gal->level_grid;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = INT;
-	
-	strcpy(tag[nt], "level_grid_dens");
-	addr[nt] = &gal->level_grid_dens;
-	gal->level_grid_dens=7;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = INT;
-	
-	strcpy(tag[nt], "boxsize");
-	addr[nt] = &gal->boxsize;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "Q_lim");
-	addr[nt] = &gal->Q_lim;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "axisymmetric_drift");
-	addr[nt] = &gal->axisymmetric_drift;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = INT;
-    
-	strcpy(tag[nt], "DispExtCoeff");
-	gal->DispExtCoeff = 0.90;
-	addr[nt] = &gal->DispExtCoeff;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "xc");
-	addr[nt] = &gal->xc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "yc");
-	addr[nt] = &gal->yc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "zc");
-	addr[nt] = &gal->zc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "vel_xc");
-	addr[nt] = &gal->vel_xc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "vel_yc");
-	addr[nt] = &gal->vel_yc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "vel_zc");
-	addr[nt] = &gal->vel_zc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "spin");
-	addr[nt] = &gal->spin;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "incl");
-	addr[nt] = &gal->incl;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "seed");
-	gal->seed = time(NULL);
-	addr[nt] = &gal->seed;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = INT;
 	
 	printf("/////\n///// Reading galaxy params file: %s\n",fname);
 	if((fd = fopen(fname, "r"))) {
@@ -600,7 +659,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 					read[i] = 1;
 					break;
 				}
-			
 			if(j >= 0) {
 				switch (id[j]) {
 					case DOUBLE:
@@ -638,6 +696,231 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
 	return 0;
 }
+
+
+// This function parses a galaxy parameter file, i.e. a file containing all the needed physical informations
+// in order to build the galaxy
+int parse_stream_file(stream *st, char *fname) {
+	#define DOUBLE	1
+	#define STRING	2
+	#define INT	3
+	#define MAXTAGS	500
+	
+	FILE 	*fd;
+	int 	i,j,n;
+	char 	buf[400], buf1[400], buf2[400];
+	int 	nt;
+	int 	id[MAXTAGS];
+	void 	*addr[MAXTAGS];
+	char 	tag[MAXTAGS][200];
+	char	temp_tag[200];
+	int 	read[MAXTAGS];
+	int 	mandatory[MAXTAGS];
+	int 	errorFlag = 0;
+	
+	if(sizeof(long long) != 8) {
+		fprintf(stderr,"\nType `long long' is not 64 bit on this platform. Stopping.\n\n");
+		return -1;
+	}
+	
+	if(sizeof(int) != 4) {
+		fprintf(stderr,"\nType `int' is not 32 bit on this platform. Stopping.\n\n");
+		return -1;
+	}
+	
+	if(sizeof(float) != 4) {
+		fprintf(stderr,"\nType `float' is not 32 bit on this platform. Stopping.\n\n");
+		return -1;
+	}
+	
+	if(sizeof(double) != 8) {
+		fprintf(stderr,"\nType `double' is not 64 bit on this platform. Stopping.\n\n");
+		return -1;
+	}
+	
+	nt = 0;
+		
+	for(j=0; j<AllVars.MaxCompNumber; j++) {
+	
+		n = sprintf(temp_tag,"dens%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		addr[nt] = &st->comp_dens[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+	
+		n = sprintf(temp_tag,"model%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		addr[nt] = &st->comp_model[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = INT;
+
+		n = sprintf(temp_tag,"length%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &st->comp_length[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"scale%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &st->comp_scale[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+	
+		n = sprintf(temp_tag,"opening_angle%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &st->comp_opening_angle[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+	
+		n = sprintf(temp_tag,"mcmc_step%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &st->comp_mcmc_step[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"sigma_vel%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &st->comp_sigma_vel[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+	
+		n = sprintf(temp_tag,"npart%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		addr[nt] = &st->comp_npart[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = INT;
+		
+		n = sprintf(temp_tag,"theta_sph%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		st->comp_theta_sph[j] = 0.;
+		addr[nt] = &st->comp_theta_sph[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"phi_sph%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		st->comp_phi_sph[j] = 0.;
+		addr[nt] = &st->comp_phi_sph[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"metal%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		st->comp_metal[j] = 0.;
+		addr[nt] = &st->comp_metal[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;		
+		
+		n = sprintf(temp_tag,"t_init%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		st->comp_t_init[j] = 1e4;
+		addr[nt] = &st->comp_t_init[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"xc%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		st->comp_xc[j] = 0.;
+		addr[nt] = &st->comp_xc[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"yc%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		st->comp_yc[j] = 0.;
+		addr[nt] = &st->comp_yc[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"zc%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		st->comp_zc[j] = 0.;
+		addr[nt] = &st->comp_zc[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+	}
+
+	strcpy(tag[nt], "seed");
+	st->seed = time(NULL);
+	addr[nt] = &st->seed;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
+	printf("/////\n///// Reading galaxy params file: %s\n",fname);
+	if((fd = fopen(fname, "r"))) {
+		while(!feof(fd)) {
+			*buf = 0;
+			fgets(buf, 400, fd);
+			if(sscanf(buf, "%s%s", buf1, buf2) < 2) continue;
+			if(buf1[0] == '%' || buf1[0] == '#' ) continue;
+			for(i = 0, j = -1; i < nt; i++)
+				if(strcmp(buf1,tag[i]) == 0) {
+					j = i;
+					read[i] = 1;
+					break;
+				}
+			if(j >= 0) {
+				switch (id[j]) {
+					case DOUBLE:
+						*((double *) addr[j]) = atof(buf2);
+						break;
+					case STRING:
+						strcpy(addr[j], buf2);
+						break;
+					case INT:
+						*((int *) addr[j]) = atoi(buf2);
+						break;
+				}
+			} else {
+				fprintf(stderr,"////// Error in file %s - Tag '%s' not allowed or multiple defined.\n",fname, buf1);
+				return -1;
+			}
+		}
+		fclose(fd);
+	} else {
+		fprintf(stderr,"\nParameter file %s not found.\n\n", fname);
+		return -2;
+	}
+	
+	for(i = 0; i < nt; i++) {
+		if(read[i] == 0 && mandatory[i] == 1) {
+			fprintf(stderr,"////// Error - I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
+			return -1;
+		}
+	}
+    
+	#undef DOUBLE
+	#undef STRING
+	#undef INT
+	#undef MAXTAGS
+
+	return 0;
+}
+
 
 // The next three functions write the position coordinates of a galaxy to the
 // screen in xyz format.
@@ -816,7 +1099,7 @@ int write_gadget_ics(galaxy *gal, char *fname) {
 						P[j].Vel[2] = gal->vel_z[i];
 						P[j].U 		= gal->u[i];
 						P[j].Rho 	= gal->rho[i];
-						P[j].Mass 	= gal->mass[i]/unit_mass;
+						P[j].Mass 	= gal->mass[i];
 						P[j].Type 	= gal->comp_type[k];
 						P[j].Metal  = gal->metal[i];
 						P[j].Age	= gal->age[i];
@@ -951,8 +1234,8 @@ int write_gadget_ics(galaxy *gal, char *fname) {
 //
 // to produce a cumulative rotation curve and its parts on the same graph.
 void write_galaxy_rotation_curve(galaxy *gal, double rmax) {
-	int i;
-	double radius, theta, v_c;
+	int i,tid;
+	double radius, theta, v_c, save;
 	char filename[200];
 	FILE *fp1;
     
@@ -962,12 +1245,21 @@ void write_galaxy_rotation_curve(galaxy *gal, double rmax) {
 	if (fp1 == NULL) {
 		printf("/////Could not open rcurve.dat for writing the rotation curve. Aborting.\n");
 	}
+	#if USE_THREADS == 1
+	    tid = omp_get_thread_num();
+	#else
+	    tid = 0;
+	#endif
+	gal->index[tid] 		= 0;
+	save 					= gal->z[gal->index[tid]];
+	gal->z[gal->index[tid]] = 0.;
 	for (i = 1; i < 500; ++i) {
 		radius = (i/500.)*rmax;
 		v_c = v_c_func(gal,radius)/1.0E5;
 		// Write the radius and circular velocity to file in kpc and km/s respectively.
 		fprintf(fp1,"%lf %lf\n",radius,v_c);
 	}
+	gal->z[gal->index[tid]] = save;
 	fclose(fp1);
 	
 	return;
@@ -1329,311 +1621,3 @@ int load_gadget2_galaxy(char *filename, galaxy *galaxy_1) {
 	
 	return 0;
 }
-
-//This function returns the files containing ICs for the Ramses Group patched version (Bournaud et al. 2010)
-void init_ramses_nml(void) {
-	// Wrinting into the nml_file structure the content of the &DICE_PARAMS block
-	sprintf(nml_file.line0,"&DICE_PARAMS\n");
-	sprintf(nml_file.line1,"gal_center_x=");
-	sprintf(nml_file.line2,"gal_center_y=");
-	sprintf(nml_file.line3,"gal_center_z=");
-	sprintf(nml_file.line4,"Vgal_x=");
-	sprintf(nml_file.line5,"Vgal_y=");
-	sprintf(nml_file.line6,"Vgal_z=");
-	sprintf(nml_file.line7,"gal_axis_x=");
-	sprintf(nml_file.line8,"gal_axis_y=");
-	sprintf(nml_file.line9,"gal_axis_z=");
-	sprintf(nml_file.line10,"Mgas_disk=");
-	sprintf(nml_file.line11,"typ_radius=");
-	sprintf(nml_file.line12,"cut_radius=");
-	sprintf(nml_file.line13,"typ_height=");
-	sprintf(nml_file.line14,"cut_height=");
-	sprintf(nml_file.line15,"density_model=");
-	sprintf(nml_file.line16,"Vcirc_dat_file=");
-	sprintf(nml_file.line17,"IS_temperature=\n");
-	sprintf(nml_file.line18,"ic_file=%s",AllVars.Filename);
-	sprintf(nml_file.line19,"IG_temperature=1D7\n");
-	sprintf(nml_file.line20,"IG_density=1D-6\n");
-	return;
-}
-
-void update_ramses_nml(galaxy *gal, int index) {
-    
-	FILE *f1,*f2;
-	int i,j,rc_sampling,npart[3],last;
-	double step,radius,v_c,gal_x_axis,gal_y_axis,gal_z_axis,x_temp,y_temp,z_temp,unit_ramses_v;
-	char f1_name[64],f2_name[64],temp[MAXLEN_FILELINE],ext1[12],ext2[12];
-	double max_gas_radius;
-    
-	unit_ramses_v = 65.592660;
-	sprintf(ext1,".rc%d",index);
-	sprintf(ext2,".nml");
-	snprintf(f1_name,sizeof f1_name,"%s%s",AllVars.Filename,ext1);
-	snprintf(f2_name,sizeof f1_name,"%s%s",AllVars.Filename,ext2);
-    
-
-	if(!(f1=fopen(f1_name,"w"))) {
-		fprintf(stderr,"can't open file %s",f1_name);
-		exit(0);
-	}
-	if(!(f2=fopen(f2_name,"w"))) {
-		fprintf(stderr,"can't open file %s\n",f2_name);
-		exit(0);
-	}
-    
-	// Total rotation curve
-	rc_sampling 		= 1000;
-	max_gas_radius 		= 0.;
-
-	for(j=0; j<AllVars.MaxCompNumber; j++) {
-		if(gal->comp_type[j]==0 && gal->comp_cut[j]>max_gas_radius) max_gas_radius = gal->comp_cut[j];
-	}
-	
-	step = max_gas_radius / (double) rc_sampling;
-	for (i = 0; i < rc_sampling+1; ++i) {
-		radius = (double)i*step;
-		v_c =  sqrt(v2_theta_gas_func(gal,radius,0.,0))/1.0E5;
-		// Write the radius and circular velocity to file in pc and km/s respectively.
-		fprintf(f1,"%lf %lf\n",radius*1E3,v_c);
-    }
-	fclose(f1);
-	
-	//By default, the galaxy's spin vector is orthogonal to the XY plane
-	gal_x_axis = 0.0;
-	gal_y_axis = 0.0;
-	gal_z_axis = 1.0;
-	//Rotation around Y axis
-    x_temp=cos(gal->incl*pi/180.)*gal_x_axis+sin(gal->incl*pi/180.)*gal_z_axis;
-    z_temp=cos(gal->incl*pi/180.)*gal_z_axis-sin(gal->incl*pi/180.)*gal_x_axis;
-	gal_x_axis = x_temp;
-    gal_z_axis = z_temp;
-    //Rotation around Z axis
-    x_temp=cos(gal->spin*pi/180.)*gal_x_axis+sin(gal->spin*pi/180.)*gal_y_axis;
-    y_temp=cos(gal->spin*pi/180.)*gal_y_axis-sin(gal->spin*pi/180.)*gal_x_axis;
-    gal_x_axis = x_temp;
-    gal_y_axis = y_temp;
-    
-    for(i=0;i<gal->n_component;i++) if(gal->comp_type[i]==0) last=i;
-    
-	if(index < AllVars.Ngal-1){
-		for(i=0;i<gal->n_component;i++){
-			if(gal->comp_type[i]==0){
-				sprintf(temp,"%lf,",gal->xc);
-				strcat(nml_file.line1,temp);
-				sprintf(temp,"%lf,",gal->yc);
-				strcat(nml_file.line2,temp);
-				sprintf(temp,"%lf,",gal->zc);
-				strcat(nml_file.line3,temp);
-				sprintf(temp,"%lf,",gal->vel_xc);
-				strcat(nml_file.line4,temp);
-				sprintf(temp,"%lf,",gal->vel_yc);
-				strcat(nml_file.line5,temp);
-				sprintf(temp,"%lf,",gal->vel_zc);
-				strcat(nml_file.line6,temp);
-				sprintf(temp,"%lf,",gal_x_axis);
-				strcat(nml_file.line7,temp);
-				sprintf(temp,"%lf,",gal_y_axis);
-				strcat(nml_file.line8,temp);
-				sprintf(temp,"%lf,",gal_z_axis);
-				strcat(nml_file.line9,temp);
-				sprintf(temp,"%lf,",10*gal->comp_mass[i]/unit_mass);
-				strcat(nml_file.line10,temp);
-				sprintf(temp,"%lf,",gal->comp_scale_length[i]);
-				strcat(nml_file.line11,temp);
-				sprintf(temp,"%lf,",gal->comp_cut[i]);
-				strcat(nml_file.line12,temp);
-				sprintf(temp,"%lf,",gal->comp_scale_height[i]);
-				strcat(nml_file.line13,temp);
-				sprintf(temp,"%lf,",gal->comp_cut[i]*gal->comp_flat[i]);
-				strcat(nml_file.line14,temp);
-				sprintf(temp,"%d,",gal->comp_model[i]);
-				strcat(nml_file.line15,temp);
-				sprintf(temp,"'VC.gal%d',",index);
-				strcat(nml_file.line16,temp);
-				sprintf(temp,"%lf,",gal->comp_t_init[i]);
-				strcat(nml_file.line17,temp);
-			}	
-		}
-	} else {
-		for(i=0;i<gal->n_component;i++){
-			if(gal->comp_type[i]==0){
-				if(i==last){
-					sprintf(temp,"%lf\n",gal->xc);
-					strcat(nml_file.line1,temp);
-					sprintf(temp,"%lf\n",gal->yc);
-					strcat(nml_file.line2,temp);
-					sprintf(temp,"%lf\n",gal->zc);
-					strcat(nml_file.line3,temp);
-					sprintf(temp,"%lf\n",gal->vel_xc);
-					strcat(nml_file.line4,temp);
-					sprintf(temp,"%lf\n",gal->vel_yc);
-					strcat(nml_file.line5,temp);
-					sprintf(temp,"%lf\n",gal->vel_zc);
-					strcat(nml_file.line6,temp);
-					sprintf(temp,"%lf\n",gal_x_axis);
-					strcat(nml_file.line7,temp);
-					sprintf(temp,"%lf\n",gal_y_axis);
-					strcat(nml_file.line8,temp);
-					sprintf(temp,"%lf\n",gal_z_axis);
-					strcat(nml_file.line9,temp);
-					sprintf(temp,"%lf\n",10*gal->comp_mass[i]/unit_mass);
-					strcat(nml_file.line10,temp);
-					sprintf(temp,"%lf\n",gal->comp_scale_length[i]);
-					strcat(nml_file.line11,temp);
-					sprintf(temp,"%lf\n",gal->comp_cut[i]);
-					strcat(nml_file.line12,temp);
-					sprintf(temp,"%lf\n",gal->comp_scale_height[i]);
-					strcat(nml_file.line13,temp);
-					sprintf(temp,"%lf\n",gal->comp_cut[i]*gal->comp_flat[i]);
-					strcat(nml_file.line14,temp);
-					sprintf(temp,"%d\n",gal->comp_model[i]);
-					strcat(nml_file.line15,temp);
-					sprintf(temp,"'VC.gal%d'\n",index);
-					strcat(nml_file.line16,temp);
-					sprintf(temp,"%lf\n",gal->comp_t_init[i]);
-					strcat(nml_file.line17,temp);
-					
-					
-				} else {
-					sprintf(temp,"%lf,",gal->xc);
-					strcat(nml_file.line1,temp);
-					sprintf(temp,"%lf,",gal->yc);
-					strcat(nml_file.line2,temp);
-					sprintf(temp,"%lf,",gal->zc);
-					strcat(nml_file.line3,temp);
-					sprintf(temp,"%lf,",gal->vel_xc);
-					strcat(nml_file.line4,temp);
-					sprintf(temp,"%lf,",gal->vel_yc);
-					strcat(nml_file.line5,temp);
-					sprintf(temp,"%lf,",gal->vel_zc);
-					strcat(nml_file.line6,temp);
-					sprintf(temp,"%lf,",gal_x_axis);
-					strcat(nml_file.line7,temp);
-					sprintf(temp,"%lf,",gal_y_axis);
-					strcat(nml_file.line8,temp);
-					sprintf(temp,"%lf,",gal_z_axis);
-					strcat(nml_file.line9,temp);
-					sprintf(temp,"%lf,",10*gal->comp_mass[i]/unit_mass);
-					strcat(nml_file.line10,temp);
-					sprintf(temp,"%lf,",gal->comp_scale_length[i]);
-					strcat(nml_file.line11,temp);
-					sprintf(temp,"%lf,",gal->comp_cut[i]);
-					strcat(nml_file.line12,temp);
-					sprintf(temp,"%lf,",gal->comp_scale_height[i]);
-					strcat(nml_file.line13,temp);
-					sprintf(temp,"%lf,",gal->comp_cut[i]*gal->comp_flat[i]);
-					strcat(nml_file.line14,temp);
-					sprintf(temp,"%d,",gal->comp_model[i]);
-					strcat(nml_file.line15,temp);
-					sprintf(temp,"'VC.gal%d',",index);
-					strcat(nml_file.line16,temp);
-					sprintf(temp,"%lf,",gal->comp_t_init[i]);
-					strcat(nml_file.line17,temp);
-				}
-			}
-		}
-	}
-	fprintf(f2,"%s",nml_file.line0);
-	fprintf(f2,"%s",nml_file.line1);
-	fprintf(f2,"%s",nml_file.line2);
-	fprintf(f2,"%s",nml_file.line3);
-	fprintf(f2,"%s",nml_file.line4);
-	fprintf(f2,"%s",nml_file.line5);
-	fprintf(f2,"%s",nml_file.line6);
-	fprintf(f2,"%s",nml_file.line7);
-	fprintf(f2,"%s",nml_file.line8);
-	fprintf(f2,"%s",nml_file.line9);
-	fprintf(f2,"%s",nml_file.line10);
-	fprintf(f2,"%s",nml_file.line11);
-	fprintf(f2,"%s",nml_file.line12);
-	fprintf(f2,"%s",nml_file.line13);
-	fprintf(f2,"%s",nml_file.line14);
-	fprintf(f2,"%s",nml_file.line15);
-	fprintf(f2,"%s",nml_file.line16);
-	fprintf(f2,"%s",nml_file.line17);
-	fprintf(f2,"%s",nml_file.line18);
-	fprintf(f2,"%s",nml_file.line19);
-	fprintf(f2,"%s",nml_file.line20);
-	fclose(f2);
-	return;
-}
-
-int compare_galaxies(galaxy *gal1, galaxy *gal2) {
-	int error_flag;
-	int i;
-	error_flag = -1;
-	
-	for(i=0; i<AllVars.MaxCompNumber; i++) {
-		if(gal1->comp_npart[i] != gal2->comp_npart[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_start_part[i] != gal2->comp_start_part[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_mass_frac[i] != gal2->comp_mass_frac[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_mass[i] != gal2->comp_mass[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_model[i] != gal2->comp_model[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_cutted_mass[i] != gal2->comp_cutted_mass[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_scale_length[i] != gal2->comp_scale_length[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_concentration[i] != gal2->comp_concentration[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_scale_height[i] != gal2->comp_scale_height[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_cut[i] != gal2->comp_cut[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_flat[i] != gal2->comp_flat[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_mcmc_step[i] != gal2->comp_mcmc_step[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_mcmc_step_hydro[i] != gal2->comp_mcmc_step_hydro[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_vmax[i] != gal2->comp_vmax[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_type[i] != gal2->comp_type[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_bool[i] != gal2->comp_bool[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_streaming_fraction[i] != gal2->comp_streaming_fraction[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_cut_dens[i] != gal2->comp_cut_dens[i]) return error_flag;
-		error_flag--;
-		if(gal1->comp_t_init[i] != gal2->comp_t_init[i]) return error_flag;
-		error_flag--;
-	}
-	if(gal1->lambda != gal2->lambda) return error_flag;
-	error_flag--;
-	if(gal1->j_d != gal2->j_d) return error_flag;
-	error_flag--;
-	if(gal1->v200 != gal2->v200) return error_flag;
-	error_flag--;
-	if(gal1->r200 != gal2->r200) return error_flag;
-	error_flag--;
-	if(gal1->m200 != gal2->m200) return error_flag;
-	error_flag--;
-	if(gal1->space[0] != gal2->space[0]) return error_flag;
-	error_flag--;
-	if(gal1->space[1] != gal2->space[1]) return error_flag;
-	error_flag--;
-	if(gal1->space[2] != gal2->space[2]) return error_flag;
-	error_flag--;
-	if(gal1->boxsize != gal2->boxsize) return error_flag;
-	error_flag--;
-	if(gal1->ngrid != gal2->ngrid) return error_flag;
-	error_flag--;
-	if(gal1->axisymmetric_drift != gal2->axisymmetric_drift) return error_flag;
-	error_flag--;
-	if(gal1->num_part[0] != gal2->num_part[0]) return error_flag;
-	error_flag--;
-	if(gal1->num_part[1] != gal2->num_part[1]) return error_flag;
-	error_flag--;
-	if(gal1->num_part[2] != gal2->num_part[2]) return error_flag;
-	error_flag--;
-	if(gal1->num_part[3] != gal2->num_part[3]) return error_flag;
-    
-	return 1;
-}	
-
-

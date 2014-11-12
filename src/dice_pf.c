@@ -164,43 +164,44 @@ int set_galaxy_potential(galaxy *gal, int verbose) {
 			}
 		}
 	}
-	#pragma omp parallel shared(gal) private(ii,i,j,k,node_x,node_y,node_z,dx,dy,dz,tx,ty,tz)
-	{
+	
 	// Calculate the density using the CIC routine. The positions are shifted
 	// such that the particles are in the +x,+y,+z octant. space_* is added
 	// to take care of the vacuum boundary conditions. The density values are
 	// stored in the potential structure for now.
-	#pragma omp for schedule(guided)
+	#pragma omp parallel for private(x, y, z, node_x, node_y, node_z, dx, dy, dz, tx, ty, tz) shared(gal)
 	for (ii = 0; ii < end-start; ++ii) {
-		x = gal->x[ii+start]/(space_x)  +((double)(gal->ngrid_padded/2)-0.5);
-		y = gal->y[ii+start]/(space_y)  +((double)(gal->ngrid_padded/2)-0.5);
-		z = gal->z[ii+start]/(space_z)  +((double)(gal->ngrid_padded/2)-0.5);
+		x = gal->x[ii+start]/(space_x)+((double)(gal->ngrid_padded/2)-0.5);
+		y = gal->y[ii+start]/(space_y)+((double)(gal->ngrid_padded/2)-0.5);
+		z = gal->z[ii+start]/(space_z)+((double)(gal->ngrid_padded/2)-0.5);
 		if(x <= 3*gal->ngrid_padded/4 || x >= gal->ngrid_padded/4 || y <= 3*gal->ngrid_padded/4 || y >= gal->ngrid_padded/4 || z <= 3*gal->ngrid_padded/4 || z >= gal->ngrid_padded/4) {
 			// Figure out which node owns the particle
 			node_x = (int) x;
 			node_y = (int) y;
 			node_z = (int) z;
-			// Set the CIC size fractions
-			dx = 1.0 - (x - (double) node_x);
-			dy = 1.0 - (y - (double) node_y);
-			dz = 1.0 - (z - (double) node_z);
-			tx = 1.0 - dx;
-			ty = 1.0 - dy;
-			tz = 1.0 - dz;
-			// Calculate the CIC densities
-			gal->potential[node_x][node_y][node_z]		+= gal->mass[ii+start]*(dx*dy*dz) / (unit_mass*space_x*space_y*space_z);
-			gal->potential[node_x+1][node_y][node_z]	+= gal->mass[ii+start]*(tx*dy*dz) / (unit_mass*space_x*space_y*space_z);
-			gal->potential[node_x][node_y+1][node_z]	+= gal->mass[ii+start]*(dx*ty*dz) / (unit_mass*space_x*space_y*space_z);
-			gal->potential[node_x][node_y][node_z+1]	+= gal->mass[ii+start]*(dx*dy*tz) / (unit_mass*space_x*space_y*space_z);
-			gal->potential[node_x][node_y+1][node_z+1]	+= gal->mass[ii+start]*(dx*ty*tz) / (unit_mass*space_x*space_y*space_z);
-			gal->potential[node_x+1][node_y+1][node_z]	+= gal->mass[ii+start]*(tx*ty*dz) / (unit_mass*space_x*space_y*space_z);
-			gal->potential[node_x+1][node_y][node_z+1]	+= gal->mass[ii+start]*(tx*dy*tz) / (unit_mass*space_x*space_y*space_z);
-			gal->potential[node_x+1][node_y+1][node_z+1]	+= gal->mass[ii+start]*(tx*ty*tz) / (unit_mass*space_x*space_y*space_z);
-			// NGP (Nearest Point Grid) if anyone needs it
-			//gal->potential[node_x][node_y][node_z] += gal->mass[i]/(unit_mass*(space_x*space_y*space_z));
+			// Check if particle is not outside the potential grid
+			if(node_x>=0 && node_x<gal->ngrid_padded-1 && node_y>=0 && node_y<gal->ngrid_padded-1 && node_z>=0 && node_z<gal->ngrid_padded-1) {
+				// Set the CIC size fractions
+				dx = 1.0 - (x - (double) node_x);
+				dy = 1.0 - (y - (double) node_y);
+				dz = 1.0 - (z - (double) node_z);
+				tx = 1.0 - dx;
+				ty = 1.0 - dy;
+				tz = 1.0 - dz;
+				// Calculate the CIC densities
+				gal->potential[node_x][node_y][node_z]		+= gal->mass[ii+start]*(dx*dy*dz) / (space_x*space_y*space_z);
+				gal->potential[node_x+1][node_y][node_z]	+= gal->mass[ii+start]*(tx*dy*dz) / (space_x*space_y*space_z);
+				gal->potential[node_x][node_y+1][node_z]	+= gal->mass[ii+start]*(dx*ty*dz) / (space_x*space_y*space_z);
+				gal->potential[node_x][node_y][node_z+1]	+= gal->mass[ii+start]*(dx*dy*tz) / (space_x*space_y*space_z);
+				gal->potential[node_x][node_y+1][node_z+1]	+= gal->mass[ii+start]*(dx*ty*tz) / (space_x*space_y*space_z);
+				gal->potential[node_x+1][node_y+1][node_z]	+= gal->mass[ii+start]*(tx*ty*dz) / (space_x*space_y*space_z);
+				gal->potential[node_x+1][node_y][node_z+1]	+= gal->mass[ii+start]*(tx*dy*tz) / (space_x*space_y*space_z);
+				gal->potential[node_x+1][node_y+1][node_z+1]	+= gal->mass[ii+start]*(tx*ty*tz) / (space_x*space_y*space_z);
+				// NGP (Nearest Point Grid) if anyone needs it
+				//gal->potential[node_x][node_y][node_z] += gal->mass[i]/(space_x*space_y*space_z);
+			}
 		}
 	}
-	
 	// Define Green's function.
 	// These are the grid points as measured from the center of Green's function
 	// and the local value of the truncation function. The density is also packed into a
@@ -210,33 +211,33 @@ int set_galaxy_potential(galaxy *gal, int verbose) {
 	// isolated (vacuum) boundary conditions. See Hockney and Eastwood, 1980, ch. 6 for a
 	// discussion. The octants start in the lower left at (p,q) = (0,0) and progress
 	// counter clockwise.
-	#pragma omp for schedule(guided)
 	for (i = 0; i < gal->ngrid_padded/2; ++i) {
 	        for (j = 0; j < gal->ngrid_padded/2; ++j) {
-			for (k = 0; k < gal->ngrid_padded/2; ++k) {
-		                dx = sqrt(pow((double)(i+0.5),2.0))*space_x;
-		                dy = sqrt(pow((double)(j+0.5),2.0))*space_y;
-		                dz = sqrt(pow((double)(k+0.5),2.0))*space_z;
-				// Octant 1
-		                green_grid[i][j][k] = 1.0 / (4.0*pi*sqrt(dx*dx + dy*dy + dz*dz));
-		                // Octant 2
-                		green_grid[gal->ngrid_padded-1-i][j][k] = green_grid[i][j][k];
-                		// Octant 3
-                		green_grid[gal->ngrid_padded-1-i][gal->ngrid_padded-1-j][k] = green_grid[i][j][k];
-                		// Octant 4
-                		green_grid[i][gal->ngrid_padded-1-j][k] = green_grid[i][j][k];
-                		// Octant 5
-                		green_grid[i][j][gal->ngrid_padded-1-k] = green_grid[i][j][k];
-                		// Octant 6
-                		green_grid[gal->ngrid_padded-1-i][j][gal->ngrid_padded-1-k] = green_grid[i][j][k];
-                		// Octant 7
-                		green_grid[gal->ngrid_padded-1-i][gal->ngrid_padded-1-j][gal->ngrid_padded-1-k] = green_grid[i][j][k];
-                		// Octant 8
-                		green_grid[i][gal->ngrid_padded-1-j][gal->ngrid_padded-1-k] = green_grid[i][j][k];
+	        	#pragma omp parallel for private(dx, dy, dz) shared(green_grid,i,j)
+				for (k = 0; k < gal->ngrid_padded/2; ++k) {
+		    		dx = sqrt(pow((double)(i+0.5),2.0))*space_x;
+		        	dy = sqrt(pow((double)(j+0.5),2.0))*space_y;
+		            dz = sqrt(pow((double)(k+0.5),2.0))*space_z;
+					// Octant 1
+		            green_grid[i][j][k] = 1.0 / (4.0*pi*sqrt(dx*dx + dy*dy + dz*dz));
+		             // Octant 2
+                	green_grid[gal->ngrid_padded-1-i][j][k] = green_grid[i][j][k];
+                	// Octant 3
+                	green_grid[gal->ngrid_padded-1-i][gal->ngrid_padded-1-j][k] = green_grid[i][j][k];
+                	// Octant 4
+                	green_grid[i][gal->ngrid_padded-1-j][k] = green_grid[i][j][k];
+                	// Octant 5
+                	green_grid[i][j][gal->ngrid_padded-1-k] = green_grid[i][j][k];
+                	// Octant 6
+                	green_grid[gal->ngrid_padded-1-i][j][gal->ngrid_padded-1-k] = green_grid[i][j][k];
+                	// Octant 7
+                	green_grid[gal->ngrid_padded-1-i][gal->ngrid_padded-1-j][gal->ngrid_padded-1-k] = green_grid[i][j][k];
+                	// Octant 8
+                	green_grid[i][gal->ngrid_padded-1-j][gal->ngrid_padded-1-k] = green_grid[i][j][k];
 			}
 		}
 	}
-	}
+	
 	// Pack Green's function and the density into 1D arrays
 	l = 0;
 	for (i = 0; i < gal->ngrid_padded; ++i) {
@@ -384,7 +385,7 @@ double galaxy_potential_func(galaxy *gal, double x, double y, double z) {
 // A wrapper for the disk potential function.
 double galaxyr_potential_wrapper_func(double radius, void *params) {
 	
-	double theta, ans, x, y;
+	double x, y;
 	int tid;
 
 	#if USE_THREADS == 1
@@ -392,19 +393,18 @@ double galaxyr_potential_wrapper_func(double radius, void *params) {
 	#else
 		tid = 0;
 	#endif
-	
+
 	galaxy *gal = (galaxy *) params;
+	
 	x = radius*cos(gal->theta_cyl[gal->index[tid]]);
 	y = radius*sin(gal->theta_cyl[gal->index[tid]]);
 	
-	ans = galaxy_potential_func(gal,x,y,gal->z[gal->index[tid]]);
-	return ans;
+	return galaxy_potential_func(gal,x,y,gal->z[gal->index[tid]]);
 }
 
 // A wrapper for the disk potential function.
 double galaxyz_potential_wrapper_func(double z, void *params) {
 	
-	double theta, ans;
 	int tid;
 	
 	#if USE_THREADS == 1
@@ -414,18 +414,14 @@ double galaxyz_potential_wrapper_func(double z, void *params) {
 	#endif
 
 	galaxy *gal = (galaxy *) params;
-	ans = galaxy_potential_func(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z);
 	
-	return ans;
+	return galaxy_potential_func(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z);
 }
 
 // A wrapper for the second derivative of the potential function.
 double potential_deriv_wrapper_func(double radius, void *params) {
 	
-	double ans;
 	galaxy *gal = (galaxy *) params;
-	
-	ans = (pow(v_c_func(gal,radius),2.0))/(radius*kpc);
-	
-	return ans;
+		
+	return (pow(v_c_func(gal,radius),2.0))/(radius*kpc);
 }
