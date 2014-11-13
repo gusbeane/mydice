@@ -238,7 +238,7 @@ int parse_config_file(char *fname) {
 	
 	strcpy(tag[nt], "OmegaM");
 	addr[nt] = &AllVars.Omega_m;
-	AllVars.Omega_l = 0.30712;
+	AllVars.Omega_m = 0.30712;
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = DOUBLE;
