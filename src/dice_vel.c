@@ -331,3 +331,269 @@ double galaxy_zforce_func(galaxy *gal, double z) {
 	
 	return force;
 }
+
+// This function calculates the potential due to a galactic disk using Cloud-
+// In-Cell mass assignment with vacuum (isolated) boundary conditions on a
+// Cartesian grid. The method was adapted from the discussion found in Hockney
+// and Eastwood, "Computer Simulation Using Particles," 1981.
+int set_turbulent_grid(galaxy *gal, int component) {
+	unsigned long int ii, start, end, l;
+	// Loop variables
+	int i, j, k;
+	// Nodes coordinates
+	int node_x, node_y, node_z;
+	double space_x, space_y, space_z;
+	double dx, dy, dz, tx, ty, tz, n;
+	double x, y, z;
+	double rand_vel,rad;
+	// The particle-mesh grid size and the Green's function and potential
+	// storage buffers. Global to keep from hitting the stack limit for large grid
+	// size.
+	double ***kernel_grid;
+	//size_t p_x[gal->num_part[1]], p_y[gal->num_part[1]], p_z[gal->num_part[1]];
+	fftw_plan fft_kernel, fft_turbulence, fftinv_turbulence;
+	fftw_complex *kernel,*turbulence;
+	
+
+	// Setup fftw threads
+	#if USE_THREADS == 1
+		//if (verbose) printf("/////\t\t-Setting up FFT call with %d threads\n",AllVars.Nthreads);
+		fflush(stdout);
+		fftw_init_threads();
+		fftw_plan_with_nthreads(AllVars.Nthreads);
+		fflush(stdout);
+	#endif
+	
+	// Allocate grid storage variables
+	if (!(kernel = calloc(pow(gal->ngrid_turb_padded,3),sizeof(fftw_complex)))) {
+		fprintf(stderr,"Unable to allocate space for kernel's function.\n");
+		return -1;
+	}
+	if (!(turbulence = calloc(pow(gal->ngrid_turb_padded,3),sizeof(fftw_complex)))) {
+		fprintf(stderr,"Unable to allocate space for turbulence buffer.\n");
+		return -1;
+	}
+	
+	if (!(kernel_grid=calloc(gal->ngrid_turb_padded,sizeof(double *)))) {
+		fprintf(stderr,"Unable to create kernel's function x axis.\n");
+		return -1;
+	}
+	// kernel grid allocation
+	// x-axis
+	for (i = 0; i < gal->ngrid_turb_padded; ++i) {
+	        // y-axis
+	        if (!(kernel_grid[i] = calloc(gal->ngrid_turb_padded,sizeof(double *)))) {
+			fprintf(stderr,"Unable to create kernel's function y axis.\n");
+           		return -1;
+        	}
+	        // z-axis
+        	for (j = 0; j < gal->ngrid_turb_padded; ++j) {
+			if (!(kernel_grid[i][j] = calloc(gal->ngrid_turb_padded,sizeof(double)))) {
+				fprintf(stderr,"Unable to create kernel's function z axis.\n");
+				return -1;
+			}
+		}
+	}
+	// Define which particles we should use in the turbulence computation
+	// We use all the particles
+	start 	= gal->comp_start_part[component];
+	end 	= gal->comp_start_part[component]+gal->comp_npart_pot[component];
+
+	// Allocate the fftw complex output value and the fftw dft plan.
+	fft_turbulence	= fftw_plan_dft_3d(gal->ngrid_turb_padded,gal->ngrid_turb_padded,gal->ngrid_turb_padded,turbulence,turbulence,FFTW_FORWARD,FFTW_ESTIMATE);
+	fft_kernel		= fftw_plan_dft_3d(gal->ngrid_turb_padded,gal->ngrid_turb_padded,gal->ngrid_turb_padded,kernel,kernel,FFTW_FORWARD,FFTW_ESTIMATE);
+	
+	// Normalization constant
+	// See FFTW reference guide for more details
+	n = (int)pow(gal->ngrid_turb_padded,3.0);
+	
+	// Check for bad grids
+	if (gal->ngrid_turb_padded <= 0) {
+		fprintf(stderr,"\t\tGrid dimensions must be greater than zero! (ngrid=%d)\n",gal->ngrid_turb_padded);
+		return -1;
+	}
+	
+	// Sort the position arrays and figure out the spacing between grid points.
+	// Subtract 2 for a.) the C offset and b.) the CIC offset. Finally, store
+	// the values in the galaxy for later use.
+	//gsl_sort_index(p_x,gal->x,1,gal->num_part[0]);
+	//gsl_sort_index(p_y,gal->y,1,gal->num_part[0]);
+	//gsl_sort_index(p_z,gal->z,1,gal->num_part[0]);
+	space_x = gal->space_turb[0];
+	space_y = gal->space_turb[1];
+	space_z = gal->space_turb[2];
+	// Print the turbulence in the xy-plane for z = 0 if the option is set.
+	//if (verbose) printf("/////\t\t-Grid cell spacings [kpc]: dx = %.3f dy = %.3f dz = %.3f\n",space_x,space_y,space_z);
+	fflush(stdout);
+
+	// Initialization loop
+	for (i = 0; i < gal->ngrid_turb_padded; ++i) {
+		for (j = 0; j < gal->ngrid_turb_padded; ++j) {
+			for (k = 0; k < gal->ngrid_turb_padded; ++k) {
+				gal->turbulence[i][j][k] = gsl_ran_gaussian(r[0],1.0);
+			}
+		}
+	}
+	
+	// Define kernel's function.
+	// These are the grid points as measured from the center of kernel's function
+	// and the local value of the truncation function. The density is also packed into a
+	// buffer here.
+	//
+	// kernel's function is defined eight times here, once per octant, to take care of the
+	// isolated (vacuum) boundary conditions. See Hockney and Eastwood, 1980, ch. 6 for a
+	// discussion. The octants start in the lower left at (p,q) = (0,0) and progress
+	// counter clockwise.
+	for (i = 0; i < gal->ngrid_turb_padded/2; ++i) {
+	    for (j = 0; j < gal->ngrid_turb_padded/2; ++j) {
+	        #pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
+			for (k = 0; k < gal->ngrid_turb_padded/2; ++k) {
+		    	dx = sqrt(pow((double)(i+0.5),2.0));
+		        dy = sqrt(pow((double)(j+0.5),2.0));
+		    	dz = sqrt(pow((double)(k+0.5),2.0));
+		        rad = sqrt(dx*dx+dy*dy+dz*dz);
+				// Octant 1
+		        kernel_grid[i][j][k] = 1.0/(pow(gal->comp_turb_scale[component]*sqrt(2.0*pi),3.0))*exp(-pow(rad,2.0)/(2.0*pow(gal->comp_turb_scale[component],2.0)));
+		        // Octant 2
+                kernel_grid[gal->ngrid_turb_padded-1-i][j][k] = kernel_grid[i][j][k];
+                // Octant 3
+                kernel_grid[gal->ngrid_turb_padded-1-i][gal->ngrid_turb_padded-1-j][k] = kernel_grid[i][j][k];
+                // Octant 4
+                kernel_grid[i][gal->ngrid_turb_padded-1-j][k] = kernel_grid[i][j][k];
+                // Octant 5
+                kernel_grid[i][j][gal->ngrid_turb_padded-1-k] = kernel_grid[i][j][k];
+                // Octant 6
+                kernel_grid[gal->ngrid_turb_padded-1-i][j][gal->ngrid_turb_padded-1-k] = kernel_grid[i][j][k];
+                // Octant 7
+                kernel_grid[gal->ngrid_turb_padded-1-i][gal->ngrid_turb_padded-1-j][gal->ngrid_turb_padded-1-k] = kernel_grid[i][j][k];
+                // Octant 8
+                kernel_grid[i][gal->ngrid_turb_padded-1-j][gal->ngrid_turb_padded-1-k] = kernel_grid[i][j][k];
+			}
+		}
+	}
+	
+	
+	// Pack kernel's function and the density into 1D arrays
+	l = 0;
+	for (i = 0; i < gal->ngrid_turb_padded; ++i) {
+	    for (j = 0; j < gal->ngrid_turb_padded; ++j) {
+			for (k = 0; k < gal->ngrid_turb_padded; ++k) {
+		       	kernel[l] = kernel_grid[i][j][k];
+		       	turbulence[l] = gal->turbulence[i][j][k];
+				l++;
+			}
+		}
+	}
+    	
+	// Perform the fourier transforms. Density first, kernel's function second.
+	fftw_execute(fft_turbulence);
+	fftw_execute(fft_kernel);
+	// FFT is computed, we can free the memory
+	fftw_destroy_plan(fft_turbulence);
+	fftw_destroy_plan(fft_kernel);
+	// Allocating memory for the inverse fourier computation
+	fftinv_turbulence = fftw_plan_dft_3d(gal->ngrid_turb_padded,gal->ngrid_turb_padded,gal->ngrid_turb_padded,turbulence,turbulence,FFTW_BACKWARD,FFTW_ESTIMATE);
+	// Multiply the density by kernel's function to find the k-space turbulence and
+	// invert for the real potenital. Second, normalize the system and, finally,
+	// put the turbulence information into the grid.
+	for (i = 0; i < n; ++i) {
+	        // Convolve the turbulence
+	        turbulence[i] = kernel[i]*turbulence[i];
+	}
+	// Inversion
+	fftw_execute(fftinv_turbulence);
+	fftw_destroy_plan(fftinv_turbulence);
+	// Normalization
+	double stddev;
+	for (i = 0; i < n; ++i) {
+	        turbulence[i] = turbulence[i]/n;
+	        stddev += pow(turbulence[i],2.0);
+	}
+	stddev = sqrt(stddev/n);
+
+	l = 0;
+	for (i = 0; i < gal->ngrid_turb_padded; ++i) {
+	        for (j = 0; j < gal->ngrid_turb_padded; ++j) {
+				for (k = 0; k < gal->ngrid_turb_padded; ++k) {
+					// Fix the grid info
+					gal->turbulence[i][j][k] = turbulence[l]/stddev*gal->comp_turb_sigma[component];
+					l++;
+				}
+		}
+	}
+	// Free fftw plan.
+	// Kill the storage arrays since they are no longer needed.
+	fftw_free(kernel);
+	fftw_free(turbulence);
+	for (i = 0; i < gal->ngrid_turb_padded; ++i) {
+	        for (j = 0; j < gal->ngrid_turb_padded; ++j) {
+			free(kernel_grid[i][j]);
+		}
+		free(kernel_grid[i]);
+	}
+	free(kernel_grid);
+	
+	#if USE_THREADS == 1
+		fftw_cleanup_threads();
+	#endif
+	// Flag the galaxy structure
+	return 0;
+}
+
+
+// This function calculates the potential due to the disk at a point x,y,z
+// by interpolating between grid points on the particle mesh. The
+// interpolation routine uses the CIC kernel, which oddly enough is just
+// a bilinear interpolation scheme...
+//
+// If the point lies off of the particle mesh, it approximates the potential
+// as a function of 1/r.
+double galaxy_turbulence_func(galaxy *gal, double x, double y, double z) {
+	
+	int node_x, node_y, node_z, offset;
+	double turb1, turb2, turb3, turb4, turb5, turb6, turb7, turb8;
+	double a, r_p, r_max, dx, dy, dz, tx, ty, tz, turbulence;
+	double xtemp,ytemp,ztemp,theta,phi,xmax,ymax,zmax,rnorm;
+		
+	// Scale the coordinates
+	r_p = sqrt(x*x + y*y + z*z);
+	xtemp = x/gal->space_turb[0] + ((double)(gal->ngrid_turb_padded/2)-0.5-0.5);
+	ytemp = y/gal->space_turb[1] + ((double)(gal->ngrid_turb_padded/2)-0.5-0.5);
+	ztemp = z/gal->space_turb[2] + ((double)(gal->ngrid_turb_padded/2)-0.5-0.5);
+	offset = 0;
+	// Determine the parent node.
+	node_x = floor(xtemp);
+	node_y = floor(ytemp);
+	node_z = floor(ztemp);
+	r_max = gal->space[0]*((double)(gal->ngrid_turb_padded/4)-0.5-0.5-offset);
+	
+	// Check to see if (x,y,z) is a grid point.
+	if (xtemp == (double) node_y && ytemp == (double) node_y && ztemp == (double) node_z) {
+		// If (x,y,z) is a grid point, return its potential.
+		turbulence = gal->turbulence[node_x][node_y][node_z];
+	} else {
+		// If (x,y,z) is not a grid point, use the CIC
+		// interpolation function to calculate the potential.
+		turb1 = gal->turbulence[node_x][node_y][node_z];
+		turb2 = gal->turbulence[node_x+1][node_y][node_z];
+		turb3 = gal->turbulence[node_x][node_y+1][node_z];
+		turb4 = gal->turbulence[node_x][node_y][node_z+1];
+		turb5 = gal->turbulence[node_x][node_y+1][node_z+1];
+		turb6 = gal->turbulence[node_x+1][node_y+1][node_z];
+		turb7 = gal->turbulence[node_x+1][node_y][node_z+1];
+		turb8 = gal->turbulence[node_x+1][node_y+1][node_z+1];
+		// CIC fractions
+		dx = 1.0 - (xtemp - (double) node_x);
+		dy = 1.0 - (ytemp - (double) node_y);
+		dz = 1.0 - (ztemp - (double) node_z);
+		tx = 1.0 - dx;
+		ty = 1.0 - dy;
+		tz = 1.0 - dz;
+		// Return the interpolated potential.
+		turbulence = dx*dy*dz*turb1 + tx*dy*dz*turb2 +
+		dx*ty*dz*turb3 + dx*dy*tz*turb4 +
+		dx*ty*tz*turb5 + tx*ty*dz*turb6 +
+		tx*dy*tz*turb7 + tx*ty*tz*turb8;
+	}
+	return turbulence;
+}

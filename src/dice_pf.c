@@ -242,11 +242,11 @@ int set_galaxy_potential(galaxy *gal, int verbose) {
 	l = 0;
 	for (i = 0; i < gal->ngrid_padded; ++i) {
 	        for (j = 0; j < gal->ngrid_padded; ++j) {
-			for (k = 0; k < gal->ngrid_padded; ++k) {
-		                green[l] = green_grid[i][j][k];
-		                potential[l] = gal->potential[i][j][k];
-				l++;
-			}
+				for (k = 0; k < gal->ngrid_padded; ++k) {
+		    		green[l] = green_grid[i][j][k];
+		        	potential[l] = gal->potential[i][j][k];
+					l++;
+				}
 		}
 	}
     	
@@ -274,7 +274,7 @@ int set_galaxy_potential(galaxy *gal, int verbose) {
 	}
 	l = 0;
 	for (i = 0; i < gal->ngrid_padded; ++i) {
-	        for (j = 0; j < gal->ngrid_padded; ++j) {
+	    for (j = 0; j < gal->ngrid_padded; ++j) {
 			for (k = 0; k < gal->ngrid_padded; ++k) {
 				// Fix the grid info
 				gal->potential[i][j][k] = -4.0*pi*potential[l]*G*unit_mass/kpc;

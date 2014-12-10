@@ -9,10 +9,12 @@ redshift		0.05
 j_d		 	0.04
 # Halo spin parameter
 lambda		 	0.04
-# Refinement level of the PM grid 
+# Refinement level of the PM potential grid 
 level_grid		8
 # Refinement level of the plane plane density grid 
 level_grid_dens		7
+# Refinement level of the PM turbulence grid 
+level_grid_turb		8
 # Size of the PM grid [kpc]
 boxsize		 	100.0
 # Axisymmetric_drift approximation in the Jeans equations
@@ -131,6 +133,10 @@ streaming_fraction3	1.00
 metal3                  0.01
 # Temperature of the gas particles [K]
 t_init3                 1e4
+# Turbulent velocity dispersion [km/s]
+turb_sigma3		10.0
+# Turbulence smoothing scale [kpc]
+turb_scale3		1.0
 
 ############################
 # Component 4: Stellar bulge

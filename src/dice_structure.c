@@ -258,9 +258,10 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
             gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
             gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
             gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+            gal->rho[i]			= density_functions_pool(gal,gal->r_cyl[i],gal->theta_cyl[i],gal->z[i],1,density_model,component);
 		}
 		acceptance /= gal->comp_npart_pot[component];
-		printf("/////\t\t-> Acceptance = %.2lf \n",acceptance);
+		printf(" -> Acceptance = %.2lf \n",acceptance);
 		if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n/////\t\t\tLower mcmc_step%d in the galaxy parameter file.\n",component);
 		if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n/////\t\t\tIncrease mcmc_step%d in the galaxy parameter file.\n",component);
 		if (AllVars.MeanPartDist) printf("/////\t\t\t[Mean inter-particle distance: %lf kpc]\n",mean_interparticle_distance(gal,component));
@@ -332,10 +333,12 @@ int set_hydro_equilibrium(galaxy *gal, int n_iter) {
 						// Updating coordinates values
 						gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
 						gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+						gal->rho[i]			= pi_y;
 					} else {
 						gal->z[i] 			= z;
 						gal->r_sph[i]       = sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
 						gal->phi_sph[i]     = acos(gal->z[i]/gal->r_sph[i]);
+						gal->rho[i]			= pi_x;
 					}
 				}
 				acceptance /= gal->comp_npart_pot[k];

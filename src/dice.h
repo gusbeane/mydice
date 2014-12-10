@@ -73,17 +73,17 @@
 #define key 6
 
 // Some physical constants needed for the computation
-#define gamma					(5.0/3.0)		// adiabatic index of simulated gas (mono-atomic)
-#define gamma_minus1			(gamma-1.0)		// adiabatic index of simulated gas minus 1
-#define hydrogen_massfrac		0.76			// mass fraction of hydrogen, relevant only for radiative cooling
-#define boltzmann				1.3806e-16		// Boltzmann constant in [erg.K^-1] = [g.cm^2.s^-2.K^-1]
-#define protonmass				1.6726e-24		// proton mass in [g]
-#define pi						3.14159274101257	// pi = 4.0*atan(1.0)
-#define	G						6.67428E-8		// G = 6.67428E-8 [cm^3 g^-1 s^-2]
-#define	kpc						3.085678E21		// 1 kpc = 3.085678E21 [cm]
-#define unit_mass				1.989E43		// 1.989E43 = 1E10 [Solar masses]
-#define unit_velocity			1e5				// km.s^-1 in [cm.s^-1]
-#define unit_length				3.085678e21		// kpc in [cm]
+#define gamma					(5.0/3.0)			// adiabatic index of simulated gas (mono-atomic)
+#define gamma_minus1			(gamma-1.0)			// adiabatic index of simulated gas minus 1
+#define hydrogen_massfrac		0.76				// mass fraction of hydrogen, relevant only for radiative cooling
+#define boltzmann				1.3806e-16			// Boltzmann constant in [erg.K^-1] = [g.cm^2.s^-2.K^-1]
+#define protonmass				1.6726e-24			// proton mass in [g]
+#define pi						3.14159274101257 	// pi = 4.0*atan(1.0)
+#define	G						6.67428E-8			// G = 6.67428E-8 [cm^3 g^-1 s^-2]
+#define	kpc						3.085678E21			// 1 kpc = 3.085678E21 [cm]
+#define unit_mass				1.989E43			// 1.989E43 = 1E10 [Solar masses]
+#define unit_velocity			1e5					// km.s^-1 in [cm.s^-1]
+#define unit_length				3.085678e21			// kpc in [cm]
 #define unit_time				(unit_length/unit_velocity)
 #define unit_energy				(unit_mass*(unit_length*unit_length)/(unit_time*unit_time))
 #define unit_dens				(unit_mass/(unit_length*unit_length*unit_length))
@@ -138,6 +138,8 @@ typedef struct {
 	double 				*comp_t_init;
 	double 				*comp_u_init;
 	double 				*comp_cs_init;
+	double 				*comp_turb_sigma;
+	double 				*comp_turb_scale;
 	double 				*comp_mean_age;
 	double 				*comp_min_age;
 	double 				*comp_alpha;
@@ -186,12 +188,16 @@ typedef struct {
 	double *metal;
 	// Particle Mesh potential grid
 	double ***potential;
+	// Particle Mesh turbulence grid
+	double ***turbulence;
 	// Gas midplane density grid
 	double **midplane_dens;
 	// Potential grid cell size vector [kpc]
 	double space[3];
 	// Gas midplane density grid cell size vector [kpc]
 	double space_dens[2];
+	// Turbulence grid cell size vector [kpc]
+	double space_turb[3];
 	// Number of particles per particle type
 	unsigned long int num_part[4];
 	unsigned long int num_part_pot[4];
@@ -203,12 +209,18 @@ typedef struct {
 	unsigned long int ngrid;
 	// Number of cells in the midplane density grid
 	unsigned long int ngrid_dens;
+	// Number of cells in the turbulence grid
+	unsigned long int ngrid_turb;
 	// Level of refinement of the potential grid
 	int level_grid;
 	// Level of refinement of the gas density grid
 	int level_grid_dens;
+	// Level of refinement of the gas turbulence grid
+	int level_grid_turb;
 	// Number of cells in the potential grid after padding
 	int ngrid_padded;
+	// Number of cells in the turbulence grid after padding
+	int ngrid_turb_padded;
 	// Storage array
 	double **storage;
 	// Identifier of particle
@@ -240,7 +252,8 @@ typedef struct {
 	double *comp_mass;
 	double *comp_dens;
 	double *comp_opening_angle;
-	double *comp_sigma_vel;
+	double *comp_turb_sigma;
+	double *comp_turb_scale;
 	double *comp_t_init;
 	// Stream's spin orientation spherical angles
 	double *comp_theta_sph;
@@ -432,6 +445,8 @@ double v2a_z_toomre(galaxy *, double, double, int);
 double rho_v2a_r_func(double, void *);
 double v2_theta_gas_func(galaxy *, double, double, int);
 double gas_density_wrapper_func(double, void *);
+int set_turbulent_grid(galaxy *, int);
+double galaxy_turbulence_func(galaxy *, double, double, double);
 
 // Potential and force functions
 int set_galaxy_potential(galaxy *, int);

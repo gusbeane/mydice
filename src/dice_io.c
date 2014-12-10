@@ -318,7 +318,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	23*AllVars.MaxCompNumber+17
+	#define MAXTAGS	25*AllVars.MaxCompNumber+18
 	
 	FILE *fd;
 	int i,j,n;
@@ -387,6 +387,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	strcpy(tag[nt], "level_grid_dens");
 	addr[nt] = &gal->level_grid_dens;
 	gal->level_grid_dens=7;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
+	strcpy(tag[nt], "level_grid_turb");
+	addr[nt] = &gal->level_grid_turb;
+	gal->level_grid_turb=7;
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = INT;
@@ -644,6 +651,22 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"turb_sigma%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_turb_sigma[j] = 0.;
+		addr[nt] = &gal->comp_turb_sigma[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"turb_scale%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_turb_scale[j] = 0.;
+		addr[nt] = &gal->comp_turb_scale[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
 	}
 	
 	printf("/////\n///// Reading galaxy params file: %s\n",fname);
@@ -790,9 +813,17 @@ int parse_stream_file(stream *st, char *fname) {
 		else mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
 
-		n = sprintf(temp_tag,"sigma_vel%d",j+1);
+		n = sprintf(temp_tag,"turb_sigma%d",j+1);
 		strcpy(tag[nt], temp_tag);	
-		addr[nt] = &st->comp_sigma_vel[j];
+		addr[nt] = &st->comp_turb_sigma[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"turb_scale%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &st->comp_turb_scale[j];
 		read[nt] = 0;
 		if(j==0) mandatory[nt] = 1;
 		else mandatory[nt] = 0;
