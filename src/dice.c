@@ -262,6 +262,7 @@ int main (int argc, char **argv) {
 	
 	// Write initial conditions for the massively parallel N-body code Gadget2.
 	// If you do not use Gadget, do not use this function -- the output is binary!
+	printf("///// Writing gadget file\n");
 	if(k+l==1) {
 		write_gadget_ics(stack1,AllVars.Filename);
 	} else {

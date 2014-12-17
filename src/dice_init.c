@@ -195,11 +195,15 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"Unable to allocate particle comp_turb_scale array.\n");
 		return -1;
 	}
+	if (!(gal->comp_compute_vel=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+		fprintf(stderr,"Unable to allocate particle comp_compute_vel array.\n");
+		return -1;
+	}
 	return 0;
 }
 
 int allocate_variable_arrays(galaxy *gal) {
-	int i,j;
+	int i,j;	
 	// Allocate particle id numbers array.
 	if (!(gal->id=calloc(gal->ntot_part_pot,sizeof(unsigned long int)))) {
 		fprintf(stderr,"Unable to allocate particle ID numbers.\n");
@@ -612,15 +616,16 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	// Set the Hubble parameter from the Friedmann equation
 	H = sqrt(pow(AllVars.H0/(1e3*unit_length)*unit_velocity,2.0)*(AllVars.Omega_m*pow(1+gal->redshift,3.0)+AllVars.Omega_k*pow(1+gal->redshift,2.0)+AllVars.Omega_l));
 	// Get the Virial velocity from the parser
-	gal->v200 = gal->v200*1E5;
 	// Set the Virial mass
-	gal->m200 = (gal->v200*gal->v200*gal->v200)/(10.0*G*H);
+	if((gal->m200==0.)&&(gal->v200>0.)) {
+		gal->m200 = pow(gal->v200*unit_velocity,3.0)/(10.0*G*H*unit_mass);
+	}
+	if((gal->m200>0.)&&(gal->v200==0.)) {
+		gal->v200 = pow(gal->m200*10.0*G*H*unit_mass,1.0/3.0)/unit_velocity;
+	}
 	// Set the Virial radius
-	gal->r200 = gal->v200/(10.0*H*kpc);
-    
-    gal->v200 = gal->v200/1E5;
-    gal->m200 = gal->m200/unit_mass;
-    
+	gal->r200 = (gal->v200*unit_velocity)/(10.0*H*kpc);
+        
 	// Set the size of the cell for the Potential-Mesh (PM) computation
 	gal->space[0] 		= gal->boxsize/((double)gal->ngrid);
 	gal->space[1] 		= gal->boxsize/((double)gal->ngrid);
@@ -642,6 +647,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	
 	// Initialisations
 	gal->ntot_part 			= (unsigned long int)0;
+	gal->ntot_part_pot		= (unsigned long int)0;
 	gal->comp_start_part[0] = (unsigned long int)0;
 	gal->total_mass 		= 0.;
 	max_gas_radius			= 0.0;
@@ -696,8 +702,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		}
 		else gal->comp_bool[i] 		= 0;
 		// Computing the mass of the component after cuts
-		
-		
 		if(gal->comp_bool[i]) {
 			// Case where the final cutted mass is defined by the user
 			if(gal->comp_radius_nfw[i]==-1.0) {
@@ -1051,7 +1055,7 @@ int set_galaxy_velocity(galaxy *gal) {
     // Loop over components
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
 		// Particle velocities.
-		if(gal->comp_npart[j]>0) {
+		if(gal->comp_npart[j]>0&&gal->comp_compute_vel[j]==1) {
 			printf("/////\t\t-Setting component %d velocities",j+1);
 			fflush(stdout);
 			#pragma omp parallel for private(v_c, v_r, v_theta, v_z, v2a_r, v2a_theta, v2_theta, va_theta, sigma_theta, vel_x, vel_y, vel_z) shared(j,gal)
@@ -1236,6 +1240,14 @@ int set_galaxy_velocity(galaxy *gal) {
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
 				gal->vel_z[i] += galaxy_turbulence_func(gal,gal->x[i],gal->y[i],gal->z[i]);
 			}
+			// Deallocate the turbulence grid to be really nice to the memory.
+			for (i = 0; i < gal->ngrid_turb_padded; i++){
+				for (j = 0; j < gal->ngrid_turb_padded; j++){
+					free(gal->turbulence[i][j]);
+				}
+				free(gal->turbulence[i]);
+			}
+			free(gal->turbulence);
 		}
     }
     
@@ -1498,78 +1510,27 @@ int create_galaxy_system(galaxy *gal_1, galaxy *gal_2, galaxy *gal_3) {
 	if(allocate_component_arrays(gal_3)!=0) {
 		fprintf(stderr,"Allocation of component arrays failed\n");
 	}
-	
+
 	// Create the galaxy system first!
 	j=0;
-	for(k=0;k<AllVars.MaxCompNumber;k++) {
-		if(gal_1->comp_npart[k]>0) {
-			gal_3->comp_npart[j]				= gal_1->comp_npart[k];
-			gal_3->comp_npart_pot[j]			= gal_1->comp_npart_pot[k];
-			gal_3->comp_start_part[j]			= gal_1->comp_start_part[k];
-			gal_3->comp_mass_frac[j]			= gal_1->comp_mass_frac[k];
-			gal_3->comp_mass[j] 				= gal_1->comp_mass[k];
-			gal_3->comp_model[j]				= gal_1->comp_model[k];
-			gal_3->comp_cutted_mass[j]			= gal_1->comp_cutted_mass[k];
-			gal_3->comp_scale_length[j]			= gal_1->comp_scale_length[k];
-			gal_3->comp_concentration[j]		= gal_1->comp_concentration[k];
-			gal_3->comp_scale_height[j] 		= gal_1->comp_scale_height[k];
-			gal_3->comp_cut[j]             		= gal_1->comp_cut[k];
-			gal_3->comp_flat[j]					= gal_1->comp_flat[k];
-			gal_3->comp_mcmc_step[j]			= gal_1->comp_mcmc_step[k];
-			gal_3->comp_mcmc_step_hydro[j]		= gal_1->comp_mcmc_step_hydro[k];
-			gal_3->comp_vmax[j] 				= gal_1->comp_vmax[k];
-			gal_3->comp_type[j] 				= gal_1->comp_type[k];
-			gal_3->comp_bool[j] 				= gal_1->comp_bool[k];
-			gal_3->comp_streaming_fraction[j] 	= gal_1->comp_streaming_fraction[k];
-			gal_3->comp_cut_dens[j]				= gal_1->comp_cut_dens[k];
-			gal_3->comp_theta_sph[j]			= gal_1->comp_theta_sph[k];
-			gal_3->comp_phi_sph[j]				= gal_1->comp_phi_sph[k];
-			gal_3->comp_metal[j]				= gal_1->comp_metal[k];
-			gal_3->comp_t_init[j]				= gal_1->comp_t_init[k];
-			gal_3->comp_u_init[j]				= gal_1->comp_u_init[k];
-			gal_3->comp_cs_init[j]				= gal_1->comp_cs_init[k];
-			gal_3->comp_mean_age[j]				= gal_1->comp_mean_age[k];
-			gal_3->comp_min_age[j]				= gal_1->comp_min_age[k];
-			gal_3->comp_alpha[j]				= gal_1->comp_alpha[k];
-			gal_3->comp_disp_ext[j]				= gal_1->comp_disp_ext[k];
-			j++;
-		}
-	}
 	for(k=0;k<AllVars.MaxCompNumber;k++) {
 		if(gal_2->comp_npart[k]>0) {
 			gal_3->comp_npart[j]				= gal_2->comp_npart[k];
 			gal_3->comp_npart_pot[j]			= gal_2->comp_npart_pot[k];
-			gal_3->comp_start_part[j]			= gal_1->ntot_part_pot+gal_2->comp_start_part[k];
-			gal_3->comp_mass_frac[j]			= gal_2->comp_mass_frac[k];
-			gal_3->comp_mass[j] 				= gal_2->comp_mass[k];
-			gal_3->comp_model[j]				= gal_2->comp_model[k];
-			gal_3->comp_cutted_mass[j]			= gal_2->comp_cutted_mass[k];
-			gal_3->comp_scale_length[j]			= gal_2->comp_scale_length[k];
-			gal_3->comp_concentration[j]		= gal_2->comp_concentration[k];
-			gal_3->comp_scale_height[j] 		= gal_2->comp_scale_height[k];
-			gal_3->comp_cut[j]             		= gal_2->comp_cut[k];
-			gal_3->comp_flat[j]					= gal_2->comp_flat[k];
-			gal_3->comp_mcmc_step[j]			= gal_2->comp_mcmc_step[k];
-			gal_3->comp_mcmc_step_hydro[j]		= gal_2->comp_mcmc_step_hydro[k];
-			gal_3->comp_vmax[j] 				= gal_2->comp_vmax[k];
-			gal_3->comp_type[j] 				= gal_2->comp_type[k];
-			gal_3->comp_bool[j] 				= gal_2->comp_bool[k];
-			gal_3->comp_streaming_fraction[j] 	= gal_2->comp_streaming_fraction[k];
-			gal_3->comp_cut_dens[j]				= gal_2->comp_cut_dens[k];
-			gal_3->comp_theta_sph[j]			= gal_2->comp_theta_sph[k];
-			gal_3->comp_phi_sph[j]				= gal_2->comp_phi_sph[k];
-			gal_3->comp_metal[j]				= gal_2->comp_metal[k];
-			gal_3->comp_t_init[j]				= gal_2->comp_t_init[k];
-			gal_3->comp_u_init[j]				= gal_2->comp_u_init[k];
-			gal_3->comp_cs_init[j]				= gal_2->comp_cs_init[k];
-			gal_3->comp_mean_age[j]				= gal_2->comp_mean_age[k];
-			gal_3->comp_min_age[j]				= gal_2->comp_min_age[k];
-			gal_3->comp_alpha[j]				= gal_2->comp_alpha[j];
-			gal_3->comp_disp_ext[j]				= gal_2->comp_disp_ext[j];
+			gal_3->comp_start_part[j]			= gal_2->comp_start_part[k];
+			gal_3->comp_type[j]					= gal_2->comp_type[k];
 			j++;
 		}
 	}
-	
+	for(k=0;k<AllVars.MaxCompNumber;k++) {
+		if(gal_1->comp_npart[k]>0) {
+			gal_3->comp_npart[j]				= gal_1->comp_npart[k];
+			gal_3->comp_npart_pot[j]			= gal_1->comp_npart_pot[k];
+			gal_3->comp_start_part[j]			= gal_2->ntot_part_pot+gal_1->comp_start_part[k];
+			gal_3->comp_type[j]					= gal_1->comp_type[k];
+			j++;
+		}
+	}	
     gal_3->ntot_part 		= gal_1->ntot_part+gal_2->ntot_part;
     gal_3->ntot_part_stars 	= gal_1->ntot_part_stars+gal_2->ntot_part_stars;
     gal_3->num_part[0] 		= gal_1->num_part[0]+gal_2->num_part[0];
@@ -1589,9 +1550,24 @@ int create_galaxy_system(galaxy *gal_1, galaxy *gal_2, galaxy *gal_3) {
 
     // Turn off the galaxy potential.
     gal_3->potential_defined = 0;
-		
+
     // Copy all of the galaxy information.
 	a = 0;
+    for (i = 0; i < gal_2->ntot_part_pot; ++i) {
+        gal_3->mass[a] 		= gal_2->mass[i];
+	    gal_3->id[a] 		= a;
+	    gal_3->x[a] 		= gal_2->x[i];
+	    gal_3->y[a] 		= gal_2->y[i];
+	    gal_3->z[a] 		= gal_2->z[i];
+	    gal_3->vel_x[a] 	= gal_2->vel_x[i];
+   	    gal_3->vel_y[a] 	= gal_2->vel_y[i];
+   	    gal_3->vel_z[a] 	= gal_2->vel_z[i];
+   	    gal_3->u[a]			= gal_2->u[i];
+	    gal_3->rho[a]		= gal_2->rho[i];
+	    gal_3->metal[a]		= gal_2->metal[i];
+	    gal_3->age[a]		= gal_2->age[i];
+		a++;
+   	}
     for (i = 0; i < gal_1->ntot_part_pot; ++i) {
         gal_3->mass[a] 		= gal_1->mass[i];
         gal_3->id[a] 		= a;
@@ -1607,21 +1583,6 @@ int create_galaxy_system(galaxy *gal_1, galaxy *gal_2, galaxy *gal_3) {
 	    gal_3->age[a]		= gal_1->age[i];
 		a++;
     }
-    for (i = 0; i < gal_2->ntot_part_pot; ++i) {
-        gal_3->mass[a] 		= gal_2->mass[i];
-	    gal_3->id[a] 		= a;
-	    gal_3->x[a] 		= gal_2->x[i];
-	    gal_3->y[a] 		= gal_2->y[i];
-	    gal_3->z[a] 		= gal_2->z[i];
-	    gal_3->vel_x[a] 	= gal_2->vel_x[i];
-   	    gal_3->vel_y[a] 	= gal_2->vel_y[i];
-   	    gal_3->vel_z[a] 	= gal_2->vel_z[i];
-   	    gal_3->u[a]			= gal_1->u[i];
-	    gal_3->rho[a]		= gal_1->rho[i];
-	    gal_3->metal[a]		= gal_1->metal[i];
-	    gal_3->age[a]		= gal_1->age[i];
-		a++;
-   	}
     return 0;
 }
 
@@ -1651,32 +1612,7 @@ int add_stream_to_system(stream *st_1, galaxy *gal_2, galaxy *gal_3) {
 			gal_3->comp_npart[j]				= gal_2->comp_npart[k];
 			gal_3->comp_npart_pot[j]			= gal_2->comp_npart_pot[k];
 			gal_3->comp_start_part[j]			= gal_2->comp_start_part[k];
-			gal_3->comp_mass_frac[j]			= gal_2->comp_mass_frac[k];
-			gal_3->comp_mass[j] 				= gal_2->comp_mass[k];
-			gal_3->comp_model[j]				= gal_2->comp_model[k];
-			gal_3->comp_cutted_mass[j]			= gal_2->comp_cutted_mass[k];
-			gal_3->comp_scale_length[j]			= gal_2->comp_scale_length[k];
-			gal_3->comp_concentration[j]		= gal_2->comp_concentration[k];
-			gal_3->comp_scale_height[j] 		= gal_2->comp_scale_height[k];
-			gal_3->comp_cut[j]             		= gal_2->comp_cut[k];
-			gal_3->comp_flat[j]					= gal_2->comp_flat[k];
-			gal_3->comp_mcmc_step[j]			= gal_2->comp_mcmc_step[k];
-			gal_3->comp_mcmc_step_hydro[j]		= gal_2->comp_mcmc_step_hydro[k];
-			gal_3->comp_vmax[j] 				= gal_2->comp_vmax[k];
-			gal_3->comp_type[j] 				= gal_2->comp_type[k];
-			gal_3->comp_bool[j] 				= gal_2->comp_bool[k];
-			gal_3->comp_streaming_fraction[j] 	= gal_2->comp_streaming_fraction[k];
-			gal_3->comp_cut_dens[j]				= gal_2->comp_cut_dens[k];
-			gal_3->comp_theta_sph[j]			= gal_2->comp_theta_sph[k];
-			gal_3->comp_phi_sph[j]				= gal_2->comp_phi_sph[k];
-			gal_3->comp_metal[j]				= gal_2->comp_metal[k];
-			gal_3->comp_t_init[j]				= gal_2->comp_t_init[k];
-			gal_3->comp_u_init[j]				= gal_2->comp_u_init[k];
-			gal_3->comp_cs_init[j]				= gal_2->comp_cs_init[k];
-			gal_3->comp_mean_age[j]				= gal_2->comp_mean_age[k];
-			gal_3->comp_min_age[j]				= gal_2->comp_min_age[k];
-			gal_3->comp_alpha[j]				= gal_2->comp_alpha[k];
-			gal_3->comp_disp_ext[j]				= gal_2->comp_disp_ext[k];
+			gal_3->comp_type[j]					= gal_2->comp_type[j];
 			j++;
 		}
 	}
@@ -1818,40 +1754,15 @@ int copy_galaxy(galaxy *gal_1, galaxy *gal_2, int info) {
 		gal_2->comp_npart[j]				= gal_1->comp_npart[j];
 		gal_2->comp_npart_pot[j]			= gal_1->comp_npart_pot[j];
 		gal_2->comp_start_part[j]			= gal_1->comp_start_part[j];
-		gal_2->comp_mass_frac[j]			= gal_1->comp_mass_frac[j];
-		gal_2->comp_mass[j] 				= gal_1->comp_mass[j];
-		gal_2->comp_model[j]				= gal_1->comp_model[j];
-		gal_2->comp_cutted_mass[j]			= gal_1->comp_cutted_mass[j];
-		gal_2->comp_scale_length[j]			= gal_1->comp_scale_length[j];
-		gal_2->comp_concentration[j]		= gal_1->comp_concentration[j];
-		gal_2->comp_scale_height[j] 		= gal_1->comp_scale_height[j];
-		gal_2->comp_cut[j]             		= gal_1->comp_cut[j];
-		gal_2->comp_flat[j]					= gal_1->comp_flat[j];
-		gal_2->comp_mcmc_step[j]			= gal_1->comp_mcmc_step[j];
-		gal_2->comp_mcmc_step_hydro[j]		= gal_1->comp_mcmc_step_hydro[j];
-		gal_2->comp_vmax[j] 				= gal_1->comp_vmax[j];
-		gal_2->comp_type[j] 				= gal_1->comp_type[j];
-		gal_2->comp_bool[j] 				= gal_1->comp_bool[j];
-		gal_2->comp_streaming_fraction[j] 	= gal_1->comp_streaming_fraction[j];
-		gal_2->comp_cut_dens[j]				= gal_1->comp_cut_dens[j];
-		gal_2->comp_theta_sph[j]			= gal_1->comp_theta_sph[j];
-		gal_2->comp_phi_sph[j]				= gal_1->comp_phi_sph[j];
-		gal_2->comp_metal[j]				= gal_1->comp_metal[j];
-		gal_2->comp_t_init[j]				= gal_1->comp_t_init[j];
-		gal_2->comp_u_init[j]				= gal_1->comp_u_init[j];
-		gal_2->comp_cs_init[j]				= gal_1->comp_cs_init[j];
-		gal_2->comp_mean_age[j]				= gal_1->comp_mean_age[j];
-		gal_2->comp_min_age[j]				= gal_1->comp_min_age[j];
-		gal_2->comp_alpha[j]				= gal_1->comp_alpha[j];
-		gal_2->comp_disp_ext[j]				= gal_1->comp_disp_ext[j];
+		gal_2->comp_type[j]					= gal_1->comp_type[j];
 	}
-	
+
 	if(allocate_variable_arrays(gal_2)!=0) {
 		fprintf(stderr,"Allocation of component arrays failed\n");
 	}	
     
 	gal_2->potential_defined = 0;
-	
+		
     // Copy all the coordinate information.
     for (i = 0; i < gal_1->ntot_part_pot; ++i) {
 		gal_2->x[i] 	= gal_1->x[i];

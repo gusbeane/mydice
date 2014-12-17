@@ -318,7 +318,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	25*AllVars.MaxCompNumber+18
+	#define MAXTAGS	26*AllVars.MaxCompNumber+19
 	
 	FILE *fd;
 	int i,j,n;
@@ -358,6 +358,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	addr[nt] = &gal->v200;
 	read[nt] = 0;
 	mandatory[nt] = 1;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "m200");
+	gal->m200 = 0.;
+	addr[nt] = &gal->m200;
+	read[nt] = 0;
+	mandatory[nt] = 0;
 	id[nt++] = DOUBLE;
 	
 	strcpy(tag[nt], "redshift");
@@ -667,6 +674,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"compute_vel%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_compute_vel[j] = 1;
+		addr[nt] = &gal->comp_compute_vel[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = INT;
 	}
 	
 	printf("/////\n///// Reading galaxy params file: %s\n",fname);
@@ -1117,25 +1132,23 @@ int write_gadget_ics(galaxy *gal, char *fname) {
 	// position_data structure.
 	j = 1;
 	//We need to transfer in the order of particle type as defined in GADGET2. 0->Gas 1->Disk 2->Halo etc.
-	while(j < gal->ntot_part) {
-		for (ptype=0; ptype<10; ptype++) {
-			for (k=0;k<AllVars.MaxCompNumber;k++) {
-				if(gal->comp_type[k]==ptype) {
-					for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k] + gal->comp_npart[k]; ++i) {
-						P[j].Pos[0] = gal->x[i];
-						P[j].Pos[1] = gal->y[i];
-						P[j].Pos[2] = gal->z[i];
-						P[j].Vel[0] = gal->vel_x[i];
-						P[j].Vel[1] = gal->vel_y[i];
-						P[j].Vel[2] = gal->vel_z[i];
-						P[j].U 		= gal->u[i];
-						P[j].Rho 	= gal->rho[i];
-						P[j].Mass 	= gal->mass[i];
-						P[j].Type 	= gal->comp_type[k];
-						P[j].Metal  = gal->metal[i];
-						P[j].Age	= gal->age[i];
-						++j;
-					}
+	for (ptype=0; ptype<10; ptype++) {
+		for (k=0;k<AllVars.MaxCompNumber;k++) {
+			if(gal->comp_type[k]==ptype&&gal->comp_npart[k]>0) {
+				for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k] + gal->comp_npart[k]; ++i) {
+					P[j].Pos[0] = gal->x[i];
+					P[j].Pos[1] = gal->y[i];
+					P[j].Pos[2] = gal->z[i];
+					P[j].Vel[0] = gal->vel_x[i];
+					P[j].Vel[1] = gal->vel_y[i];
+					P[j].Vel[2] = gal->vel_z[i];
+					P[j].U 		= gal->u[i];
+					P[j].Rho 	= gal->rho[i];
+					P[j].Mass 	= gal->mass[i];
+					P[j].Type 	= gal->comp_type[k];
+					P[j].Metal  = gal->metal[i];
+					P[j].Age	= gal->age[i];
+					++j;
 				}
 			}
 		}

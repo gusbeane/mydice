@@ -455,7 +455,6 @@ double surface_density_func(galaxy *gal, double r, double theta, int cut, int co
 	
 	int status,tid;
 	double surface_density,error,h;
-	double flat;
 	
 	gsl_integration_workspace *w = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
 	gsl_function F;
@@ -474,9 +473,7 @@ double surface_density_func(galaxy *gal, double r, double theta, int cut, int co
 	gal->storage[2][tid] 	= cut;
 	
 	gal->selected_comp[tid] = component; 
-	cut 					= gal->comp_cut[component];
-	flat 					= gal->comp_flat[component];
-	gsl_integration_qag(&F,-cut*flat,cut*flat,epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&surface_density,&error);
+	gsl_integration_qag(&F,-gal->comp_cut[component]*gal->comp_flat[component],gal->comp_cut[component]*gal->comp_flat[component],epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&surface_density,&error);
     
 	gsl_integration_workspace_free(w);
 	return surface_density;

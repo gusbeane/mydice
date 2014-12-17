@@ -148,6 +148,7 @@ typedef struct {
 	double				*comp_radius_nfw;
 	double 				*comp_Q_lim;
 	double				*comp_Q_min;
+	int					*comp_compute_vel;
 	// Virial quantities
 	double v200;
 	double r200;
