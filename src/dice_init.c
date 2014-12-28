@@ -199,6 +199,14 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"Unable to allocate particle comp_compute_vel array.\n");
 		return -1;
 	}
+	if (!(gal->comp_hydro_eq=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+		fprintf(stderr,"Unable to allocate particle comp_hydro_eq array.\n");
+		return -1;
+	}
+	if (!(gal->comp_hydro_eq_niter=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+		fprintf(stderr,"Unable to allocate particle comp_hydro_eq_niter array.\n");
+		return -1;
+	}
 	return 0;
 }
 
@@ -648,6 +656,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	// Initialisations
 	gal->ntot_part 			= (unsigned long int)0;
 	gal->ntot_part_pot		= (unsigned long int)0;
+	gal->ntot_part_stars 	= (unsigned long int)0;
 	gal->comp_start_part[0] = (unsigned long int)0;
 	gal->total_mass 		= 0.;
 	max_gas_radius			= 0.0;
@@ -800,7 +809,12 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t-BD ratio:\t\t%10.3lf\n",BD_fraction);
 		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t-BT ratio:\t\t%10.3lf\n",BT_fraction);
 		printf("/////\t-Potential PM-grid dimension: \t\t[%d,%d,%d] \n",gal->ngrid,gal->ngrid,gal->ngrid);
-		if(AllVars.GasHydrostaticEq) printf("/////\t-Midplane density grid dimension: \t[%d,%d] \n",gal->ngrid_dens,gal->ngrid_dens);
+		for(i=0;i<AllVars.MaxCompNumber;i++) {
+			if(gal->comp_hydro_eq[i]) {
+				printf("/////\t-Midplane density grid dimension: \t[%d,%d] \n",gal->ngrid_dens,gal->ngrid_dens);
+				break;
+			}
+		}
 	}
 	fflush(stdout);
 	
@@ -867,6 +881,8 @@ int create_stream(stream *st, char *fname, int info) {
 
 	allocate_stream_storage_variable(st,10);
 
+	st->ngrid_turb 			= pow(2,st->level_grid_turb);
+	st->ngrid_turb_padded 	= 2*st->ngrid_turb;
 	st->ntot_part 			= (unsigned long int)0;
 	st->comp_start_part[0] 	= (unsigned long int)0;
 	st->total_mass			= 0.;
@@ -992,10 +1008,12 @@ int set_galaxy_coords(galaxy *gal) {
 		}
 	}
 	
-	if (AllVars.GasHydrostaticEq) {
-		if ((i = set_hydro_equilibrium(gal,AllVars.GasHydrostaticEqIter)) != 0) {
-			fprintf(stderr,"Unable to compute azimuthal profile to reach hydro equilibrium. Aborting.\n");
-			exit(0);
+	for(i=0; i<AllVars.MaxCompNumber; i++) {
+		if((gal->comp_hydro_eq[i]==1)&&(gal->comp_npart[i]>0)) {
+			if(set_hydro_equilibrium(gal,i,gal->comp_hydro_eq_niter[i]) != 0) {
+				fprintf(stderr,"Unable to compute azimuthal profile to reach hydro equilibrium. Aborting.\n");
+				exit(0);
+			}
 		}
 	}
 	// Be nice to the memory
@@ -1014,7 +1032,7 @@ int set_stream_coords(stream *st) {
 
 	for(i=0; i<AllVars.MaxCompNumber; i++) {
 		if(st->comp_npart[i]>0) {
-			printf("/////\t\t-Setting component %d coordinates [%s profile]\n",i+1,st->comp_profile_name[i]);
+			printf("/////\t\t-Setting component %d coordinates [%s profile]",i+1,st->comp_profile_name[i]);
 			fflush(stdout);
 			mcmc_metropolis_hasting_stream(st,i,st->comp_model[i]);
 			rotate_stream(st,st->comp_theta_sph[i],st->comp_phi_sph[i],i);
@@ -1070,7 +1088,7 @@ int set_galaxy_velocity(galaxy *gal) {
 
 				// Specific case of gas particles
 				if(gal->comp_type[j]==0) {
-					if(AllVars.GasHydrostaticEq) gal->pseudo[tid] = 1; 
+					if(gal->comp_hydro_eq[j]==1) gal->pseudo[tid] = 1; 
 					v2_theta = v2_theta_gas_func(gal,gal->r_cyl[i],gal->z[i],j);
 
 					// No velocity dispersion is needed because we are dealing with a fluid
@@ -1209,24 +1227,6 @@ int set_galaxy_velocity(galaxy *gal) {
     		gal->space_turb[1] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_turb);
     		gal->space_turb[2] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_turb);
 
-			if (!(gal->turbulence=calloc(gal->ngrid_turb_padded,sizeof(double *)))) {
-				fprintf(stderr,"Unable to create turbulence x axis.\n");
-				return -1;
-			}
-			for (i = 0; i < gal->ngrid_turb_padded; ++i) {
-				// y-axis
-				if (!(gal->turbulence[i] = calloc(gal->ngrid_turb_padded,sizeof(double *)))) {
-					fprintf(stderr,"Unable to create turbulence y axis.\n");
-					return -1;
-				}
-				// z-axis
-				for (j = 0; j < gal->ngrid_turb_padded; ++j) {
-					if (!(gal->turbulence[i][j] = calloc(gal->ngrid_turb_padded,sizeof(double)))) {
-						fprintf(stderr,"Unable to create turbulence z axis.\n");
-						return -1;
-					}
-				}
-			}
 			printf("/////\t\t-Setting component %d turbulence [sigma=%.2lf km/s][scale=%.2lf kpc]\n",k,gal->comp_turb_sigma[k],gal->comp_turb_scale[k]);
     		set_turbulent_grid(gal,k);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
@@ -1294,7 +1294,60 @@ int set_stream_velocity(stream *st) {
 			}
 		}
 	}
-	// Be nice to memory
+
+	printf("/////\tSetting gas turbulent velocities\n");
+    // Loop over components
+	for(k=0; k<AllVars.MaxCompNumber; k++) {
+    	if(st->comp_turb_sigma[k]>0.) {
+    	
+    		if (!(st->turbulence=calloc(st->ngrid_turb_padded,sizeof(double *)))) {
+				fprintf(stderr,"Unable to create turbulence x axis.\n");
+				return -1;
+			}
+    
+			for (i = 0; i < st->ngrid_turb_padded; ++i) {
+				// y-axis
+				if (!(st->turbulence[i] = calloc(st->ngrid_turb_padded,sizeof(double *)))) {
+					fprintf(stderr,"Unable to create turbulence y axis.\n");
+					return -1;
+				}
+				// z-axis
+				for (j = 0; j < st->ngrid_turb_padded; ++j) {
+					if (!(st->turbulence[i][j] = calloc(st->ngrid_turb_padded,sizeof(double)))) {
+						fprintf(stderr,"Unable to create turbulence z axis.\n");
+						return -1;
+					}
+				}
+			}
+    	
+    		st->space_turb[0] 	= 2.1*st->comp_length[k]/((double)st->ngrid_turb);
+    		st->space_turb[1] 	= 2.1*st->comp_length[k]/((double)st->ngrid_turb);
+    		st->space_turb[2] 	= 2.1*st->comp_length[k]/((double)st->ngrid_turb);
+
+			printf("/////\t\t-Setting component %d turbulence [sigma=%.2lf km/s][scale=%.2lf kpc]\n",k,st->comp_turb_sigma[k],st->comp_turb_scale[k]);
+    		set_turbulent_grid_stream(st,k);
+			for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
+				st->vel_x[i] += stream_turbulence_func(st,st->x[i],st->y[i],st->z[i]);
+			}
+			set_turbulent_grid_stream(st,k);
+			for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
+				st->vel_y[i] += stream_turbulence_func(st,st->x[i],st->y[i],st->z[i]);
+			}
+			set_turbulent_grid_stream(st,k);
+			for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
+				st->vel_z[i] += stream_turbulence_func(st,st->x[i],st->y[i],st->z[i]);
+			}
+			// Deallocate the turbulence grid to be really nice to the memory.
+			for (i = 0; i < st->ngrid_turb_padded; i++){
+				for (j = 0; j < st->ngrid_turb_padded; j++){
+					free(st->turbulence[i][j]);
+				}
+				free(st->turbulence[i]);
+			}
+			free(st->turbulence);
+		}
+    }
+
 	return 0;
 }
 

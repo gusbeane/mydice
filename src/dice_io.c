@@ -181,20 +181,6 @@ int parse_config_file(char *fname) {
 	mandatory[nt] = 0;
 	id[nt++] = INT;
 	
-	strcpy(tag[nt], "GasHydrostaticEq");
-	AllVars.GasHydrostaticEq = 0;
-	addr[nt] = &AllVars.GasHydrostaticEq;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = INT;
-	
-	strcpy(tag[nt], "GasHydrostaticEqIter");
-	AllVars.GasHydrostaticEqIter = 10;
-	addr[nt] = &AllVars.GasHydrostaticEqIter;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = INT;
-	
 	strcpy(tag[nt], "MeanPartDist");
 	addr[nt] = &AllVars.MeanPartDist;
 	read[nt] = 0;
@@ -226,6 +212,13 @@ int parse_config_file(char *fname) {
 	addr[nt] = &AllVars.Filename;
 	read[nt] = 0;
 	mandatory[nt] = 1;
+	id[nt++] = STRING;
+	
+	strcpy(tag[nt], "ICformat");
+	addr[nt] = &AllVars.ICformat;
+	strcpy(AllVars.ICformat,"Gadget2");
+	read[nt] = 0;
+	mandatory[nt] = 0;
 	id[nt++] = STRING;
 	
 	// Default values for cosmological parameters is Planck cosmology
@@ -318,7 +311,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	26*AllVars.MaxCompNumber+19
+	#define MAXTAGS	28*AllVars.MaxCompNumber+19
 	
 	FILE *fd;
 	int i,j,n;
@@ -682,6 +675,22 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = INT;
+		
+		n = sprintf(temp_tag,"hydro_eq%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_hydro_eq[j] = 0;
+		addr[nt] = &gal->comp_hydro_eq[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = INT;
+		
+		n = sprintf(temp_tag,"hydro_eq_niter%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_hydro_eq_niter[j] = 6;
+		addr[nt] = &gal->comp_hydro_eq_niter[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = INT;
 	}
 	
 	printf("/////\n///// Reading galaxy params file: %s\n",fname);
@@ -908,6 +917,13 @@ int parse_stream_file(stream *st, char *fname) {
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
 	}
+	
+	strcpy(tag[nt], "level_grid_turb");
+	addr[nt] = &st->level_grid_turb;
+	st->level_grid_turb=7;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
 
 	strcpy(tag[nt], "seed");
 	st->seed = time(NULL);
@@ -1058,14 +1074,11 @@ void write_galaxy_velocity_halo(galaxy *gal) {
 	return;
 }
 
-
-
-
 // Function to write initial conditions to file in default Gadget2 format.
 // The code was originally an input routine, read_snapshot.c, provided by
 // Volker Springel with the Gadget2 source code. It has been hacked into a
 // write routine.
-int write_gadget_ics(galaxy *gal, char *fname) {
+int write_gadget1_ics(galaxy *gal, char *fname) {
     
 	FILE *fp1, *fp2;
 	int dummy, ntot_withmasses, NumPart, ptype;
@@ -1251,6 +1264,287 @@ int write_gadget_ics(galaxy *gal, char *fname) {
 		// Age for star particles
 		if(gal->ntot_part_stars>0){
 			dummy = sizeof(int)*(gal->ntot_part_stars);
+			SKIP2;
+			for(k=2,pc_new=header1.npart[0]+header1.npart[1]+1;k<6;k++) {
+				for(n=0;n<header1.npart[k];n++){
+					fwrite(&P[pc_new].Age, sizeof(float), 1, fp1);
+					pc_new++;
+				}
+			}
+			SKIP2;
+		}
+	}
+    P++;
+	free(P);
+	fclose(fp1);
+	return 0;
+}
+
+// Function to write initial conditions to file in default Gadget2 format.
+// The code was originally an input routine, read_snapshot.c, provided by
+// Volker Springel with the Gadget2 source code. It has been hacked into a
+// write routine.
+int write_gadget2_ics(galaxy *gal, char *fname) {
+    
+	FILE *fp1, *fp2;
+	int dummy, nextblock, bytes_per_blockelement, ntot_withmasses, NumPart, ptype;
+	unsigned long int i, j, k;
+	int t,n,off,pc,pc_new,pc_sph;
+	int files = 1;
+	int *Ids;
+	char buf[200];
+#define SKIP2 fwrite(&dummy, sizeof(dummy), 1, fp1);
+    
+	
+	// Set everything to zero and overwrite it later if needed.
+	header1.npart[0] = 0;
+	header1.npart[1] = 0;
+	header1.npart[2] = 0;
+	header1.npart[3] = 0;
+	header1.npart[4] = 0;
+	header1.npart[5] = 0;
+	header1.npartTotal[0] = 0;
+	header1.npartTotal[1] = 0;
+	header1.npartTotal[2] = 0;
+	header1.npartTotal[3] = 0;
+	header1.npartTotal[4] = 0;
+	header1.npartTotal[5] = 0;
+	header1.mass[0] = 0.0;
+	header1.mass[1] = 0.0;
+	header1.mass[2] = 0.0;
+	header1.mass[3] = 0.0;
+	header1.mass[4] = 0.0;
+	header1.mass[5] = 0.0;
+    
+	// Set the header values to some defaults.
+	header1.npart[0] = gal->num_part[0];
+	header1.npart[1] = gal->num_part[1];
+	header1.npart[2] = gal->num_part[2];
+	header1.npart[3] = gal->num_part[3];
+	header1.npartTotal[0] = gal->num_part[0];
+	header1.npartTotal[1] = gal->num_part[1];
+	header1.npartTotal[2] = gal->num_part[2];
+	header1.npartTotal[3] = gal->num_part[3];
+	header1.time = 0.0;
+	header1.redshift = 0.0;
+	header1.flag_sfr = 0.0;
+	header1.flag_feedback = 0.0;
+	header1.flag_cooling = 0.0;
+	header1.num_files = 1;
+	header1.BoxSize = 0.0;
+	header1.Omega0 = 0.0;
+	header1.OmegaLambda = 0.0;
+	header1.HubbleParam = 1.0;
+  	
+	if (!(Ids=malloc(gal->ntot_part*sizeof(int)))) {
+		fprintf(stderr,"Unable to create particle Ids structure in memory.");
+		exit(0);
+	}
+    
+	if (!(P=malloc(gal->ntot_part*sizeof(struct particle_data)))) {
+		fprintf(stderr,"Unable to create particle data structure in memory.");
+		exit(0);
+	}
+	P--;
+    
+	// Transfer the particle data from the DICE galaxy data structure to the Gadget
+	// position_data structure.
+	j = 1;
+	//We need to transfer in the order of particle type as defined in GADGET2. 0->Gas 1->Disk 2->Halo etc.
+	for (ptype=0; ptype<10; ptype++) {
+		for (k=0;k<AllVars.MaxCompNumber;k++) {
+			if(gal->comp_type[k]==ptype&&gal->comp_npart[k]>0) {
+				for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k] + gal->comp_npart[k]; ++i) {
+					P[j].Pos[0] = gal->x[i];
+					P[j].Pos[1] = gal->y[i];
+					P[j].Pos[2] = gal->z[i];
+					P[j].Vel[0] = gal->vel_x[i];
+					P[j].Vel[1] = gal->vel_y[i];
+					P[j].Vel[2] = gal->vel_z[i];
+					P[j].U 		= gal->u[i];
+					P[j].Rho 	= gal->rho[i];
+					P[j].Mass 	= gal->mass[i];
+					P[j].Type 	= gal->comp_type[k];
+					P[j].Metal  = gal->metal[i];
+					P[j].Age	= gal->age[i];
+					++j;
+				}
+			}
+		}
+	}
+    
+	for(i=0, pc=1; i<files; i++, pc=pc_new){
+		if(files>1) sprintf(buf,"%s.g2.%d",fname,(int)i);
+		else sprintf(buf,"%s.g2",fname);
+        
+		if(!(fp1=fopen(buf,"w"))){
+			fprintf(stderr,"can't open file `%s`\n",buf);
+			exit(0);
+		}
+        
+		fflush(stdout);
+		
+		dummy = sizeof(int) + 4 * sizeof(char);
+	    SKIP2;
+	    fwrite("HEAD", sizeof(char), 4, fp1);
+	    nextblock = sizeof(header1) + 2 * sizeof(int);
+	    fwrite(&nextblock, sizeof(int), 1, fp1);
+	    SKIP2;
+        // Header
+		dummy = sizeof(header1);
+		SKIP2;
+		fwrite(&header1, sizeof(header1), 1, fp1);
+		SKIP2;
+        
+		for(k=0, ntot_withmasses=0; k<6; k++){
+			if(header1.mass[k]==0) ntot_withmasses+= header1.npart[k];
+		}
+
+		// Positions        
+		dummy = sizeof(int) + 4 * sizeof(char);
+		SKIP2;
+		fwrite("POS ", sizeof(char), 4, fp1);
+		bytes_per_blockelement = 3 * sizeof(float);
+		nextblock = gal->ntot_part * bytes_per_blockelement + 2 * sizeof(int);
+		fwrite(&nextblock, sizeof(int), 1, fp1);
+		SKIP2;
+		
+		dummy = 3*sizeof(float)*gal->ntot_part;
+		SKIP2;
+		for(k=0,pc_new=pc;k<6;k++) {
+			for(n=0;n<header1.npart[k];n++){
+				fwrite(&P[pc_new].Pos[0], sizeof(float), 3, fp1);
+				pc_new++;
+			}
+		}
+		SKIP2;
+
+		// Velocities
+		dummy = sizeof(int) + 4 * sizeof(char);
+		SKIP2;
+		fwrite("VEL ", sizeof(char), 4, fp1);
+		bytes_per_blockelement = 3 * sizeof(float);
+		nextblock = gal->ntot_part * bytes_per_blockelement + 2 * sizeof(int);
+		fwrite(&nextblock, sizeof(int), 1, fp1);
+		SKIP2;
+		
+		dummy = 3*sizeof(float)*gal->ntot_part;
+		SKIP2;
+		for(k=0,pc_new=pc;k<6;k++) {
+			for(n=0;n<header1.npart[k];n++){
+				fwrite(&P[pc_new].Vel[0], sizeof(float), 3, fp1);
+				pc_new++;
+			}
+		}
+		SKIP2;
+		
+        // Identifiers
+		dummy = sizeof(int) + 4 * sizeof(char);
+		SKIP2;
+		fwrite("ID  ", sizeof(char), 4, fp1);
+		bytes_per_blockelement = sizeof(int);
+		nextblock = gal->ntot_part * bytes_per_blockelement + 2 * sizeof(int);
+		fwrite(&nextblock, sizeof(int), 1, fp1);
+		SKIP2;
+		
+		dummy = sizeof(int)*gal->ntot_part;
+		SKIP2;
+		for(k=0,pc_new=pc;k<6;k++) {
+			for(n=0;n<header1.npart[k];n++){
+				Ids[pc_new] = pc_new;
+				fwrite(&Ids[pc_new], sizeof(int), 1, fp1);
+				pc_new++;
+			}
+		}
+		SKIP2;
+		
+		// Mass        
+		dummy = sizeof(int) + 4 * sizeof(char);
+		SKIP2;
+		fwrite("MASS", sizeof(char), 4, fp1);
+		bytes_per_blockelement = sizeof(float);
+		nextblock = gal->ntot_part * bytes_per_blockelement + 2 * sizeof(int);
+		fwrite(&nextblock, sizeof(int), 1, fp1);
+		SKIP2;
+		
+		dummy = sizeof(float)*gal->ntot_part;
+		SKIP2;
+		for(k=0, pc_new=pc; k<6; k++) {
+			for(n=0;n<header1.npart[k];n++) {
+				P[pc_new].Type=k;
+				fwrite(&P[pc_new].Mass, sizeof(float), 1, fp1);
+				pc_new++;
+			}
+		}
+		SKIP2;
+        
+        // Gas specific datablocks
+		if(header1.npart[0]>0) {
+			// Internal energy
+			dummy = sizeof(int) + 4 * sizeof(char);
+			SKIP2;
+			fwrite("U   ", sizeof(char), 4, fp1);
+			bytes_per_blockelement = sizeof(float);
+			nextblock = header1.npart[0] * bytes_per_blockelement + 2 * sizeof(int);
+			fwrite(&nextblock, sizeof(int), 1, fp1);
+			SKIP2;
+			
+			dummy = sizeof(float)*header1.npart[0];
+			SKIP2;
+			for(n=0, pc_sph=pc; n<header1.npart[0];n++) {
+				fwrite(&P[pc_sph].U, sizeof(float), 1, fp1);
+				pc_sph++;
+			}
+			SKIP2;
+			
+            // Density
+			dummy = sizeof(int) + 4 * sizeof(char);
+			SKIP2;
+			fwrite("RHO ", sizeof(char), 4, fp1);
+			bytes_per_blockelement = sizeof(float);
+			nextblock = header1.npart[0] * bytes_per_blockelement + 2 * sizeof(int);
+			fwrite(&nextblock, sizeof(int), 1, fp1);
+			SKIP2;
+			
+			dummy = sizeof(float)*header1.npart[0];
+			SKIP2;
+			for(n=0, pc_sph=pc; n<header1.npart[0];n++) {
+				fwrite(&P[pc_sph].Rho, sizeof(float), 1, fp1);
+				pc_sph++;
+			}
+			SKIP2;
+		}
+		
+		// Metallicity
+		dummy = sizeof(int) + 4 * sizeof(char);
+		SKIP2;
+		fwrite("Z   ", sizeof(char), 4, fp1);
+		bytes_per_blockelement = sizeof(float);
+		nextblock = gal->ntot_part * bytes_per_blockelement + 2 * sizeof(int);
+		fwrite(&nextblock, sizeof(int), 1, fp1);
+		SKIP2;		
+		
+		dummy = sizeof(float)*gal->ntot_part;
+		SKIP2;
+		for(k=0,pc_new=pc;k<6;k++) {
+			for(n=0;n<header1.npart[k];n++){
+				fwrite(&P[pc_new].Metal, sizeof(float), 1, fp1);
+				pc_new++;
+			}
+		}
+		SKIP2;
+		
+		// Age for star particles
+		if(gal->ntot_part_stars>0){
+			dummy = sizeof(int) + 4 * sizeof(char);
+			SKIP2;
+			fwrite("AGE ", sizeof(char), 4, fp1);
+			bytes_per_blockelement = sizeof(float);
+			nextblock = gal->ntot_part_stars * bytes_per_blockelement + 2 * sizeof(int);
+			fwrite(&nextblock, sizeof(int), 1, fp1);
+			SKIP2;	
+			
+			dummy = sizeof(float)*gal->ntot_part_stars;
 			SKIP2;
 			for(k=2,pc_new=header1.npart[0]+header1.npart[1]+1;k<6;k++) {
 				for(n=0;n<header1.npart[k];n++){

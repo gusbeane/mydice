@@ -40,11 +40,6 @@
 
 #include "dice.h"
 
-// Distribution function of the considered component
-double fdistrib(galaxy *gal, double radius, double theta, double z, int model, int component) {
-	//Density of the component times the integrand of spherical volume element
-	return (fabs(radius))*density_functions_pool(gal,fabs(radius),theta,z,1,model,component);
-}
 
 double density_functions_pool(galaxy *gal, double radius, double theta, double z, int cut, int model, int component) {
 	double h, z0, density, zpz0, m, alpha;
@@ -130,13 +125,6 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 	return density;
 }
 
-
-// Distribution function of the considered component
-double fdistrib_stream(stream *st, double radius, double theta, double z, int model, int component) {
-	//Density of the component times the integrand of spherical volume element
-	return (fabs(radius))*density_functions_stream_pool(st,radius,theta,z,model,component);
-}
-
 double density_functions_stream_pool(stream *st, double radius, double theta, double z, int model, int component) {
 	double alpha, h, rs, density;
 	// We consider only positive values
@@ -159,7 +147,7 @@ double density_functions_stream_pool(stream *st, double radius, double theta, do
 		case 2:
 			// Exponential profile density cone
 			if(strcmp(st->comp_profile_name[component],"")==0)
-			strcpy(st->comp_profile_name[component],"Exp profile cone");
+			strcpy(st->comp_profile_name[component],"Exp cone");
 			if(fabs(radius)<z*atan(alpha) && z>0 && z<h) {
 				density = exp(-fabs(radius)/rs)*st->comp_dens[component]/unit_nh;
 			} else {
@@ -204,8 +192,10 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 			prop_z 		= gal->z[i] + gsl_ran_gaussian(r[0],step_z);
 			// Computing the probability of the proposal
 			step_proposal = step;
-			pi_x = fdistrib(gal,gal->r_cyl[i],gal->theta_cyl[i],gal->z[i],density_model,component);
-			pi_y = fdistrib(gal,prop_r,prop_theta,prop_z,density_model,component);
+			// Distribution function of the considered component
+			// Density of the component times the integrand of spherical volume element
+			pi_x = fabs(gal->r_cyl[i])*density_functions_pool(gal,fabs(gal->r_cyl[i]),gal->theta_cyl[i],gal->z[i],1,density_model,component);
+			pi_y = fabs(prop_r)*density_functions_pool(gal,fabs(prop_r),prop_theta,prop_z,1,density_model,component);
 			q_x  = gsl_ran_gaussian_pdf(prop_r-gal->r_cyl[i],step_r)*gsl_ran_gaussian_pdf(prop_z-gal->z[i],step_z);
 			q_y  = gsl_ran_gaussian_pdf(gal->r_cyl[i]-prop_r,step_r)*gsl_ran_gaussian_pdf(gal->z[i]-prop_z,step_z);
 			prob = min(1.0,(pi_y/pi_x));//*(q_x/q_y));
@@ -234,8 +224,10 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 			prop_z 		= gal->z[i-1] + gsl_ran_gaussian(r[0],step_z);
 			// Computing the probability of the proposal
 			step_proposal = step;
-			pi_x = fdistrib(gal,gal->r_cyl[i-1],gal->theta_cyl[i-1],gal->z[i-1],density_model,component);
-			pi_y = fdistrib(gal,prop_r,prop_theta,prop_z,density_model,component);
+			// Distribution function of the considered component
+			// Density of the component times the integrand of spherical volume element
+			pi_x = fabs(gal->r_cyl[i-1])*density_functions_pool(gal,fabs(gal->r_cyl[i-1]),gal->theta_cyl[i-1],gal->z[i-1],1,density_model,component);
+			pi_y = fabs(prop_r)*density_functions_pool(gal,fabs(prop_r),prop_theta,prop_z,1,density_model,component);
 			q_x  = gsl_ran_gaussian_pdf(prop_r-gal->r_cyl[i-1],step_r)*gsl_ran_gaussian_pdf(prop_z-gal->z[i-1],step_z);
 			q_y  = gsl_ran_gaussian_pdf(gal->r_cyl[i-1]-prop_r,step_r)*gsl_ran_gaussian_pdf(gal->z[i-1]-prop_z,step_z);
 			prob = min(1.0,(pi_y/pi_x));//*(q_x/q_y));
@@ -244,11 +236,13 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 				gal->r_cyl[i] 		= prop_r;
 				gal->theta_cyl[i] 	= prop_theta;
 				gal->z[i] 			= prop_z;
+				gal->rho[i]			= pi_y/fabs(gal->r_cyl[i]);
 				acceptance+=1.0;
 			} else {
 				gal->r_cyl[i] 		= gal->r_cyl[i-1];
 				gal->theta_cyl[i] 	= gal->theta_cyl[i-1];
 				gal->z[i] 			= gal->z[i-1];
+            	gal->rho[i]			= pi_x/fabs(gal->r_cyl[i]);
 			}
 			// Updating the coordinate values
 			gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
@@ -258,7 +252,6 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
             gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
             gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
             gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
-            gal->rho[i]			= density_functions_pool(gal,gal->r_cyl[i],gal->theta_cyl[i],gal->z[i],1,density_model,component);
 		}
 		acceptance /= gal->comp_npart_pot[component];
 		printf(" -> Acceptance = %.2lf \n",acceptance);
@@ -272,9 +265,9 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 // This function modify the z component of the gaseous particles according to an iterative
 // algorithm to reach the hydrostatic equilibrium of the disk. This function was inspired by
 // Springel, Di Matteo er al. 2005 method.
-int set_hydro_equilibrium(galaxy *gal, int n_iter) {
+int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	
-	unsigned long int i,j,k;
+	unsigned long int i,j;
 	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius, delta_pot;
 	double theta, phi, randval, x, y, z, step, proposal, acceptance;
     
@@ -283,72 +276,70 @@ int set_hydro_equilibrium(galaxy *gal, int n_iter) {
 	fflush(stdout);
 	// Allow to use pseudo density functions
 	for(i=0;i<AllVars.Nthreads;i++) gal->pseudo[i] = 1;
-	for(k=0; k<AllVars.MaxCompNumber; k++) {
-		// Looking for gas particles
-		if(gal->comp_type[k]==0 && gal->comp_npart_pot[k]>0) {
-			printf("/////\t\tRecomputing gas particles position for component %d\n",k);
-			// Starting equilibrium iterations
-			for(j = 0; j < n_iter; ++j) {
-				printf("/////\t\t\tIteration %ld",j+1);
-				fflush(stdout);
-				// Now that we've got gas particles positions, we can compute the full potential.
-				if(set_galaxy_potential(gal,0) != 0) {
-					fprintf(stderr,"\nUnable to set the potential. Aborting.\n");
-					return -1;
-				}
-				// Now, we have to set the gaseous disk density at (0.,0.,0.).
-				// We have to make a guess: we use the disk density function to compute a realistic rho_gas(r=0,z=0).
-				z0 = gal->comp_scale_height[k];
-				// The MCMC algorithm is repeated 10 times to ensure convergence
-				// Filling the Markov Chain
-				acceptance = 0;
-				fill_midplane_dens_grid(gal,k);
-				gal->index[0] = gal->comp_start_part[k];
-				gal->z[gal->comp_start_part[k]] = 0.0;
-				// Recomputing density cut
-				//gal->comp_cut_dens[k] = pseudo_density_gas_func(gal,0.99*gal->comp_cut[k],0.0,0.0,0,k);
-				for(i = gal->comp_start_part[k]+1; i < gal->comp_start_part[k] + gal->comp_npart_pot[k]; ++i) {
-					// Generating a proposal
-					// Step is chosen as if the azimuthal distribution is sech^2(z/h)
-					// Then there is an analytical solution to set hydro equilibrium
-					// h = sqrt(cs^2/2*pi*G*rho0)
-					// The Gaussian step is scaled by gal->comp_mcmc_step_hydro[k]
-					x = gal->x[i];
-					y = gal->y[i];
-					z = gal->z[i-1];
-					step = gal->comp_mcmc_step_hydro[k]*sqrt(pow(gal->comp_cs_init[k],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,x,y,0.0,0,k)*unit_dens))/kpc;
-					// Computing the probability of the proposal
-					// according to the updated potential value
-					proposal 	= z + gsl_ran_gaussian(r[0],step);
-					pi_x 		= pseudo_density_gas_func(gal,x,y,z,0,k);
-					pi_y 		= pseudo_density_gas_func(gal,x,y,proposal,0,k);
-					q_x  		= gsl_ran_gaussian_pdf(proposal-z,step);
-					q_y  		= gsl_ran_gaussian_pdf(z-proposal,step);
-					prob 		= min(1.0,(pi_y/pi_x)*(q_x/q_y));
-					// Draw a uniform random value to test the acceptance of the proposal
-					randval = gsl_rng_uniform_pos(r[0]);
-					if (randval <= prob) {
-						gal->z[i] = proposal;
-						acceptance += 1.0;
-						// Updating coordinates values
-						gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
-						gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
-						gal->rho[i]			= pi_y;
-					} else {
-						gal->z[i] 			= z;
-						gal->r_sph[i]       = sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
-						gal->phi_sph[i]     = acos(gal->z[i]/gal->r_sph[i]);
-						gal->rho[i]			= pi_x;
-					}
-				}
-				acceptance /= gal->comp_npart_pot[k];
-				printf(" -> Acceptance = %.2lf\n",acceptance);
-				if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n/////\t\t\tLower mcmc_step in the galaxy parameter file.\n");
-				if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n/////\t\t\tIncrease mcmc_step in the galaxy parameter file.\n");
+	// Looking for gas particles
+	if(gal->comp_type[component]==0 && gal->comp_npart_pot[component]>0) {
+		printf("/////\t\tRecomputing gas particles position for component %d\n",component);
+		// Starting equilibrium iterations
+		for(j = 0; j < n_iter; ++j) {
+			printf("/////\t\t\tIteration %ld",j+1);
+			fflush(stdout);
+			// Now that we've got gas particles positions, we can compute the full potential.
+			if(set_galaxy_potential(gal,0) != 0) {
+				fprintf(stderr,"\nUnable to set the potential. Aborting.\n");
+				return -1;
 			}
-			// Final gas midplane density
-			fill_midplane_dens_grid(gal,k);
+			// Now, we have to set the gaseous disk density at (0.,0.,0.).
+			// We have to make a guess: we use the disk density function to compute a realistic rho_gas(r=0,z=0).
+			z0 = gal->comp_scale_height[component];
+			// The MCMC algorithm is repeated 10 times to ensure convergence
+			// Filling the Markov Chain
+			acceptance = 0;
+			fill_midplane_dens_grid(gal,component);
+			gal->index[0] = gal->comp_start_part[component];
+			gal->z[gal->comp_start_part[component]] = 0.0;
+			// Recomputing density cut
+			//gal->comp_cut_dens[component] = pseudo_density_gas_func(gal,0.99*gal->comp_cut[component],0.0,0.0,0,k);
+			for(i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component] + gal->comp_npart_pot[component]; ++i) {
+				// Generating a proposal
+				// Step is chosen as if the azimuthal distribution is sech^2(z/h)
+				// Then there is an analytical solution to set hydro equilibrium
+				// h = sqrt(cs^2/2*pi*G*rho0)
+				// The Gaussian step is scaled by gal->comp_mcmc_step_hydro[component]
+				x = gal->x[i];
+				y = gal->y[i];
+				z = gal->z[i-1];
+				step = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,x,y,0.0,0,component)*unit_dens))/kpc;
+				// Computing the probability of the proposal
+				// according to the updated potential value
+				proposal 	= z + gsl_ran_gaussian(r[0],step);
+				pi_x 		= pseudo_density_gas_func(gal,x,y,z,0,component);
+				pi_y 		= pseudo_density_gas_func(gal,x,y,proposal,0,component);
+				q_x  		= gsl_ran_gaussian_pdf(proposal-z,step);
+				q_y  		= gsl_ran_gaussian_pdf(z-proposal,step);
+				prob 		= min(1.0,(pi_y/pi_x)*(q_x/q_y));
+				// Draw a uniform random value to test the acceptance of the proposal
+				randval = gsl_rng_uniform_pos(r[0]);
+				if (randval <= prob) {
+					gal->z[i] = proposal;
+					acceptance += 1.0;
+					// Updating coordinates values
+					gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
+					gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+					gal->rho[i]			= pi_y;
+				} else {
+					gal->z[i] 			= z;
+					gal->r_sph[i]       = sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
+					gal->phi_sph[i]     = acos(gal->z[i]/gal->r_sph[i]);
+					gal->rho[i]			= pi_x;
+				}
+			}
+			acceptance /= gal->comp_npart_pot[component];
+			printf(" -> Acceptance = %.2lf\n",acceptance);
+			if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n/////\t\t\tLower mcmc_step in the galaxy parameter file.\n");
+			if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n/////\t\t\tIncrease mcmc_step in the galaxy parameter file.\n");
 		}
+		// Final gas midplane density
+		fill_midplane_dens_grid(gal,component);
 	}
 	return 0;
 }
@@ -384,8 +375,10 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
 			prop_z 		= st->z[i] + gsl_ran_gaussian(r[0],step_z);
 			// Computing the probability of the proposal
 			step_proposal = step;
-			pi_x = fdistrib_stream(st,st->r_cyl[i],st->theta_cyl[i],st->z[i],density_model,component);
-			pi_y = fdistrib_stream(st,prop_r,prop_theta,prop_z,density_model,component);
+			// Distribution function of the considered component
+			// Density of the component times the integrand of spherical volume element
+			pi_x = fabs(st->r_cyl[i])*density_functions_stream_pool(st,fabs(st->r_cyl[i]),st->theta_cyl[i],st->z[i],density_model,component);
+			pi_y = fabs(prop_r)*density_functions_stream_pool(st,fabs(prop_r),prop_theta,prop_z,density_model,component);
 			q_x  = gsl_ran_gaussian_pdf(prop_r-st->r_cyl[i],step_r)*gsl_ran_gaussian_pdf(prop_z-st->z[i],step_z);
 			q_y  = gsl_ran_gaussian_pdf(st->r_cyl[i]-prop_r,step_r)*gsl_ran_gaussian_pdf(st->z[i]-prop_z,step_z);
 			prob = min(1.0,(pi_y/pi_x));//*(q_x/q_y));
@@ -414,8 +407,10 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
 			prop_z 		= st->z[i-1] + gsl_ran_gaussian(r[0],step_z);
 			// Computing the probability of the proposal
 			step_proposal = step;
-			pi_x = fdistrib_stream(st,st->r_cyl[i-1],st->theta_cyl[i-1],st->z[i-1],density_model,component);
-			pi_y = fdistrib_stream(st,prop_r,prop_theta,prop_z,density_model,component);
+			// Distribution function of the considered component
+			// Density of the component times the integrand of spherical volume element
+			pi_x = fabs(st->r_cyl[i-1])*density_functions_stream_pool(st,fabs(st->r_cyl[i-1]),st->theta_cyl[i-1],st->z[i-1],density_model,component);
+			pi_y = fabs(prop_r)*density_functions_stream_pool(st,fabs(prop_r),prop_theta,prop_z,density_model,component);
 			q_x  = gsl_ran_gaussian_pdf(prop_r-st->r_cyl[i-1],step_r)*gsl_ran_gaussian_pdf(prop_z-st->z[i-1],step_z);
 			q_y  = gsl_ran_gaussian_pdf(st->r_cyl[i-1]-prop_r,step_r)*gsl_ran_gaussian_pdf(st->z[i-1]-prop_z,step_z);
 			prob = min(1.0,(pi_y/pi_x));//*(q_x/q_y));
@@ -424,11 +419,13 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
 				st->r_cyl[i] 		= prop_r;
 				st->theta_cyl[i] 	= prop_theta;
 				st->z[i] 			= prop_z;
+				st->rho[i]			= pi_y/fabs(st->r_cyl[i]);
 				acceptance+=1.0;
 			} else {
 				st->r_cyl[i] 		= st->r_cyl[i-1];
 				st->theta_cyl[i] 	= st->theta_cyl[i-1];
 				st->z[i] 			= st->z[i-1];
+				st->rho[i]			= pi_x/fabs(st->r_cyl[i]);
 			}
 			// Updating the coordinate values
 			st->x[i] = st->r_cyl[i]*cos(st->theta_cyl[i]);
@@ -440,7 +437,7 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
             st->phi_sph[i]		= acos(st->z[i]/st->r_sph[i]);
 		}
 		acceptance /= st->comp_npart[component];
-		printf("/////\t\t-> Acceptance = %lf \n",acceptance);
+		printf(" -> Acceptance = %.2lf \n",acceptance);
 		if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n/////\t\t\tLower mcmc_step%d in the galaxy parameter file.\n",component);
 		if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n/////\t\t\tIncrease mcmc_step%d in the galaxy parameter file.\n",component);
 	}

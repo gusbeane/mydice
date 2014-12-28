@@ -1,3 +1,5 @@
+# Refinement level of the PM turbulence grid 
+level_grid_turb 7
 # Seed for the random number generator
 seed 		123456
 
@@ -30,7 +32,9 @@ xc1		0.
 yc1		0.
 zc1		0.
 # Velocity dispersion of the gas [km/s]
-sigma_vel1	10.0
+turb_sigma1	10.0
+# Scale of the velocity fluctuations of the gas [kpc]
+turb_scale1	1.0
 # Length of the stream [kpc]
 length1		100.
 # Density scale factor
@@ -51,7 +55,8 @@ t_init2		1e5
 xc2		0.
 yc2		0.
 zc2		0.
-sigma_vel2	10.0
+turb_sigma2	10.0
+turb_scale2	1.0
 length2		100.
 scale2		0.1
 

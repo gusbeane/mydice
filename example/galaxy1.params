@@ -137,6 +137,10 @@ t_init3                 1e4
 turb_sigma3		10.0
 # Turbulence smoothing scale [kpc]
 turb_scale3		1.0
+# Compute vertical hydrostatic equilibrium for gas components
+hydro_eq3 		1
+# Number of iterations to reach hyfrostatic equilibrium
+hydro_eq_niter3 	4
 
 ############################
 # Component 4: Stellar bulge

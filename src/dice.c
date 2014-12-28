@@ -264,9 +264,11 @@ int main (int argc, char **argv) {
 	// If you do not use Gadget, do not use this function -- the output is binary!
 	printf("///// Writing gadget file\n");
 	if(k+l==1) {
-		write_gadget_ics(stack1,AllVars.Filename);
+		if(strcmp(AllVars.ICformat,"Gadget1")==0) write_gadget1_ics(stack1,AllVars.Filename);
+		if(strcmp(AllVars.ICformat,"Gadget2")==0) write_gadget2_ics(stack1,AllVars.Filename);		
 	} else {
-		write_gadget_ics(stack2,AllVars.Filename);
+		if(strcmp(AllVars.ICformat,"Gadget1")==0) write_gadget1_ics(stack2,AllVars.Filename);
+		if(strcmp(AllVars.ICformat,"Gadget2")==0) write_gadget2_ics(stack2,AllVars.Filename);
 	}
 	// Destroy a galaxy. If the galaxy can not be destroyed, return an error. This
 	// function will SEGFAULT if the arrays in the galaxy can not be freed.

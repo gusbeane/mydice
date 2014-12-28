@@ -149,6 +149,8 @@ typedef struct {
 	double 				*comp_Q_lim;
 	double				*comp_Q_min;
 	int					*comp_compute_vel;
+	int 				*comp_hydro_eq;
+	int 				*comp_hydro_eq_niter;
 	// Virial quantities
 	double v200;
 	double r200;
@@ -207,11 +209,11 @@ typedef struct {
 	// Total gas midplane density grid size [kpc]
 	double boxsize_dens;
 	// Number of cells in the potential grid
-	unsigned long int ngrid;
+	int ngrid;
 	// Number of cells in the midplane density grid
-	unsigned long int ngrid_dens;
+	int ngrid_dens;
 	// Number of cells in the turbulence grid
-	unsigned long int ngrid_turb;
+	int ngrid_turb;
 	// Level of refinement of the potential grid
 	int level_grid;
 	// Level of refinement of the gas density grid
@@ -292,6 +294,16 @@ typedef struct {
 	double *vel_y;
 	double *vel_z;
 	unsigned long int *id;
+	// Level of refinement of the gas turbulence grid
+	int level_grid_turb;
+	// Number of cells in the turbulence grid
+	unsigned long int ngrid_turb;
+	// Number of cells in the turbulence grid after padding
+	int ngrid_turb_padded;
+	// Turbulence grid cell size vector [kpc]
+	double space_turb[3];
+	// Particle Mesh turbulence grid
+	double ***turbulence;
 	// Storage array
 	double **storage;
 	unsigned long int ntot_part;
@@ -358,8 +370,6 @@ struct GlobalVars {
 	int Nstream;
 	// Number of threads to launch when using fftw3_threads library
 	int Nthreads;
-	int GasHydrostaticEq;
-	int GasHydrostaticEqIter;
 	int MeanPartDist;
 	int AcceptImaginary;
 	int OutputRc;
@@ -400,13 +410,11 @@ int rotate_stream(stream *, double, double, int);
 int position_stream(stream *, double, double, double, int);
 
 // Structure functions
-double fdistrib(galaxy *, double, double, double, int, int);
 double density_functions_pool(galaxy *, double, double, double, int, int, int);
 void mcmc_metropolis_hasting(galaxy *, int, int);
 void mcmc_metropolis_hasting_stream(stream *, int , int); 
-int set_hydro_equilibrium(galaxy *, int);
+int set_hydro_equilibrium(galaxy *, int, int);
 double density_functions_stream_pool(stream *, double, double, double, int, int);
-double fdistrib_stream(stream *, double, double, double, int, int);
 
 double surface_density_func(galaxy *, double, double, int, int);
 static double integrand_density_func(double, void *);
@@ -471,7 +479,8 @@ void write_galaxy_velocity_halo(galaxy *);
 void write_galaxy_potential(galaxy *,double, double, double);
 void write_galaxy_potential_grid(galaxy *, int);
 void write_galaxy_rotation_curve(galaxy *, double);
-int write_gadget_ics(galaxy *, char *);
+int write_gadget1_ics(galaxy *, char *);
+int write_gadget2_ics(galaxy *, char *);
 void copy_potential(galaxy *, galaxy *, int);
 int load_snapshot(char *, int);
 int allocate_memory(int);
