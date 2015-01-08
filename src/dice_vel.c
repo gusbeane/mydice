@@ -448,9 +448,9 @@ int set_turbulent_grid(galaxy *gal, int component) {
 	    for (j = 0; j < gal->ngrid_turb_padded/2; ++j) {
 	        #pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
 			for (k = 0; k < gal->ngrid_turb_padded/2; ++k) {
-		    	dx = sqrt(pow((double)(i+0.5),2.0));
-		        dy = sqrt(pow((double)(j+0.5),2.0));
-		    	dz = sqrt(pow((double)(k+0.5),2.0));
+		    	dx = sqrt(pow((double)(i+0.5)*space_x,2.0));
+		        dy = sqrt(pow((double)(j+0.5)*space_y,2.0));
+		    	dz = sqrt(pow((double)(k+0.5)*space_z,2.0));
 		        rad = sqrt(dx*dx+dy*dy+dz*dz);
 				// Octant 1
 		        kernel_grid[i][j][k] = 1.0/(pow(gal->comp_turb_scale[component]*sqrt(2.0*pi),3.0))*exp(-pow(rad,2.0)/(2.0*pow(gal->comp_turb_scale[component],2.0)));
@@ -657,9 +657,9 @@ int set_turbulent_grid_stream(stream *st, int component) {
 	    for (j = 0; j < st->ngrid_turb_padded/2; ++j) {
 	        #pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
 			for (k = 0; k < st->ngrid_turb_padded/2; ++k) {
-		    	dx = sqrt(pow((double)(i+0.5),2.0));
-		        dy = sqrt(pow((double)(j+0.5),2.0));
-		    	dz = sqrt(pow((double)(k+0.5),2.0));
+		    	dx = sqrt(pow((double)(i+0.5)*space_x,2.0));
+		        dy = sqrt(pow((double)(j+0.5)*space_y,2.0));
+		    	dz = sqrt(pow((double)(k+0.5)*space_z,2.0));
 		        rad = sqrt(dx*dx+dy*dy+dz*dz);
 				// Octant 1
 		        kernel_grid[i][j][k] = 1.0/(pow(st->comp_turb_scale[component]*sqrt(2.0*pi),3.0))*exp(-pow(rad,2.0)/(2.0*pow(st->comp_turb_scale[component],2.0)));
