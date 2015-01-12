@@ -207,6 +207,10 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"Unable to allocate particle comp_hydro_eq_niter array.\n");
 		return -1;
 	}
+	if (!(gal->comp_dens_gauss=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+		fprintf(stderr,"Unable to allocate particle comp_dens_gauss array.\n");
+		return -1;
+	}
 	return 0;
 }
 
@@ -566,6 +570,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	
 	unsigned long int i;
 	int j,nt;
+	int dens_gauss;
 	// Molecular weigth t compute the gas internal energy
 	double molecular_weight;
 	// Hubble parameter
@@ -579,6 +584,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	double BD_fraction,BT_fraction,gas_fraction;
 	double effective_mass_factor;
 	double rho_crit, delta_c, rho0_nfw, rho_scale_nfw, m_scale_nfw;
+	double cut_dens,theta_max_dens;
 		
 	if(allocate_component_arrays(gal)!=0) {
 		fprintf(stderr,"Allocation of component arrays failed\n");
@@ -601,13 +607,11 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		fprintf(stderr,"Unable to allocate pseudo-density switch.\n");
 		return -1;
 	}
-    
+
 	// Padding potential grid
 	gal->ngrid 				= pow(2,gal->level_grid);
 	gal->ngrid_padded 		= 2*gal->ngrid;
 	gal->ngrid_dens 		= pow(2,gal->level_grid_dens);
-	gal->ngrid_turb 		= pow(2,gal->level_grid_turb);
-	gal->ngrid_turb_padded 	= 2*gal->ngrid_turb;
 	// Create the random number generator environment, if not already done
 	if (random_number_set != 1) {
 		gsl_rng_env_setup();
@@ -650,9 +654,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	gal->space_dens[1] 	= gal->boxsize_dens/((double)gal->ngrid_dens);
 
 	allocate_galaxy_storage_variable(gal,10);
-	
 
-	
 	// Initialisations
 	gal->ntot_part 			= (unsigned long int)0;
 	gal->ntot_part_pot		= (unsigned long int)0;
@@ -673,7 +675,48 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	gal->num_part_pot[2]	= 0;
 	gal->num_part_pot[3]	= 0;
 	effective_mass_factor	= 0.;
+
+	// Allocate and set the gaussian field grid if necessary
+	for(i=0; i<AllVars.MaxCompNumber; i++){
+		dens_gauss += gal->comp_dens_gauss[i];
+	}
+	if(gal->dens_gauss_sigma>0. && gal->dens_gauss_scale>0. && dens_gauss>0){
+		gal->ngrid_gauss 		= pow(2,gal->level_grid_dens_gauss);
+		gal->ngrid_gauss_padded = 2*gal->ngrid_gauss;
+
+		if (!(gal->gaussian_field=calloc(gal->ngrid_gauss_padded,sizeof(double *)))) {
+			fprintf(stderr,"Unable to create turbulence x axis.\n");
+			return -1;
+		}
+		for (i = 0; i < gal->ngrid_gauss_padded; ++i) {
+			// y-axis
+			if (!(gal->gaussian_field[i] = calloc(gal->ngrid_gauss_padded,sizeof(double *)))) {
+				fprintf(stderr,"Unable to create turbulence y axis.\n");
+				return -1;
+			}
+			// z-axis
+			for (j = 0; j < gal->ngrid_gauss_padded; ++j) {
+				if (!(gal->gaussian_field[i][j] = calloc(gal->ngrid_gauss_padded,sizeof(double)))) {
+					fprintf(stderr,"Unable to create turbulence z axis.\n");
+					return -1;
+				}
+			}
+		}		
 	
+		for(i=0; i<AllVars.MaxCompNumber; i++){
+			if(gal->comp_type[i]==0){
+				gal->space_gauss[0] 	= 2.1*gal->comp_cut[i]/((double)gal->ngrid_gauss);
+				gal->space_gauss[1] 	= 2.1*gal->comp_cut[i]/((double)gal->ngrid_gauss);
+				gal->space_gauss[2] 	= 2.1*gal->comp_cut[i]/((double)gal->ngrid_gauss);
+			}
+		}
+		set_galaxy_gaussian_field_grid(gal,gal->dens_gauss_scale);
+		printf("///// Gaussian field grid successfully created\n");
+		if(gal->dens_gauss_sigma>0.5){
+			printf("///// Warning: gaussian fluctuations may break the axisymmetry hypothesis\n");
+		}
+		gal->gaussian_field_defined = 1;
+	}
 	// Do not work with pseudo densities yet
 	for(i=0; i<AllVars.Nthreads; i++) gal->pseudo[i] = 0;
 	// Set up component properties
@@ -710,28 +753,37 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			gal->n_component++;
 		}
 		else gal->comp_bool[i] 		= 0;
+
 		// Computing the mass of the component after cuts
 		if(gal->comp_bool[i]) {
 			// Case where the final cutted mass is defined by the user
+			theta_max_dens				= 0.0;
+			gal->comp_scale_dens[i]		= 1.0;
+			gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],0.,0.,0,gal->comp_model[i],i);
+			if(gal->dens_gauss_sigma>0. && gal->dens_gauss_scale>0. && gal->comp_dens_gauss[i]>0){
+				for(j=1; j<1000; j=j+1){
+					cut_dens = density_functions_pool(gal,gal->comp_cut[i],(2.0*pi*j/1000.),0.,0,gal->comp_model[i],i);
+					if(cut_dens>gal->comp_cut_dens[i]){
+						gal->comp_cut_dens[i] = cut_dens;
+						theta_max_dens = (2.0*pi*j/1000.);
+					}
+				}
+			}			
 			if(gal->comp_radius_nfw[i]==-1.0) {
-				gal->comp_scale_dens[i]		= 1.0;
-				gal->comp_cut_dens[i] 		= 0.0;
-				gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],0.,0.,0,gal->comp_model[i],i);
 				gal->comp_scale_dens[i] 	= gal->comp_mass[i]/cumulative_mass_func(gal,gal->comp_cut[i],i);
 			} else {
 			// Case where the final cutted mass is defined by a scaling with respect to a NFW halo density
-				gal->comp_scale_dens[i]		= 1.0;
 				m_scale_nfw 				= sqrt(pow(gal->comp_radius_nfw[i]/gal->comp_scale_length[i],2.0));
 				rho_crit 					= (gal->m200*gal->comp_mass_frac[i]/200.)*(3.0/(4.0*pi*pow(gal->r200,3.0)));
     			delta_c 					= (200./3.)*pow(gal->comp_concentration[i],3.0)/
     										  (log(1.0+gal->comp_concentration[i])-gal->comp_concentration[i]/(1.0+gal->comp_concentration[i]));
     			rho0_nfw 					= rho_crit*delta_c;
     			rho_scale_nfw 				= rho0_nfw/(m_scale_nfw*pow(1.0+m_scale_nfw,2.0));
-    			gal->comp_scale_dens[i] 	= rho_scale_nfw/density_functions_pool(gal,gal->comp_radius_nfw[i],0.,0.,0,gal->comp_model[i],i);
+    			gal->comp_scale_dens[i] 	= rho_scale_nfw/density_functions_pool(gal,gal->comp_radius_nfw[i],theta_max_dens,0.,0,gal->comp_model[i],i);
 			}
 		}
-		gal->comp_cut_dens[i] 		= 0.0;
-		gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],0.,0.,0,gal->comp_model[i],i);
+		
+		gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],theta_max_dens,0.,0,gal->comp_model[i],i);
 		gsl_set_error_handler_off();
 		gal->comp_cutted_mass[i] 	= cumulative_mass_func(gal,gal->comp_cut[i],i);
 		gal->total_mass				+= gal->comp_cutted_mass[i];
@@ -778,8 +830,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     BT_fraction 				= cutted_bulge_mass/(cutted_bulge_mass+cutted_disk_mass);
     BD_fraction 				= cutted_bulge_mass/cutted_disk_mass;
     gas_fraction				= cutted_gas_mass/(cutted_disk_mass+cutted_gas_mass);
-    
-
     
 	// Print some information to screen.
 	if (info != 0) {
@@ -881,8 +931,6 @@ int create_stream(stream *st, char *fname, int info) {
 
 	allocate_stream_storage_variable(st,10);
 
-	st->ngrid_turb 			= pow(2,st->level_grid_turb);
-	st->ngrid_turb_padded 	= 2*st->ngrid_turb;
 	st->ntot_part 			= (unsigned long int)0;
 	st->comp_start_part[0] 	= (unsigned long int)0;
 	st->total_mass			= 0.;
@@ -1192,7 +1240,8 @@ int set_galaxy_velocity(galaxy *gal) {
 	for(k=0; k<AllVars.MaxCompNumber; k++) {
     	if(gal->comp_type[k]==0 && gal->comp_turb_sigma[k]>0.) {
     	
-    		if(gal->potential_defined==1) {
+    		// Deallocate potential grid to save some memory for the next computation
+    		if(gal->potential_defined) {
     			for (i = 0; i < gal->ngrid_padded; i++){
 					for (j = 0; j < gal->ngrid_padded; j++){
 						free(gal->potential[i][j]);
@@ -1200,54 +1249,70 @@ int set_galaxy_velocity(galaxy *gal) {
 					free(gal->potential[i]);
 				}
 				free(gal->potential);
-				gal->potential_defined=0;
+				gal->potential_defined = 0;
 			}
-    	
-    		if (!(gal->turbulence=calloc(gal->ngrid_turb_padded,sizeof(double *)))) {
+			
+			// Deallocate the gaussian field grid to be really nice to the memory.
+			if(gal->gaussian_field_defined){
+				for (i = 0; i < gal->ngrid_gauss_padded; i++){
+					for (j = 0; j < gal->ngrid_gauss_padded; j++){
+						free(gal->gaussian_field[i][j]);
+					}
+					free(gal->gaussian_field[i]);
+				}
+				free(gal->gaussian_field);
+				gal->gaussian_field_defined = 0;
+    		}
+    		
+    	    gal->ngrid_gauss 		= pow(2,gal->level_grid_turb);
+			gal->ngrid_gauss_padded = 2*gal->ngrid_gauss;
+			
+    		if (!(gal->gaussian_field=calloc(gal->ngrid_gauss_padded,sizeof(double *)))) {
 				fprintf(stderr,"Unable to create turbulence x axis.\n");
 				return -1;
 			}
     
-			for (i = 0; i < gal->ngrid_turb_padded; ++i) {
+			for (i = 0; i < gal->ngrid_gauss_padded; ++i) {
 				// y-axis
-				if (!(gal->turbulence[i] = calloc(gal->ngrid_turb_padded,sizeof(double *)))) {
+				if (!(gal->gaussian_field[i] = calloc(gal->ngrid_gauss_padded,sizeof(double *)))) {
 					fprintf(stderr,"Unable to create turbulence y axis.\n");
 					return -1;
 				}
 				// z-axis
-				for (j = 0; j < gal->ngrid_turb_padded; ++j) {
-					if (!(gal->turbulence[i][j] = calloc(gal->ngrid_turb_padded,sizeof(double)))) {
+				for (j = 0; j < gal->ngrid_gauss_padded; ++j) {
+					if (!(gal->gaussian_field[i][j] = calloc(gal->ngrid_gauss_padded,sizeof(double)))) {
 						fprintf(stderr,"Unable to create turbulence z axis.\n");
 						return -1;
 					}
 				}
 			}
     	
-    		gal->space_turb[0] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_turb);
-    		gal->space_turb[1] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_turb);
-    		gal->space_turb[2] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_turb);
+
+    		gal->space_gauss[0] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss);
+    		gal->space_gauss[1] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss);
+    		gal->space_gauss[2] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss);
 
 			printf("/////\t\t-Setting component %d turbulence [sigma=%.2lf km/s][scale=%.2lf kpc]\n",k,gal->comp_turb_sigma[k],gal->comp_turb_scale[k]);
-    		set_turbulent_grid(gal,k);
+    		set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k]);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-				gal->vel_x[i] += galaxy_turbulence_func(gal,gal->x[i],gal->y[i],gal->z[i]);
+				gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
 			}
-			set_turbulent_grid(gal,k);
+    		set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k]);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-				gal->vel_y[i] += galaxy_turbulence_func(gal,gal->x[i],gal->y[i],gal->z[i]);
+				gal->vel_y[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
 			}
-			set_turbulent_grid(gal,k);
+    		set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k]);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-				gal->vel_z[i] += galaxy_turbulence_func(gal,gal->x[i],gal->y[i],gal->z[i]);
+				gal->vel_z[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
 			}
 			// Deallocate the turbulence grid to be really nice to the memory.
-			for (i = 0; i < gal->ngrid_turb_padded; i++){
-				for (j = 0; j < gal->ngrid_turb_padded; j++){
-					free(gal->turbulence[i][j]);
+			for (i = 0; i < gal->ngrid_gauss_padded; i++){
+				for (j = 0; j < gal->ngrid_gauss_padded; j++){
+					free(gal->gaussian_field[i][j]);
 				}
-				free(gal->turbulence[i]);
+				free(gal->gaussian_field[i]);
 			}
-			free(gal->turbulence);
+			free(gal->gaussian_field);
 		}
     }
     
@@ -1300,51 +1365,54 @@ int set_stream_velocity(stream *st) {
 	for(k=0; k<AllVars.MaxCompNumber; k++) {
     	if(st->comp_turb_sigma[k]>0.) {
     	
-    		if (!(st->turbulence=calloc(st->ngrid_turb_padded,sizeof(double *)))) {
+    		st->ngrid_gauss 		= pow(2,st->level_grid_turb);
+			st->ngrid_gauss_padded 	= 2*st->ngrid_gauss;
+    	
+    		if (!(st->gaussian_field=calloc(st->ngrid_gauss_padded,sizeof(double *)))) {
 				fprintf(stderr,"Unable to create turbulence x axis.\n");
 				return -1;
 			}
     
-			for (i = 0; i < st->ngrid_turb_padded; ++i) {
+			for (i = 0; i < st->ngrid_gauss_padded; ++i) {
 				// y-axis
-				if (!(st->turbulence[i] = calloc(st->ngrid_turb_padded,sizeof(double *)))) {
+				if (!(st->gaussian_field[i] = calloc(st->ngrid_gauss_padded,sizeof(double *)))) {
 					fprintf(stderr,"Unable to create turbulence y axis.\n");
 					return -1;
 				}
 				// z-axis
-				for (j = 0; j < st->ngrid_turb_padded; ++j) {
-					if (!(st->turbulence[i][j] = calloc(st->ngrid_turb_padded,sizeof(double)))) {
+				for (j = 0; j < st->ngrid_gauss_padded; ++j) {
+					if (!(st->gaussian_field[i][j] = calloc(st->ngrid_gauss_padded,sizeof(double)))) {
 						fprintf(stderr,"Unable to create turbulence z axis.\n");
 						return -1;
 					}
 				}
 			}
-    	
-    		st->space_turb[0] 	= 2.1*st->comp_length[k]/((double)st->ngrid_turb);
-    		st->space_turb[1] 	= 2.1*st->comp_length[k]/((double)st->ngrid_turb);
-    		st->space_turb[2] 	= 2.1*st->comp_length[k]/((double)st->ngrid_turb);
+
+    		st->space_gauss[0] 		= 2.1*st->comp_length[k]/((double)st->ngrid_gauss);
+    		st->space_gauss[1] 		= 2.1*st->comp_length[k]/((double)st->ngrid_gauss);
+    		st->space_gauss[2] 		= 2.1*st->comp_length[k]/((double)st->ngrid_gauss);
 
 			printf("/////\t\t-Setting component %d turbulence [sigma=%.2lf km/s][scale=%.2lf kpc]\n",k,st->comp_turb_sigma[k],st->comp_turb_scale[k]);
-    		set_turbulent_grid_stream(st,k);
+    		set_stream_gaussian_field_grid(st,st->comp_turb_sigma[k]);
 			for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
-				st->vel_x[i] += stream_turbulence_func(st,st->x[i],st->y[i],st->z[i]);
+				st->vel_x[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
 			}
-			set_turbulent_grid_stream(st,k);
+    		set_stream_gaussian_field_grid(st,st->comp_turb_sigma[k]);
 			for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
-				st->vel_y[i] += stream_turbulence_func(st,st->x[i],st->y[i],st->z[i]);
+				st->vel_y[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
 			}
-			set_turbulent_grid_stream(st,k);
+    		set_stream_gaussian_field_grid(st,st->comp_turb_sigma[k]);
 			for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
-				st->vel_z[i] += stream_turbulence_func(st,st->x[i],st->y[i],st->z[i]);
+				st->vel_z[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
 			}
 			// Deallocate the turbulence grid to be really nice to the memory.
-			for (i = 0; i < st->ngrid_turb_padded; i++){
-				for (j = 0; j < st->ngrid_turb_padded; j++){
-					free(st->turbulence[i][j]);
+			for (i = 0; i < st->ngrid_gauss_padded; i++){
+				for (j = 0; j < st->ngrid_gauss_padded; j++){
+					free(st->gaussian_field[i][j]);
 				}
-				free(st->turbulence[i]);
+				free(st->gaussian_field[i]);
 			}
-			free(st->turbulence);
+			free(st->gaussian_field);
 		}
     }
 

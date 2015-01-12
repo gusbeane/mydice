@@ -15,10 +15,16 @@ level_grid		8
 level_grid_dens		7
 # Refinement level of the PM turbulence grid 
 level_grid_turb		8
+# Refinement level of the PM gaussian field grid
+level_grid_dens_gauss
 # Size of the PM grid [kpc]
 boxsize		 	100.0
 # Axisymmetric_drift approximation in the Jeans equations
 axisymmetric_drift	0
+# Dispersion for the Gaussian field fluctuations
+dens_gauss_sigma                0.35
+# Physical scale of the gaussian field fluctuations [kpc]
+dens_gauss_scale                1.00
 # Position of the galactic center on XYZ-axis [kpc]
 xc			0.
 yc			0.
@@ -33,6 +39,7 @@ spin			0.
 incl 			0.
 # Seed for the random number generator
 seed			1246
+
 
 #######################
 # Components parameters
@@ -115,6 +122,8 @@ mean_age2               100.
 min_age2                0.
 # Metallicity of the stars [Zsolar]
 metal2                  0.01
+# Gaussian fluctuations in the density field
+dens_gauss2		0
 
 ###########################
 # Component 3: Gaseous disk

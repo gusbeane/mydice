@@ -43,6 +43,7 @@
 
 double density_functions_pool(galaxy *gal, double radius, double theta, double z, int cut, int model, int component) {
 	double h, z0, density, zpz0, m, alpha;
+	double x,y;
 	// We consider only positive values
     if(sqrt(radius*radius+z*z) <= 0.) return 0.;
 
@@ -50,6 +51,9 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     h 			= gal->comp_scale_length[component];
     alpha		= gal->comp_alpha[component];
 	m 			= sqrt(pow(radius/h,2.0)+pow(z/z0,2.0));
+	
+	x = radius*cos(theta);
+	y = radius*sin(theta);
 	
 	// Select a disk model
     switch(model) {
@@ -118,6 +122,9 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 		default:
 			fprintf(stderr,"/////\t\t\tSpecify a valid model for component %d\n",component);
 			exit(0);
+	}
+	if(gal->dens_gauss_sigma>0. && gal->comp_dens_gauss[component]==1 && gal->gaussian_field_defined){
+		density *= (galaxy_gaussian_field_func(gal,x,y,z)*gal->dens_gauss_sigma+1.0);
 	}
 	// Cutting the density at cutr & cutz
     if(cut && density<gal->comp_cut_dens[component]) return 0.0;
@@ -674,12 +681,11 @@ double pseudo_density_gas_func(galaxy *gal, double x, double y, double z, int cu
 	// in cgs unit
 	delta_pot 	= galaxy_potential_func(gal,x,y,z) - galaxy_potential_func(gal,x,y,0.);
     z0 			= gal->comp_scale_height[component];
-    h 			=  gal->comp_scale_length[component];
+    h 			= gal->comp_scale_length[component];
 	// Density in the xy-plane in 1e10 solar mass / kpc^3
 	rho_0 		= get_midplane_density(gal,x,y);
 	// Hydrostatic equilibrium requires following density
 	density 	= rho_0*exp(-delta_pot/(pow(gal->comp_cs_init[component],2.0)));
-	
 	// Return a pseudo density 
 	if(cut && density<gal->comp_cut_dens[component]) return 0.0;
 	return density;

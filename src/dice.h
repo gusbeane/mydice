@@ -108,6 +108,10 @@ typedef struct {
 	double j_d;
 	// Total mass of the galactic model
 	double total_mass;
+	// Density fluctuation dispersion
+	double dens_gauss_sigma;
+	// Density fluctuation scale
+	double dens_gauss_scale;
 	// Total number of components
 	int n_component;
 	int *selected_comp;
@@ -151,6 +155,7 @@ typedef struct {
 	int					*comp_compute_vel;
 	int 				*comp_hydro_eq;
 	int 				*comp_hydro_eq_niter;
+	int 				*comp_dens_gauss;
 	// Virial quantities
 	double v200;
 	double r200;
@@ -191,16 +196,16 @@ typedef struct {
 	double *metal;
 	// Particle Mesh potential grid
 	double ***potential;
-	// Particle Mesh turbulence grid
-	double ***turbulence;
+	// Particle Mesh gaussian field grid
+	double ***gaussian_field;
 	// Gas midplane density grid
 	double **midplane_dens;
 	// Potential grid cell size vector [kpc]
 	double space[3];
 	// Gas midplane density grid cell size vector [kpc]
 	double space_dens[2];
-	// Turbulence grid cell size vector [kpc]
-	double space_turb[3];
+	// Gaussian field grid cell size vector [kpc]
+	double space_gauss[3];
 	// Number of particles per particle type
 	unsigned long int num_part[4];
 	unsigned long int num_part_pot[4];
@@ -213,17 +218,19 @@ typedef struct {
 	// Number of cells in the midplane density grid
 	int ngrid_dens;
 	// Number of cells in the turbulence grid
-	int ngrid_turb;
+	int ngrid_gauss;
 	// Level of refinement of the potential grid
 	int level_grid;
 	// Level of refinement of the gas density grid
 	int level_grid_dens;
 	// Level of refinement of the gas turbulence grid
 	int level_grid_turb;
+	// Level of refinement of the density gaussian fluctuations
+	int level_grid_dens_gauss;
 	// Number of cells in the potential grid after padding
 	int ngrid_padded;
 	// Number of cells in the turbulence grid after padding
-	int ngrid_turb_padded;
+	int ngrid_gauss_padded;
 	// Storage array
 	double **storage;
 	// Identifier of particle
@@ -235,6 +242,8 @@ typedef struct {
 	unsigned long int ntot_part_pot;
 	// Boolean variable checking the computation of the potential
 	int potential_defined;
+	// Boolean variable checking the computation of the gaussian field
+	int gaussian_field_defined;
 	// Boolean which enable the axisymmetric drift approximation for the stellar disk
 	int axisymmetric_drift;
 	// Seed for random number generator
@@ -297,13 +306,13 @@ typedef struct {
 	// Level of refinement of the gas turbulence grid
 	int level_grid_turb;
 	// Number of cells in the turbulence grid
-	unsigned long int ngrid_turb;
+	unsigned long int ngrid_gauss;
 	// Number of cells in the turbulence grid after padding
-	int ngrid_turb_padded;
-	// Turbulence grid cell size vector [kpc]
-	double space_turb[3];
-	// Particle Mesh turbulence grid
-	double ***turbulence;
+	int ngrid_gauss_padded;
+	// Gaussian field grid cell size vector [kpc]
+	double space_gauss[3];
+	// Particle Mesh gaussian_field grid
+	double ***gaussian_field;
 	// Storage array
 	double **storage;
 	unsigned long int ntot_part;
@@ -349,6 +358,7 @@ struct particle_data {
 	float Ne;
 	float Metal;
 	float Age;
+	float Hsml;
 } *P;
 
 // Global variables such as the parameters of the Keplerian system, or the number of galaxies to generate.
@@ -455,7 +465,7 @@ double rho_v2a_r_func(double, void *);
 double v2_theta_gas_func(galaxy *, double, double, int);
 double gas_density_wrapper_func(double, void *);
 int set_turbulent_grid(galaxy *, int);
-double galaxy_turbulence_func(galaxy *, double, double, double);
+double galaxy_turbulence_func(galaxy *, double, double, double, int);
 
 // Potential and force functions
 int set_galaxy_potential(galaxy *, int);
@@ -495,3 +505,8 @@ double max(double, double);
 typedef double (*function_to_derivate)(double, void *);
 double deriv_central(galaxy *, double, double, function_to_derivate);
 double deriv_forward(galaxy *, double, double, function_to_derivate);
+int set_galaxy_gaussian_field_grid(galaxy *, double);
+int set_stream_gaussian_field_grid(stream *, double);
+double galaxy_gaussian_field_func(galaxy *, double, double, double);
+double stream_gaussian_field_func(stream *, double, double, double);
+

@@ -311,7 +311,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	28*AllVars.MaxCompNumber+19
+	#define MAXTAGS	30*AllVars.MaxCompNumber+21
 	
 	FILE *fd;
 	int i,j,n;
@@ -398,6 +398,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	mandatory[nt] = 0;
 	id[nt++] = INT;
 	
+	strcpy(tag[nt], "level_grid_dens_gauss");
+	addr[nt] = &gal->level_grid_dens_gauss;
+	gal->level_grid_dens_gauss=7;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
 	strcpy(tag[nt], "boxsize");
 	addr[nt] = &gal->boxsize;
 	read[nt] = 0;
@@ -464,6 +471,22 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = INT;
+	
+	strcpy(tag[nt], "dens_gauss_sigma");
+	gal->seed = time(NULL);
+	addr[nt] = &gal->dens_gauss_sigma;
+	gal->dens_gauss_sigma = 0.;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "dens_gauss_scale");
+	gal->seed = time(NULL);
+	addr[nt] = &gal->dens_gauss_scale;
+	gal->dens_gauss_scale = 0.5;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
 	
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
 	
@@ -688,6 +711,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		strcpy(tag[nt], temp_tag);
 		gal->comp_hydro_eq_niter[j] = 6;
 		addr[nt] = &gal->comp_hydro_eq_niter[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = INT;
+		
+		n = sprintf(temp_tag,"dens_gauss%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_dens_gauss[j] = 0;
+		addr[nt] = &gal->comp_dens_gauss[j];
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = INT;
@@ -1367,6 +1398,7 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
 					P[j].Type 	= gal->comp_type[k];
 					P[j].Metal  = gal->metal[i];
 					P[j].Age	= gal->age[i];
+					P[j].Hsml	= 0.1;
 					++j;
 				}
 			}
@@ -1510,6 +1542,23 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
 			SKIP2;
 			for(n=0, pc_sph=pc; n<header1.npart[0];n++) {
 				fwrite(&P[pc_sph].Rho, sizeof(float), 1, fp1);
+				pc_sph++;
+			}
+			SKIP2;
+			
+			// HSML
+			dummy = sizeof(int) + 4 * sizeof(char);
+			SKIP2;
+			fwrite("HSML", sizeof(char), 4, fp1);
+			bytes_per_blockelement = sizeof(float);
+			nextblock = header1.npart[0] * bytes_per_blockelement + 2 * sizeof(int);
+			fwrite(&nextblock, sizeof(int), 1, fp1);
+			SKIP2;
+			
+			dummy = sizeof(float)*header1.npart[0];
+			SKIP2;
+			for(n=0, pc_sph=pc; n<header1.npart[0];n++) {
+				fwrite(&P[pc_sph].Hsml, sizeof(float), 1, fp1);
 				pc_sph++;
 			}
 			SKIP2;
