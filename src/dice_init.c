@@ -792,7 +792,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		// If it is the case, compute the disk scalelength according to Mo et al. 1998
 		//if(gal->comp_scale_length[i] <= 0 && (gal->comp_type[i]==1 || gal->comp_type[i]==2)) gal->comp_scale_length[i] = disk_scale_length_func(gal);
 		if(gal->comp_type[i]==0 && gal->comp_scale_length[i]>max_gas_radius) max_gas_radius = gal->comp_scale_length[i];
-		if(gal->comp_type[j]==1 && gal->lambda>=0) gal->comp_streaming_fraction[j] = f_s_func(gal->comp_concentration[j],gal->lambda);
+		if(gal->comp_type[i]==1 && gal->lambda>=0) gal->comp_streaming_fraction[i] = f_s_func(gal->comp_concentration[i],gal->lambda);
 		// Checking total cutted mass
 		if(gal->comp_type[i]==0) cutted_gas_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
 		if(gal->comp_type[i]==1) cutted_halo_mass 	+= gal->comp_bool[i]*gal->comp_cutted_mass[i];
