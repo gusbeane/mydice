@@ -277,6 +277,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	unsigned long int i,j;
 	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius, delta_pot;
 	double theta, phi, randval, x, y, z, step, proposal, acceptance;
+    double cut_dens,theta_max_dens;
     
 	printf("/////\tTargeting gas azimuthal hydrostatic equilibrium:\n");
 
@@ -318,7 +319,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				step = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,x,y,0.0,0,component)*unit_dens))/kpc;
 				// Computing the probability of the proposal
 				// according to the updated potential value
-				proposal 	= z + gsl_ran_gaussian(r[0],step);
+				proposal 	= gsl_ran_gaussian(r[0],step);
 				pi_x 		= pseudo_density_gas_func(gal,x,y,z,0,component);
 				pi_y 		= pseudo_density_gas_func(gal,x,y,proposal,0,component);
 				q_x  		= gsl_ran_gaussian_pdf(proposal-z,step);
