@@ -63,6 +63,7 @@ int main (int argc, char **argv) {
 
 	printf("/////\n///// D.I.C.E. (Disk Initial Conditions Environment)\n");
 	write_dice_version();
+	printf("///// Written by Valentin Perret (University of Zurich)\n");
 	// Looking for the galaxy parameter file
 	fflush(stdout);
 	if(argc != 2) {
@@ -139,7 +140,7 @@ int main (int argc, char **argv) {
 				// Set up the particles positions, disk potential, and particle velocities of 
 				// the particles in the galaxy. The option on set_galaxy_velocity tells the 
 				// function to use dispersion.
-				if ((i = set_galaxy_coords(gal)) != 0) {
+				if (set_galaxy_coords(gal) != 0) {
 				        fprintf(stderr,"Unable to set coordinates. Aborting.\n");
 				        exit(0);
 				}
@@ -156,7 +157,7 @@ int main (int argc, char **argv) {
 		} else {
 			// If the new galaxy is different from the previous one
 			// Let's recompute everything
-			if ((i = set_galaxy_coords(gal)) != 0) {
+			if (set_galaxy_coords(gal) != 0) {
 			        fprintf(stderr,"Unable to set coordinates. Aborting.\n");
 			        exit(0);
 			}

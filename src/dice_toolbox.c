@@ -167,9 +167,6 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	space_x = gal->space_gauss[0];
 	space_y = gal->space_gauss[1];
 	space_z = gal->space_gauss[2];
-	// Print the gaussian_field in the xy-plane for z = 0 if the option is set.
-	//if (verbose) printf("/////\t\t-Grid cell spacings [kpc]: dx = %.3f dy = %.3f dz = %.3f\n",space_x,space_y,space_z);
-	fflush(stdout);
 
 	// Initialization loop
 	for (i = 0; i < gal->ngrid_gauss_padded; ++i) {
@@ -179,6 +176,10 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 			}
 		}
 	}
+	if(gauss_scale<space_x){
+		printf("/////\t\t-Gaussian field scale < grid size -> no convolution\n");
+		return 0;
+	}	
 	
 	// Define kernel's function.
 	// These are the grid points as measured from the center of kernel's function
@@ -198,7 +199,7 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 		    	dz = sqrt(pow((double)(k+0.5)*space_z,2.0));
 		        rad = sqrt(dx*dx+dy*dy+dz*dz);
 				// Octant 1
-		        kernel_grid[i][j][k] = 1.0/(pow(gauss_scale*sqrt(2.0*pi),3.0))*exp(-pow(rad,2.0)/(2.0*pow(gauss_scale,2.0)));
+		        kernel_grid[i][j][k] = exp(-pow(rad,2.0)/(2.0*pow(gauss_scale,2.0)));
 		        // Octant 2
                 kernel_grid[gal->ngrid_gauss_padded-1-i][j][k] = kernel_grid[i][j][k];
                 // Octant 3

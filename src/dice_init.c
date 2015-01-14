@@ -711,7 +711,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			}
 		}
 		set_galaxy_gaussian_field_grid(gal,gal->dens_gauss_scale);
-		printf("///// Gaussian field grid successfully created\n");
+		printf("///// Gaussian field grid successfully created [grid element=%.3lf kpc]\n",gal->space_gauss[0]);
 		if(gal->dens_gauss_sigma>0.5){
 			printf("///// Warning: gaussian fluctuations may break the axisymmetry hypothesis\n");
 		}
@@ -1292,7 +1292,7 @@ int set_galaxy_velocity(galaxy *gal) {
     		gal->space_gauss[1] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss);
     		gal->space_gauss[2] 	= 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss);
 
-			printf("/////\t\t-Setting component %d turbulence [sigma=%.2lf km/s][scale=%.2lf kpc]\n",k,gal->comp_turb_sigma[k],gal->comp_turb_scale[k]);
+   			printf("/////\t\t-Setting component %d turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc]\n",k,gal->comp_turb_sigma[k],gal->comp_turb_scale[k],gal->space_gauss[0]);
     		set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k]);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
 				gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
@@ -1392,7 +1392,7 @@ int set_stream_velocity(stream *st) {
     		st->space_gauss[1] 		= 2.1*st->comp_length[k]/((double)st->ngrid_gauss);
     		st->space_gauss[2] 		= 2.1*st->comp_length[k]/((double)st->ngrid_gauss);
 
-			printf("/////\t\t-Setting component %d turbulence [sigma=%.2lf km/s][scale=%.2lf kpc]\n",k,st->comp_turb_sigma[k],st->comp_turb_scale[k]);
+			printf("/////\t\t-Setting component %d turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid element=%.3lf kpc]\n",k,st->comp_turb_sigma[k],st->comp_turb_scale[k],st->space_gauss[0]);
     		set_stream_gaussian_field_grid(st,st->comp_turb_sigma[k]);
 			for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
 				st->vel_x[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
