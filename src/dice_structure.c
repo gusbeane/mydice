@@ -125,9 +125,11 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 	}
 	if(gal->dens_gauss_sigma>0. && gal->comp_dens_gauss[component]==1 && gal->gaussian_field_defined){
 		density *= (galaxy_gaussian_field_func(gal,x,y,z)*gal->dens_gauss_sigma+1.0);
+		if(density<0.) density = 0.0;
+		if(radius>gal->comp_cut[component]) density = 0.0;
 	}
 	// Cutting the density at cutr & cutz
-    if(cut && density<gal->comp_cut_dens[component]) return 0.0;
+    if(cut && density<gal->comp_cut_dens[component]) density = 0.0;
 	// Unit is 10e10 solar mass / kpc^3
 	return density;
 }
@@ -315,8 +317,10 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				// The Gaussian step is scaled by gal->comp_mcmc_step_hydro[component]
 				x = gal->x[i];
 				y = gal->y[i];
-				z = gal->z[i-1];
+				z = gal->z[i];
 				step = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,x,y,0.0,0,component)*unit_dens))/kpc;
+				// Preventing NaN values for step
+				if(step != step) step = gal->comp_mcmc_step_hydro[component]*gal->comp_scale_height[component];
 				// Computing the probability of the proposal
 				// according to the updated potential value
 				proposal 	= gsl_ran_gaussian(r[0],step);
@@ -481,6 +485,7 @@ double surface_density_func(galaxy *gal, double r, double theta, int cut, int co
 	gsl_integration_qag(&F,-gal->comp_cut[component]*gal->comp_flat[component],gal->comp_cut[component]*gal->comp_flat[component],epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&surface_density,&error);
     
 	gsl_integration_workspace_free(w);
+
 	return surface_density;
 }
 
@@ -504,12 +509,8 @@ static double integrand_density_func(double z, void *params) {
 	cut 		= gal->storage[2][tid];
 	
 	// This function should not be used with the pseudo-density function
-	//if(gal->pseudo[tid] && gal->comp_type[gal->selected_comp[tid]]==0) {
-	//	rho = pseudo_density_gas_func(gal,r_temp,0.0,z,cut,gal->selected_comp[tid]);
-	//}
-	//else {
-		rho = density_functions_pool(gal,r_temp,theta_temp,z,cut,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
-	//}
+	rho = density_functions_pool(gal,r_temp,theta_temp,z,cut,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+
 	return rho;
 }
 
@@ -518,8 +519,9 @@ static double integrand_density_func(double z, void *params) {
 double cumulative_mass_func(galaxy *gal, double radius, int component) {
 	
 	int status;
-	double result,integral, error;
+	double result,integral,error;
 	int tid;
+	size_t neval;
 	
 	#if USE_THREADS == 1
 	    tid = omp_get_thread_num();
@@ -527,28 +529,27 @@ double cumulative_mass_func(galaxy *gal, double radius, int component) {
 	    tid = 0;
 	#endif
 	
-	gsl_integration_workspace *wk = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
 	gsl_function F;
 	
-	F.function 	= &d_cumulative_mass_func;
+	F.function 	= &d_cumulative_mass_func1;
 	F.params 	= gal;
 		
 	gal->selected_comp[tid] = component; 
 	
-	gsl_integration_qag(&F,0,radius,epsabs,epsrel,GSL_WORKSPACE_SIZE,key,wk,&integral,&error);
-	gsl_integration_workspace_free(wk);
+	gsl_integration_qng(&F,0.0,radius,epsabs,epsrel,&integral,&error,&neval);
 	
-	result = 2*pi*integral;
-	
+	result = integral;
+
 	return result;
 }
 
 // This is the integrand for the previous function. It is setup to work with
 // the GSL_qags structures.
-static double d_cumulative_mass_func(double r, void *params) {
+static double d_cumulative_mass_func1(double r, void *params) {
 	
 	int tid;
-	double integrand;
+	double result,integrand,error;
+	size_t neval;
 	
 	#if USE_THREADS == 1
 	    tid = omp_get_thread_num();
@@ -556,14 +557,40 @@ static double d_cumulative_mass_func(double r, void *params) {
 	    tid = 0;
 	#endif
 	
+	gsl_function F;
+	
 	galaxy *gal = (galaxy *) params;
 	
-	integrand = surface_density_func(gal,r,0.,1,gal->selected_comp[tid])*r;
-    
+	F.function 	= &d_cumulative_mass_func2;
+	F.params 	= gal;
+	
+	gal->storage[6][tid] = r;
+	
+	gsl_integration_qng(&F,0.0,2.0*pi,epsabs,epsrel,&integrand,&error,&neval);
+
 	return integrand;
 }
 
+// This is the integrand for the previous function. It is setup to work with
+// the GSL_qags structures.
+static double d_cumulative_mass_func2(double theta, void *params) {
+	int tid;
+	double surface_density,r;
+	
+	#if USE_THREADS == 1
+	    tid = omp_get_thread_num();
+	#else
+	    tid = 0;
+	#endif
 
+	galaxy *gal = (galaxy *) params;
+	
+	r = gal->storage[6][tid];
+	
+	surface_density = r*surface_density_func(gal,r,theta,1,gal->selected_comp[tid]);
+
+	return surface_density;
+}
 
 
 // Surface density function
@@ -695,7 +722,7 @@ double pseudo_density_gas_func(galaxy *gal, double x, double y, double z, int cu
 double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, double x, double y, int component) {
     int status,pseudo_save;
     int tid;
-    double result, integral, error, initial_surface_density, radius;
+    double result, integral, error, initial_surface_density, radius, theta;
     
     gsl_function F;
     
@@ -710,9 +737,10 @@ double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, doub
 	gal->storage[4][tid] 	= y;
 	
 	radius 					= sqrt(x*x+y*y);
+	theta					= atan2(y,x);
 	pseudo_save 			= gal->pseudo[tid];
 	gal->pseudo[tid] 		= 0;
-	initial_surface_density = surface_density_func(gal,radius,0.,0,component);
+	initial_surface_density = surface_density_func(gal,radius,theta,0,component);
 	gal->pseudo[tid] 		= pseudo_save;
 
 	if(initial_surface_density==0.) return 0.;
@@ -721,7 +749,7 @@ double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, doub
     F.params 	= gal;
     
     gsl_integration_qag(&F,-10.*gal->comp_scale_height[component],10.*gal->comp_scale_height[component],epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&integral,&error);
-    
+
 	return initial_surface_density/integral;
 }
 
@@ -745,22 +773,31 @@ static double dmidplane_density_gas_func(double z, void *params) {
 	delta_pot = galaxy_potential_func(gal,x,y,z)-galaxy_potential_func(gal,x,y,0.);
     
 	integrand = exp(-delta_pot/pow(gal->comp_cs_init[gal->selected_comp[tid]],2.0));
-	
+
 	return integrand;
 }
 
 // This function fills a 2D grid with the value of the gas density in the midplane
 // The use of a 2D grid intends to lower the computation time
 void fill_midplane_dens_grid(galaxy *gal, int component) {
-	int i,j;
-	double x,y;
+	int i,j,node_x,node_y;
+	unsigned long int k;
+	double x,y;	
 	
+	#pragma omp parallel for private(i,j) shared(gal)
 	for (i=0;i<gal->ngrid_dens;i++) {
 		for (j=0;j<gal->ngrid_dens;j++) {
-			x = (i-((double)(gal->ngrid_dens/2)-0.5-0.5))*gal->space_dens[0];
-			y = (j-((double)(gal->ngrid_dens/2)-0.5-0.5))*gal->space_dens[1];
-			gal->midplane_dens[i][j] = midplane_density_gas_func(gal,w[0],x,y,component);
+			gal->midplane_dens[i][j] = 0.0;
 		}
+	}
+
+	#pragma omp parallel for private(x,y,node_x,node_y,k) shared(gal)	
+    for (k = gal->comp_start_part[component]; k<gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++k) {
+		x 		= gal->x[k]/gal->space_dens[0] + ((double)(gal->ngrid_dens/2)-0.5);
+		y 		= gal->y[k]/gal->space_dens[1] + ((double)(gal->ngrid_dens/2)-0.5);
+		node_x 	= (int)x;
+		node_y 	= (int)y;		
+		gal->midplane_dens[node_x][node_y] += gal->mass[k]/(gal->space_dens[0]*gal->space_dens[1]);
 	}
 }
 
@@ -775,6 +812,7 @@ double get_midplane_density(galaxy *gal, double x, double y) {
 	// Determine the parent node.
 	node_x = floor(xtemp);
 	node_y = floor(ytemp);
+	
 	if(node_x>=0 && node_x<gal->ngrid_dens-1 && node_y>=0 && node_y<gal->ngrid_dens-1) {    
 		// Interpolation function to compute the potential.
 		dens1 = gal->midplane_dens[node_x][node_y];

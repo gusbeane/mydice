@@ -717,6 +717,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		}
 		gal->gaussian_field_defined = 1;
 	}
+	gsl_set_error_handler_off();
 	// Do not work with pseudo densities yet
 	for(i=0; i<AllVars.Nthreads; i++) gal->pseudo[i] = 0;
 	// Set up component properties
@@ -768,7 +769,8 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 						theta_max_dens = (2.0*pi*j/1000.);
 					}
 				}
-			}			
+			}
+					
 			if(gal->comp_radius_nfw[i]==-1.0) {
 				gal->comp_scale_dens[i] 	= gal->comp_mass[i]/cumulative_mass_func(gal,gal->comp_cut[i],i);
 			} else {
@@ -784,7 +786,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		}
 		
 		gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],theta_max_dens,0.,0,gal->comp_model[i],i);
-		gsl_set_error_handler_off();
 		gal->comp_cutted_mass[i] 	= cumulative_mass_func(gal,gal->comp_cut[i],i);
 		gal->total_mass				+= gal->comp_cutted_mass[i];
 
@@ -858,10 +859,21 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		if(gal->num_part[0]>0&&gal->num_part[2]>0)printf("/////\t-Gas fraction:\t\t%10.3lf\n",gas_fraction);
 		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t-BD ratio:\t\t%10.3lf\n",BD_fraction);
 		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t-BT ratio:\t\t%10.3lf\n",BT_fraction);
-		printf("/////\t-Potential PM-grid dimension: \t\t[%d,%d,%d] \n",gal->ngrid,gal->ngrid,gal->ngrid);
+		printf("/////\t-Potential PM-grid dimension: \t\t[%d,%d,%d] \n",(int)pow(2,gal->level_grid),(int)pow(2,gal->level_grid),(int)pow(2,gal->level_grid));
 		for(i=0;i<AllVars.MaxCompNumber;i++) {
 			if(gal->comp_hydro_eq[i]) {
-				printf("/////\t-Midplane density grid dimension: \t[%d,%d] \n",gal->ngrid_dens,gal->ngrid_dens);
+				printf("/////\t-Midplane density grid dimension: \t[%d,%d] \n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens));
+				break;
+			}
+		}
+		if(gal->dens_gauss_sigma>0. && gal->dens_gauss_scale>0. && dens_gauss>0) {
+			printf("/////\t-Gaussian field density grid dimension: [%d,%d,%d] \n",
+			(int)pow(2,gal->level_grid_dens_gauss),(int)pow(2,gal->level_grid_dens_gauss),(int)pow(2,gal->level_grid_dens_gauss));
+		}
+		for(i=0;i<AllVars.MaxCompNumber;i++) {
+			if(gal->comp_type[i]==0 && gal->comp_turb_sigma[i]>0.) {
+				printf("/////\t-Turbulence grid dimension: \t\t[%d,%d,%d] \n",
+				(int)pow(2,gal->level_grid_turb),(int)pow(2,gal->level_grid_turb),(int)pow(2,gal->level_grid_turb));
 				break;
 			}
 		}

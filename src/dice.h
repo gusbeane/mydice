@@ -429,7 +429,9 @@ double density_functions_stream_pool(stream *, double, double, double, int, int)
 double surface_density_func(galaxy *, double, double, int, int);
 static double integrand_density_func(double, void *);
 double cumulative_mass_func(galaxy *, double, int);
-static double d_cumulative_mass_func(double, void *);
+static double d_cumulative_mass_func1(double, void *);
+static double d_cumulative_mass_func2(double, void *);
+
 
 double surface_density_func_stream(stream *, double, double, int);
 static double integrand_density_func_stream(double, void *);
