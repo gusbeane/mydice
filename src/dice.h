@@ -92,9 +92,12 @@
 
 // Global variables for the GSL random number environment.
 const gsl_rng_type *T;
-int random_number_set;
 gsl_rng **r;
 gsl_integration_workspace **w;
+
+// Clock timer
+clock_t clock_start,clock_end;
+double cpu_time;
 
 // This is a type definition of a galaxy. The thought here is to create galaxies
 // as objects and, hopefully, make the code extremely clean. It is essentially a
@@ -106,6 +109,8 @@ typedef struct {
 	double lambda;
 	// Spin fraction of the disk
 	double j_d;
+	// Baryonic mass fraction of the disk
+	double m_d;
 	// Total mass of the galactic model
 	double total_mass;
 	// Density fluctuation dispersion
@@ -156,6 +161,8 @@ typedef struct {
 	int 				*comp_hydro_eq;
 	int 				*comp_hydro_eq_niter;
 	int 				*comp_dens_gauss;
+	double 				*comp_cut_in;
+	int 				*comp_thermal_eq;
 	// Virial quantities
 	double v200;
 	double r200;
@@ -213,12 +220,6 @@ typedef struct {
 	double boxsize;
 	// Total gas midplane density grid size [kpc]
 	double boxsize_dens;
-	// Number of cells in the potential grid
-	int ngrid;
-	// Number of cells in the midplane density grid
-	int ngrid_dens;
-	// Number of cells in the turbulence grid
-	int ngrid_gauss;
 	// Level of refinement of the potential grid
 	int level_grid;
 	// Level of refinement of the gas density grid
@@ -227,6 +228,12 @@ typedef struct {
 	int level_grid_turb;
 	// Level of refinement of the density gaussian fluctuations
 	int level_grid_dens_gauss;
+	// Number of cells in the potential grid
+	int ngrid;
+	// Number of cells in the midplane density grid
+	int ngrid_dens;
+	// Number of cells in the turbulence grid
+	int ngrid_gauss;
 	// Number of cells in the potential grid after padding
 	int ngrid_padded;
 	// Number of cells in the turbulence grid after padding
@@ -388,6 +395,8 @@ struct GlobalVars {
 	double Omega_m;
 	double Omega_l;
 	double Omega_k;
+	int GaussianRejectIter;
+	int CurrentGalaxy;
 } AllVars;
 
 // ------------------------------------------
@@ -432,7 +441,6 @@ double cumulative_mass_func(galaxy *, double, int);
 static double d_cumulative_mass_func1(double, void *);
 static double d_cumulative_mass_func2(double, void *);
 
-
 double surface_density_func_stream(stream *, double, double, int);
 static double integrand_density_func_stream(double, void *);
 double cumulative_mass_func_stream(stream *, double, int);
@@ -445,9 +453,7 @@ static double dmidplane_density_gas_func(double, void *);
 void fill_midplane_dens_grid(galaxy *, int);
 double get_midplane_density(galaxy *, double, double);
 
-double disk_scale_length_func(galaxy *);
-double j_d_func(galaxy *);
-static double dj_d_func(double, void *);
+double disk_scale_length_func(galaxy *, double);
 double f_c_func(double);
 double g_c_func(double);
 static double dg_c_func(double, void *);
@@ -460,6 +466,8 @@ double v_c_func(galaxy *,double);
 double v_c_exp_disk_func(galaxy *,double);
 double v2a_z_func(galaxy *, gsl_integration_workspace *, int);
 static double dv2a_z_func(double, void *);
+double v2a_1D_func(galaxy *, gsl_integration_workspace *, int);
+static double dv2a_1D_func(double, void *);
 double v2a_theta_func(galaxy *, double, int);
 double sigma2_theta_func(galaxy *, double, double);
 double v2a_z_toomre(galaxy *, double, double, int);
@@ -474,32 +482,24 @@ int set_galaxy_potential(galaxy *, int);
 double galaxy_potential_func(galaxy *, double, double, double);
 double galaxy_zforce_func(galaxy *, double);
 double galaxy_rforce_func(galaxy *, double);
+double galaxy_rsphforce_func(galaxy *, double);
 double galaxyr_potential_wrapper_func(double, void *);
+double galaxyrsph_potential_wrapper_func(double, void *);
 double galaxyz_potential_wrapper_func(double, void *);
 double potential_deriv_wrapper_func(double, void *);
+void copy_potential(galaxy *, galaxy *, int);
 
 // Input, output, and manipulation functions
 void write_dice_version();
 int parse_config_file(char *);
 int parse_galaxy_file(galaxy *, char *);
-void write_galaxy_position(galaxy *);
-void write_galaxy_position_disk(galaxy *);
-void write_galaxy_position_halo(galaxy *);
-void write_galaxy_velocity(galaxy *,int);
-void write_galaxy_velocity_disk(galaxy *);
-void write_galaxy_velocity_halo(galaxy *);
-void write_galaxy_potential(galaxy *,double, double, double);
-void write_galaxy_potential_grid(galaxy *, int);
-void write_galaxy_rotation_curve(galaxy *, double);
+void write_galaxy_rotation_curve(galaxy *, double, char *);
 int write_gadget1_ics(galaxy *, char *);
 int write_gadget2_ics(galaxy *, char *);
-void copy_potential(galaxy *, galaxy *, int);
 int load_snapshot(char *, int);
 int allocate_memory(int);
 int reordering(int, int *);
 int unload_snapshot();
-void init_ramses_nml(void);
-void update_ramses_nml(galaxy *, int);
 
 // Toolbox functions and definitions
 double min(double, double);

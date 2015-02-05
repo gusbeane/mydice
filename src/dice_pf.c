@@ -65,7 +65,7 @@ int set_galaxy_potential(galaxy *gal, int verbose) {
 	fflush(stdout);
 	// Setup fftw threads
 	#if USE_THREADS == 1
-		if (verbose) printf("/////\t\t-Setting up FFT call with %d threads\n",AllVars.Nthreads);
+		if (verbose) printf("/////\t\t- Setting up FFT call with %d threads\n",AllVars.Nthreads);
 		fflush(stdout);
 		fftw_init_threads();
 		fftw_plan_with_nthreads(AllVars.Nthreads);
@@ -130,7 +130,7 @@ int set_galaxy_potential(galaxy *gal, int verbose) {
 	
 	// Check for bad grids
 	if (gal->ngrid_padded <= 0) {
-		fprintf(stderr,"\t\tGrid dimensions must be greater than zero! (ngrid=%d)\n",gal->ngrid_padded);
+		fprintf(stderr,"/////\t\t[Error] Grid dimensions must be greater than zero [ngrid=%d]\n",gal->ngrid_padded);
 		return -1;
 	}
 	
@@ -144,7 +144,7 @@ int set_galaxy_potential(galaxy *gal, int verbose) {
 	space_y = gal->space[1];
 	space_z = gal->space[2];
 	// Print the potential in the xy-plane for z = 0 if the option is set.
-	if (verbose) printf("/////\t\t-Grid cell spacings [kpc]: dx = %.3f dy = %.3f dz = %.3f\n",space_x,space_y,space_z);
+	if (verbose) printf("/////\t\t- Grid cell size [dx=%.3lf kpc]\n",space_x);
 	fflush(stdout);
 	// Make the coordinate information unitless.
 	for (ii = 0; ii < end-start; ++ii) {
@@ -382,7 +382,7 @@ double galaxy_potential_func(galaxy *gal, double x, double y, double z) {
 	return potential;
 }
 
-// A wrapper for the disk potential function.
+// A wrapper for the galaxy potential function using the cylindrical radius.
 double galaxyr_potential_wrapper_func(double radius, void *params) {
 	
 	double x, y;
@@ -402,7 +402,30 @@ double galaxyr_potential_wrapper_func(double radius, void *params) {
 	return galaxy_potential_func(gal,x,y,gal->z[gal->index[tid]]);
 }
 
-// A wrapper for the disk potential function.
+// A wrapper for the galaxy potential function using the spherical radius.
+double galaxyrsph_potential_wrapper_func(double r_sph, void *params) {
+	
+	double x, y, z, r_cyl;
+	int tid;
+
+	#if USE_THREADS == 1
+		tid = omp_get_thread_num();
+	#else
+		tid = 0;
+	#endif
+
+	galaxy *gal = (galaxy *) params;
+	
+    z 			= cos(gal->phi_sph[gal->index[tid]])*r_sph;
+    r_cyl 		= sqrt(r_sph*r_sph-z*z);
+		
+	x = r_cyl*cos(gal->theta_cyl[gal->index[tid]]);
+	y = r_cyl*sin(gal->theta_cyl[gal->index[tid]]);
+	
+	return galaxy_potential_func(gal,x,y,z);
+}
+
+// A wrapper for the galaxy potential function using the cartesian coordinate z.
 double galaxyz_potential_wrapper_func(double z, void *params) {
 	
 	int tid;
@@ -424,4 +447,23 @@ double potential_deriv_wrapper_func(double radius, void *params) {
 	galaxy *gal = (galaxy *) params;
 		
 	return (pow(v_c_func(gal,radius),2.0))/(radius*kpc);
+}
+
+// This function copies one galaxy to another.
+void copy_potential(galaxy *gal_1, galaxy *gal_2, int info) {
+	
+	unsigned long int i, j, k;
+	
+	if(info == 1) printf("/////\tCopying potential grid \n");
+	// Copy all the coordinate information.
+	for (i = 0; i < gal_1->ngrid*2; ++i) {
+		for (j = 0; j < gal_1->ngrid*2; ++j) {
+			for(k = 0; k < gal_1->ngrid*2; ++k){
+				gal_2->potential[i][j][k] = gal_1->potential[i][j][k];
+			}
+		}
+	}
+	gal_2->potential_defined = 1;
+	if(info == 1) printf("/////\tPotential grid copied \n");
+	return;
 }

@@ -42,7 +42,7 @@
 
 // This function prints the release date of the current version of DICE.
 void write_dice_version() {
-	printf("///// Version %d.%d \n",DICE_VERSION_MAJOR,DICE_VERSION_MINOR);
+	printf("/////\n///// D.I.C.E. [Disk Initial Conditions Environment] - v%d.%d \n",DICE_VERSION_MAJOR,DICE_VERSION_MINOR);
 	return;
 }
 
@@ -93,7 +93,6 @@ int parse_config_file(char *fname) {
 		return -1;
 	}
     
-	
 	if((fd = fopen(fname,"r"))) {
 		j = 0;
 		while(!feof(fd)) {
@@ -104,13 +103,13 @@ int parse_config_file(char *fname) {
 			if(strcmp(buf1,"Galaxy") == 0) {
 				strcpy(AllVars.GalaxyFiles[j],buf2);
 				j++;
-                
 			}
-            
 		}
 		fclose(fd);
+	} else {
+		printf("[Error] Cannot open %s\n",fname);
+		exit(0);
 	}
-
 	AllVars.Ngal = j;
 	
 	if((fd = fopen(fname,"r"))) {
@@ -123,16 +122,14 @@ int parse_config_file(char *fname) {
 			if(strcmp(buf1,"Stream") == 0) {
 				strcpy(AllVars.StreamFiles[j],buf2);
 				j++;
-                
 			}
-            
 		}
 		fclose(fd);
 	}
 	AllVars.Nstream = j;
 	
 	if(AllVars.Ngal+AllVars.Nstream == 0) {
-		fprintf(stderr,"////// Error - No galaxy/stream parameters files specified.\n");
+		fprintf(stderr,"[Error] No galaxy/stream parameters files specified\n");
 		return -1;
 	}
 
@@ -249,8 +246,15 @@ int parse_config_file(char *fname) {
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "GaussianRejectIter");
+	addr[nt] = &AllVars.GaussianRejectIter;
+	AllVars.GaussianRejectIter = 10000;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
     
-	printf("///// Reading DICE config file: %s\n",fname);
+	printf("/////\tReading configuration file [%s]\n",fname);
 	if((fd = fopen(fname, "r"))) {
 		while(!feof(fd)) {
 			*buf = 0;
@@ -278,20 +282,20 @@ int parse_config_file(char *fname) {
 				}
 				
 			} else {
-				fprintf(stdout, "////// Error in file %s - Tag '%s' not allowed or multiple defined.\n",
+				fprintf(stdout, "[Error] %s -> Keyword '%s' not allowed or multiple defined\n",
                         fname, buf1);
 				return -1;
 			}
 		}
 		fclose(fd);
 	} else {
-		fprintf(stderr,"\tDICE config file %s not found.\n", fname);
+		fprintf(stderr,"[Error] %s not found\n", fname);
 		return -2;
 	}
 	
 	for(i = 0; i < nt; i++) {
 		if(read[i] == 0 && mandatory[i] == 1) {
-			fprintf(stderr,"////// Error - I miss a value for '%s' \n",tag[i]);
+			fprintf(stderr,"[Error] '%s' not specified\n",tag[i]);
 			AllVars.SetKeplerian = 0;
 			return -1;
 		}
@@ -311,7 +315,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	30*AllVars.MaxCompNumber+21
+	#define MAXTAGS	32*AllVars.MaxCompNumber+21
 	
 	FILE *fd;
 	int i,j,n;
@@ -326,22 +330,22 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	int errorFlag = 0;
 	
 	if(sizeof(long long) != 8) {
-		fprintf(stderr,"\nType `long long' is not 64 bit on this platform. Stopping.\n\n");
+		fprintf(stderr,"[Error] Type `long long' is not 64 bit on this platform. Stopping.\n\n");
 		return -1;
 	}
 	
 	if(sizeof(int) != 4) {
-		fprintf(stderr,"\nType `int' is not 32 bit on this platform. Stopping.\n\n");
+		fprintf(stderr,"[Error] Type `int' is not 32 bit on this platform. Stopping.\n\n");
 		return -1;
 	}
 	
 	if(sizeof(float) != 4) {
-		fprintf(stderr,"\nType `float' is not 32 bit on this platform. Stopping.\n\n");
+		fprintf(stderr,"[Error] Type `float' is not 32 bit on this platform. Stopping.\n\n");
 		return -1;
 	}
 	
 	if(sizeof(double) != 8) {
-		fprintf(stderr,"\nType `double' is not 64 bit on this platform. Stopping.\n\n");
+		fprintf(stderr,"[Error] Type `double' is not 64 bit on this platform. Stopping.\n\n");
 		return -1;
 	}
 	
@@ -722,9 +726,25 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = INT;
+		
+		n = sprintf(temp_tag,"cut_in%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &gal->comp_cut_in[j];
+		gal->comp_cut_in[j] = 0.;
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"thermal_eq%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_thermal_eq[j] = 0;
+		addr[nt] = &gal->comp_thermal_eq[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = INT;
 	}
 	
-	printf("/////\n///// Reading galaxy params file: %s\n",fname);
+	printf("/////\tReading galaxy params file [%s]\n",fname);
 	if((fd = fopen(fname, "r"))) {
 		while(!feof(fd)) {
 			*buf = 0;
@@ -750,19 +770,19 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 						break;
 				}
 			} else {
-				fprintf(stderr,"////// Error in file %s - Tag '%s' not allowed or multiple defined.\n",fname, buf1);
+				fprintf(stderr,"[Error] %s -> Keyword '%s' not allowed or multiple defined\n",fname, buf1);
 				return -1;
 			}
 		}
 		fclose(fd);
 	} else {
-		fprintf(stderr,"\nParameter file %s not found.\n\n", fname);
+		fprintf(stderr,"[Error] %s not found\n", fname);
 		return -2;
 	}
 	
 	for(i = 0; i < nt; i++) {
 		if(read[i] == 0 && mandatory[i] == 1) {
-			fprintf(stderr,"////// Error - I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
+			fprintf(stderr,"[Error] '%s' -> '%s' not specified\n",fname,tag[i]);
 			return -1;
 		}
 	}
@@ -797,22 +817,22 @@ int parse_stream_file(stream *st, char *fname) {
 	int 	errorFlag = 0;
 	
 	if(sizeof(long long) != 8) {
-		fprintf(stderr,"\nType `long long' is not 64 bit on this platform. Stopping.\n\n");
+		fprintf(stderr,"[Error] Type `long long' is not 64 bit on this platform. Stopping.\n\n");
 		return -1;
 	}
 	
 	if(sizeof(int) != 4) {
-		fprintf(stderr,"\nType `int' is not 32 bit on this platform. Stopping.\n\n");
+		fprintf(stderr,"[Error] Type `int' is not 32 bit on this platform. Stopping.\n\n");
 		return -1;
 	}
 	
 	if(sizeof(float) != 4) {
-		fprintf(stderr,"\nType `float' is not 32 bit on this platform. Stopping.\n\n");
+		fprintf(stderr,"[Error] Type `float' is not 32 bit on this platform. Stopping.\n\n");
 		return -1;
 	}
 	
 	if(sizeof(double) != 8) {
-		fprintf(stderr,"\nType `double' is not 64 bit on this platform. Stopping.\n\n");
+		fprintf(stderr,"[Error] Type `double' is not 64 bit on this platform. Stopping.\n\n");
 		return -1;
 	}
 	
@@ -963,7 +983,7 @@ int parse_stream_file(stream *st, char *fname) {
 	mandatory[nt] = 0;
 	id[nt++] = INT;
 	
-	printf("/////\n///// Reading galaxy params file: %s\n",fname);
+	printf("/////\tReading stream params file [%s]\n",fname);
 	if((fd = fopen(fname, "r"))) {
 		while(!feof(fd)) {
 			*buf = 0;
@@ -989,19 +1009,19 @@ int parse_stream_file(stream *st, char *fname) {
 						break;
 				}
 			} else {
-				fprintf(stderr,"////// Error in file %s - Tag '%s' not allowed or multiple defined.\n",fname, buf1);
+				fprintf(stderr,"[Error] %s -> Keyword '%s' not allowed or multiple defined\n",fname, buf1);
 				return -1;
 			}
 		}
 		fclose(fd);
 	} else {
-		fprintf(stderr,"\nParameter file %s not found.\n\n", fname);
+		fprintf(stderr,"[Error] %s not found\n", fname);
 		return -2;
 	}
 	
 	for(i = 0; i < nt; i++) {
 		if(read[i] == 0 && mandatory[i] == 1) {
-			fprintf(stderr,"////// Error - I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
+			fprintf(stderr,"[Error] '%s' -> '%s' not specified\n",fname,tag[i]);
 			return -1;
 		}
 	}
@@ -1012,97 +1032,6 @@ int parse_stream_file(stream *st, char *fname) {
 	#undef MAXTAGS
 
 	return 0;
-}
-
-
-// The next three functions write the position coordinates of a galaxy to the
-// screen in xyz format.
-void write_galaxy_position(galaxy *gal) {
-	
-	int i,j;
-	char filename[200];
-	FILE *fp1;
-	
-	// Total rotation curve
-	sprintf(filename, "positions.dat");
-	fp1 = fopen(filename, "w");
-	
-	
-    fprintf(stderr,"Writing galaxy positions to standard out...\n");
-	
-	
-	//Print particles positions
-	for(j=0; j<AllVars.MaxCompNumber; j++) {
-		if (gal->comp_npart[j] > 0) {
-			for (i = gal->comp_npart[j]; i < gal->comp_npart[j] + gal->comp_npart[j]; ++i) {
-				fprintf(fp1,"%d %le %le %le \n",gal->comp_type[j],gal->x[i],gal->y[i],gal->z[i]);
-			}
-		}
-	}
-	
-	fclose(fp1);
-	
-	return;
-}
-
-// The next three functions write the velocity coordinates of a galaxy to
-// the screen in xyz format.
-void write_galaxy_velocity(galaxy *gal, int info) {
-	
-	int i;
-	
-	//Print disk positions
-	if (info != 0) {
-		fprintf(stderr,"Writing galaxy velocities to standard out...\n");
-		printf("/////#Disk: \n");
-	}
-	if (gal->num_part[1] > 0) {
-		for (i = gal->num_part[0]; i < gal->num_part[0] + gal->num_part[1]; ++i) {
-			printf("/////%le %le %le \n",gal->vel_x[i],gal->vel_y[i],gal->vel_z[i]);
-		}
-	}
-	
-	//Print halo positions
-	if (info != 0) {
-		printf("/////#Halo: \n");
-	}
-	if (gal->num_part[0] != 0) {
-		for (i = 0; i < gal->num_part[0] ; ++i) {
-			printf("/////%lf %lf %lf \n",gal->vel_x[i],gal->vel_y[i],gal->vel_z[i]);
-		}
-	}
-	
-	return;
-}
-
-void write_galaxy_velocity_disk(galaxy *gal) {
-	
-	int i;
-	
-	fprintf(stderr,"Writing disk velocities to standard out...\n");
-	printf("/////#Disk: \n");
-	if (gal->num_part[1] > 0) {
-		for (i = gal->num_part[0]; i < gal->num_part[0] + gal->num_part[1]; ++i) {
-			printf("/////%le %le %le \n",gal->vel_x[i],gal->vel_y[i],gal->vel_z[i]);
-		}
-	}
-	
-	return;
-}
-
-void write_galaxy_velocity_halo(galaxy *gal) {
-	
-	int i;
-	
-	fprintf(stderr,"Writing halo velocities to standard out...\n");
-	printf("/////#Halo: \n");
-	if (gal->num_part[0] != 0) {
-		for (i = 0; i < gal->num_part[0] ; ++i) {
-			printf("/////%lf %lf %lf \n",gal->vel_x[i],gal->vel_y[i],gal->vel_z[i]);
-		}
-	}
-	
-	return;
 }
 
 // Function to write initial conditions to file in default Gadget2 format.
@@ -1620,17 +1549,18 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
 //    plot 'rcurve.dat','rcurve_disk.dat','rcurve_halo.dat'
 //
 // to produce a cumulative rotation curve and its parts on the same graph.
-void write_galaxy_rotation_curve(galaxy *gal, double rmax) {
+void write_galaxy_rotation_curve(galaxy *gal, double rmax, char *fname) {
 	int i,tid;
 	double radius, theta, v_c, save;
 	char filename[200];
 	FILE *fp1;
     
 	// Total rotation curve
-	sprintf(filename, "rcurve.dat");
+	sprintf(filename,fname);
 	fp1 = fopen(filename, "w");
 	if (fp1 == NULL) {
-		printf("/////Could not open rcurve.dat for writing the rotation curve. Aborting.\n");
+		printf("[Warning] Cannot open %s\n",fname);
+		return;
 	}
 	#if USE_THREADS == 1
 	    tid = omp_get_thread_num();
@@ -1649,96 +1579,6 @@ void write_galaxy_rotation_curve(galaxy *gal, double rmax) {
 	gal->z[gal->index[tid]] = save;
 	fclose(fp1);
 	
-	return;
-}
-
-// This function writes the potential for a particular galaxy. The function
-// calculates the potentials of the disk and halo and their sum, (the total
-// gravitational potential), and outputs in an nxy format to a file. This
-// data can be plotted with xmgrace using a command like
-//
-//    xmgrace -nxy potential.dat
-//
-// or with gnuplot using splot and a script like
-//
-//    splot 'potential.dat' using 1:2:3, \
-//         'potential.dat' using 1:2:4, \
-//         'potential.dat' using 1:2:5
-//
-// to produce a detailed picture of the potential structure of the system.
-// The user may want to consider adding "w lines" to that script since
-// there are a lot of points in the data file.
-//
-// Please note that the potential of the disk is calculated only in the x,y
-// plane. The potentials are calculated to the +/- the virial radius.
-void write_galaxy_potential(galaxy *gal, double xmax, double ymax, double z) {
-	
-	int i,j,k;
-	char filename[200];
-	FILE *fp1;
-	
-	if (gal->ntot_part > 0) {
-		sprintf(filename, "potential.dat");
-		fp1 = fopen(filename, "w");
-		if (fp1 == NULL) {
-			fprintf(stderr,"Could not open potential.dat for writing the");
-			fprintf(stderr," potential. Skipping it...\n");
-			return;
-		}
-		for (i = -(int) xmax; i < (int) xmax; i=i+1) {
-			for (j = -(int) ymax; j < (int) ymax; j=j+1) {
-				fprintf(fp1,"%d %d %le\n",i,j,galaxy_potential_func(gal,(double) i, (double) j,z));
-			}
-		}
-		fclose(fp1);
-	} else {
-		fprintf(stderr,"There are no particles in the galaxy!\n");
-	}
-	return;
-}
-
-void write_galaxy_potential_grid(galaxy *gal, int zindex) {
-	
-	int i,j,k;
-	char filename[200];
-	FILE *fp1;
-	
-	if (gal->ntot_part > 0) {
-		sprintf(filename, "potential_grid.dat");
-		fp1 = fopen(filename, "w");
-		if (fp1 == NULL) {
-			fprintf(stderr,"Could not open potential.dat for writing the");
-			fprintf(stderr," potential. Skipping it...\n");
-			return;
-		}
-		for (i = 0; i < gal->ngrid_padded; i=i+1) {
-			for (j = 0; j < gal->ngrid_padded; j=j+1) {
-				fprintf(fp1,"%lf %lf %le\n",(double)(i-gal->ngrid_padded/2-1)*gal->space[0],(double)(j-gal->ngrid_padded/2-1)*gal->space[1],gal->potential[i][j][zindex]);
-			}
-		}
-		fclose(fp1);
-	} else {
-		fprintf(stderr,"There are no particles in the galaxy!\n");
-	}
-	return;
-}
-
-// This function copies one galaxy to another.
-void copy_potential(galaxy *gal_1, galaxy *gal_2, int info) {
-	
-	unsigned long int i, j, k;
-	
-	if(info == 1) printf("/////\tCopying potential grid \n");
-	// Copy all the coordinate information.
-	for (i = 0; i < gal_1->ngrid*2; ++i) {
-		for (j = 0; j < gal_1->ngrid*2; ++j) {
-			for(k = 0; k < gal_1->ngrid*2; ++k){
-				gal_2->potential[i][j][k] = gal_1->potential[i][j][k];
-			}
-		}
-	}
-	gal_2->potential_defined = 1;
-	if(info == 1) printf("/////\tPotential grid copied \n");
 	return;
 }
 
@@ -1954,7 +1794,7 @@ int unload_snapshot() {
     return 0;
 }
 
-// Load a Gadget2 snapshot into a galaxy object.
+// Load a Gadget2 snapshot into a galaxy object
 int load_gadget2_galaxy(char *filename, galaxy *galaxy_1) {
 	
 	int i,j;

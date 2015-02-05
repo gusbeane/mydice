@@ -97,12 +97,71 @@ static double dv2a_z_func(double z, void *params) {
     return integrand;
 }
 
+
+// This function calculates the 1D velocity moment at a given spherical radius
+double v2a_1D_func(galaxy *gal, gsl_integration_workspace *w, int component) {
+    
+	int status, tid;
+	double integral, error, res, rho, infinity;
+	size_t neval;
+    
+	#if USE_THREADS == 1
+	    tid = omp_get_thread_num();
+	#else
+	    tid = 0;
+	#endif
+    
+	gsl_function F;
+    
+	F.function 	= &dv2a_1D_func;
+	F.params 	= gal;
+	
+	gal->selected_comp[tid] = component;
+	infinity = 10.*gal->comp_scale_length[gal->selected_comp[tid]];
+	gsl_integration_qag(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&integral,&error);
+    
+    rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+	res 		= integral*kpc/rho;
+	        
+	if(AllVars.AcceptImaginary==1) {
+		return fabs(res);
+	} else {
+		return (res>0.?res:0.);
+	}
+    
+}
+
+// This is the integrand for the previous function. It is setup to work with
+// the GSL_qags structures.
+static double dv2a_1D_func(double r_sph, void *params) {
+    
+    double integrand, r_cyl, z, theta_cyl, rho;
+	int tid;
+    galaxy *gal = (galaxy *) params;
+    
+	#if USE_THREADS == 1
+	    tid = omp_get_thread_num();
+	#else
+	    tid = 0;
+	#endif
+    
+    theta_cyl 	= gal->theta_cyl[gal->index[tid]];
+    z 			= cos(gal->phi_sph[gal->index[tid]])*r_sph;
+    r_cyl 		= sqrt(r_sph*r_sph-z*z);
+	
+    rho 		= density_functions_pool(gal,r_cyl,theta_cyl,z,1,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+	
+    integrand 	= rho*galaxy_rsphforce_func(gal,r_sph);
+            
+    return integrand;
+}
+
 // This function calculates PART of the phi axis velocity moment. In
 // particular, it calculates the derivative of the radial velocity
 // moment, which is equal to the z-axis velocity moment.
 //
 // This function uses the galaxy storage variables a lot! If you have
-// editted the code to ill effect, check that the storage variables
+// edited the code to ill effect, check that the storage variables
 // properly reassigned after this function.
 //
 // The derivative is calculated in the x,y plane using the
@@ -120,12 +179,12 @@ double v2a_theta_func(galaxy *gal, double radius, int component) {
 	#endif
 	
 	// Set the derivative stepsize.
-    h 					= 0.5*gal->space[0];
-	theta 				= gal->theta_cyl[gal->index[tid]];
-    z 					= gal->z[gal->index[tid]];
-	derivative 			= deriv_central(gal,radius,h,rho_v2a_r_func);
-	gal->selected_comp[tid] 	= component;
-	
+    h 						= 0.5*gal->space[0];
+	theta 					= gal->theta_cyl[gal->index[tid]];
+    z 						= gal->z[gal->index[tid]];
+    gal->selected_comp[tid] = component;
+	derivative 				= deriv_central(gal,radius,h,rho_v2a_r_func);
+		
 	rho 		= density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],z,0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 	res 		= derivative*radius*kpc/rho;
 	if(AllVars.AcceptImaginary==1) {
@@ -148,7 +207,7 @@ double rho_v2a_r_func(double radius, void *params) {
 	#else
 	    tid = 0;
 	#endif
-	
+
 	rho = density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 	return rho*v2a_z_func(gal,w[tid],gal->selected_comp[tid]);
 }
@@ -293,14 +352,13 @@ double v_c_func(galaxy *gal, double radius) {
 }
 
 // This function calculates the force on a test particle due to the disk
-// at some point z. This is used to calculate the velocity dispersion.
+// at a point with a cylindrical radius r. This is used to calculate the velocity dispersion.
 //
 // This function simply performs a five point differentiation around
-// x,y,z in the z direction with a small stepsize.
+// x,y,z in the cylindrical radius direction with a small stepsize.
 //
 // This function is specially formatted for the velocity dispersion
 // routines.
-// Disk_potential function returns the potential of the stellar disk + gaseous disk.
 double galaxy_rforce_func(galaxy *gal, double radius) {
 	
 	double force, h, abserr;
@@ -313,14 +371,13 @@ double galaxy_rforce_func(galaxy *gal, double radius) {
 }
 
 // This function calculates the force on a test particle due to the disk
-// at some point z. This is used to calculate the velocity dispersion.
+// at a point with an height z. This is used to calculate the velocity dispersion.
 //
 // This function simply performs a five point differentiation around
 // x,y,z in the z direction with a small stepsize.
 //
 // This function is specially formatted for the velocity dispersion
 // routines.
-// Disk_potential function returns the potential of the stellar disk + gaseous disk.
 double galaxy_zforce_func(galaxy *gal, double z) {
 	
 	double force, h, abserr;
@@ -328,6 +385,25 @@ double galaxy_zforce_func(galaxy *gal, double z) {
 	h = 1.5*gal->space[2];
 	
 	force = deriv_central(gal,z,h,galaxyz_potential_wrapper_func);
+	
+	return force;
+}
+
+// This function calculates the force on a test particle due to the global potential
+// at a spherical radius r_psh. This is used to calculate the velocity dispersion.
+//
+// This function simply performs a five point differentiation around
+// x,y,z in the spherical radius direction with a small stepsize.
+//
+// This function is specially formatted for the velocity dispersion
+// routines.
+double galaxy_rsphforce_func(galaxy *gal, double r_sph) {
+	
+	double force, h, abserr;
+	
+	h = 1.5*gal->space[0];
+	
+	force = deriv_central(gal,r_sph,h,galaxyrsph_potential_wrapper_func);
 	
 	return force;
 }

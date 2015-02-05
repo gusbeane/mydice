@@ -120,7 +120,7 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 			density = gal->comp_scale_dens[component]*exp(-pow(m,alpha));
             break;
 		default:
-			fprintf(stderr,"/////\t\t\tSpecify a valid model for component %d\n",component);
+			fprintf(stderr,"[Error] Specify a valid model for component %d\n",component);
 			exit(0);
 	}
 	if(gal->dens_gauss_sigma>0. && gal->comp_dens_gauss[component]==1 && gal->gaussian_field_defined){
@@ -129,7 +129,8 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 		if(radius>gal->comp_cut[component]) density = 0.0;
 	}
 	// Cutting the density at cutr & cutz
-    if(cut && density<gal->comp_cut_dens[component]) density = 0.0;
+    if(cut && density<gal->comp_cut_dens[component]) 	density = 0.0;
+	if(cut && radius<gal->comp_cut_in[component]) 		density = 0.0;
 	// Unit is 10e10 solar mass / kpc^3
 	return density;
 }
@@ -164,7 +165,7 @@ double density_functions_stream_pool(stream *st, double radius, double theta, do
 			}	
 			break;
 		default:
-			fprintf(stderr,"/////\t\t\tSpecify a valid model for component %d  %d\n",component,model);
+			fprintf(stderr,"/////\t\t\tSpecify a valid model for component %d\n",component);
 			exit(0);		
 	}
 	return density;
@@ -173,7 +174,7 @@ double density_functions_stream_pool(stream *st, double radius, double theta, do
 void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 	unsigned long int i,j,start_part,npart;
 	double pi_x, pi_y, q_x, q_y, prob, *radius, delta_pot;
-	double theta, phi, randval, step, step_proposal, proposal, prop_r, prop_theta, prop_z, step_r, step_z, new_step_r, new_step_z;
+	double theta, phi, randval, proposal, prop_r, prop_theta, prop_z, step_r, step_z, new_step_r, new_step_z;
 	double acceptance;
 	
 	if(gal->comp_npart[component]>0) {
@@ -181,8 +182,8 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 		// We start the Monte Carlo Markov Chain with a realistic particle position
         theta 				= 2.0*pi*gsl_rng_uniform_pos(r[0]);
 		i 					= gal->comp_start_part[component];
-        gal->x[i] 			= 0.;
-        gal->y[i] 			= 0.;
+        gal->x[i] 			= gal->comp_cut_in[component]*cos(theta);
+        gal->y[i] 			= gal->comp_cut_in[component]*sin(theta);
 		gal->z[i] 			= 0.;
 		gal->r_cyl[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]);
 		gal->theta_cyl[i]	= atan2(gal->y[i],gal->x[i]);
@@ -199,8 +200,6 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 			prop_r 		= gal->r_cyl[i] + gsl_ran_gaussian(r[0],step_r);
 			prop_theta 	= 2.0*pi*gsl_rng_uniform_pos(r[0]);
 			prop_z 		= gal->z[i] + gsl_ran_gaussian(r[0],step_z);
-			// Computing the probability of the proposal
-			step_proposal = step;
 			// Distribution function of the considered component
 			// Density of the component times the integrand of spherical volume element
 			pi_x = fabs(gal->r_cyl[i])*density_functions_pool(gal,fabs(gal->r_cyl[i]),gal->theta_cyl[i],gal->z[i],1,density_model,component);
@@ -231,8 +230,6 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 			prop_r 		= gal->r_cyl[i-1] + gsl_ran_gaussian(r[0],step_r);
 			prop_theta 	= 2.0*pi*gsl_rng_uniform_pos(r[0]);
 			prop_z 		= gal->z[i-1] + gsl_ran_gaussian(r[0],step_z);
-			// Computing the probability of the proposal
-			step_proposal = step;
 			// Distribution function of the considered component
 			// Density of the component times the integrand of spherical volume element
 			pi_x = fabs(gal->r_cyl[i-1])*density_functions_pool(gal,fabs(gal->r_cyl[i-1]),gal->theta_cyl[i-1],gal->z[i-1],1,density_model,component);
@@ -263,10 +260,10 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
             gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
 		}
 		acceptance /= gal->comp_npart_pot[component];
-		printf(" -> Acceptance = %.2lf \n",acceptance);
-		if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n/////\t\t\tLower mcmc_step%d in the galaxy parameter file.\n",component);
-		if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n/////\t\t\tIncrease mcmc_step%d in the galaxy parameter file.\n",component);
-		if (AllVars.MeanPartDist) printf("/////\t\t\t[Mean inter-particle distance: %lf kpc]\n",mean_interparticle_distance(gal,component));
+		printf("[acceptance=%.2lf]",acceptance);
+		if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component);
+		if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component);
+		if (AllVars.MeanPartDist) printf("/////\t\t\tMean inter-particle distance -> %lf [kpc]\n",mean_interparticle_distance(gal,component));
 	}
 	return;
 }
@@ -281,22 +278,22 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	double theta, phi, randval, x, y, z, step, proposal, acceptance;
     double cut_dens,theta_max_dens;
     
-	printf("/////\tTargeting gas azimuthal hydrostatic equilibrium:\n");
+	printf("/////\tTargeting gas azimuthal hydrostatic equilibrium\n");
 
 	fflush(stdout);
 	// Allow to use pseudo density functions
 	for(i=0;i<AllVars.Nthreads;i++) gal->pseudo[i] = 1;
 	// Looking for gas particles
 	if(gal->comp_type[component]==0 && gal->comp_npart_pot[component]>0) {
-		printf("/////\t\tRecomputing gas particles position for component %d\n",component);
+		printf("/////\t\t- Component %d -> recomputing gas particles position\n",component);
 		// Starting equilibrium iterations
 		for(j = 0; j < n_iter; ++j) {
-			printf("/////\t\t\tIteration %ld",j+1);
+			printf("/////\t\t\tIteration %ld ",j+1);
 			fflush(stdout);
 			// Now that we've got gas particles positions, we can compute the full potential.
 			if(set_galaxy_potential(gal,0) != 0) {
-				fprintf(stderr,"\nUnable to set the potential. Aborting.\n");
-				return -1;
+				fprintf(stderr,"\n[Error] Unable to set the potential\n");
+				exit(0);
 			}
 			// Now, we have to set the gaseous disk density at (0.,0.,0.).
 			// We have to make a guess: we use the disk density function to compute a realistic rho_gas(r=0,z=0).
@@ -346,9 +343,9 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				}
 			}
 			acceptance /= gal->comp_npart_pot[component];
-			printf(" -> Acceptance = %.2lf\n",acceptance);
-			if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n/////\t\t\tLower mcmc_step in the galaxy parameter file.\n");
-			if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n/////\t\t\tIncrease mcmc_step in the galaxy parameter file.\n");
+			printf("[acceptance=%.2lf]\n",acceptance);
+			if(acceptance<0.50) printf("/////\t\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step_hydro%d\n",component);
+			if(acceptance>0.90) printf("/////\t\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step_hydro%d\n",component);
 		}
 		// Final gas midplane density
 		fill_midplane_dens_grid(gal,component);
@@ -359,7 +356,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model) {
 	unsigned long int i,j,start_part,npart;
 	double pi_x, pi_y, q_x, q_y, prob, *radius, delta_pot;
-	double theta, phi, randval, step, step_proposal, proposal, prop_r, prop_theta, prop_z, step_r, step_z, new_step_r, new_step_z;
+	double theta, phi, randval, proposal, prop_r, prop_theta, prop_z, step_r, step_z, new_step_r, new_step_z;
 	double acceptance;
 
 	if(st->comp_npart[component]>0) {
@@ -385,8 +382,6 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
 			prop_r 		= st->r_cyl[i] + gsl_ran_gaussian(r[0],step_r);
 			prop_theta 	= 2.0*pi*gsl_rng_uniform_pos(r[0]);
 			prop_z 		= st->z[i] + gsl_ran_gaussian(r[0],step_z);
-			// Computing the probability of the proposal
-			step_proposal = step;
 			// Distribution function of the considered component
 			// Density of the component times the integrand of spherical volume element
 			pi_x = fabs(st->r_cyl[i])*density_functions_stream_pool(st,fabs(st->r_cyl[i]),st->theta_cyl[i],st->z[i],density_model,component);
@@ -417,8 +412,6 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
 			prop_r 		= st->r_cyl[i-1] + gsl_ran_gaussian(r[0],step_r);
 			prop_theta 	= 2.0*pi*gsl_rng_uniform_pos(r[0]);
 			prop_z 		= st->z[i-1] + gsl_ran_gaussian(r[0],step_z);
-			// Computing the probability of the proposal
-			step_proposal = step;
 			// Distribution function of the considered component
 			// Density of the component times the integrand of spherical volume element
 			pi_x = fabs(st->r_cyl[i-1])*density_functions_stream_pool(st,fabs(st->r_cyl[i-1]),st->theta_cyl[i-1],st->z[i-1],density_model,component);
@@ -449,9 +442,9 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
             st->phi_sph[i]		= acos(st->z[i]/st->r_sph[i]);
 		}
 		acceptance /= st->comp_npart[component];
-		printf(" -> Acceptance = %.2lf \n",acceptance);
-		if(acceptance<0.50) printf("/////\t\t\tWarning: MCMC acceptance is low!\n/////\t\t\tLower mcmc_step%d in the galaxy parameter file.\n",component);
-		if(acceptance>0.90) printf("/////\t\t\tWarning: MCMC acceptance is high!\n/////\t\t\tIncrease mcmc_step%d in the galaxy parameter file.\n",component);
+		printf("[acceptance=%.2lf]",acceptance);
+		if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component);
+		if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component);
 	}
 	return;
 }
@@ -476,11 +469,9 @@ double surface_density_func(galaxy *gal, double r, double theta, int cut, int co
 	
 	F.function = &integrand_density_func;
     F.params = gal;
-	
 	gal->storage[0][tid] 	= r;
 	gal->storage[1][tid] 	= theta;
 	gal->storage[2][tid] 	= cut;
-	
 	gal->selected_comp[tid] = component; 
 	gsl_integration_qag(&F,-gal->comp_cut[component]*gal->comp_flat[component],gal->comp_cut[component]*gal->comp_flat[component],epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&surface_density,&error);
     
@@ -703,7 +694,7 @@ double pseudo_density_gas_func(galaxy *gal, double x, double y, double z, int cu
 	
 	double h, z0, density, delta_pot, rho_0;
 	if(gal->potential_defined != 1) {
-		if(set_galaxy_potential(gal,0) != 0) printf("/////Unable to set the potential. Abording.\n");
+		if(set_galaxy_potential(gal,0) != 0) printf("[Error] Unable to set the potential\n");
 	}
 	// Computing the potential gradient between 0 and z
 	// in cgs unit
@@ -835,55 +826,24 @@ double get_midplane_density(galaxy *gal, double x, double y) {
 
 // ------------------------------------------
 
-/*// This function determines the scale length of the disk using
+// This function determines the scale length of a self gravitating disk in a NFW halo using
 // the fitting formula provided in Mo et al. 1998, if the user want to use it.
 // Otherwise, the user chose himself the value for the disk scale length.
-double disk_scale_length_func(galaxy *gal) {
+double disk_scale_length_func(galaxy *gal, double c) {
 	
 	int i;
-	double base, power, c, f_conc, f, scale, v_c;
+	double f_r_base, f_r_power, f_c, f_r, disk_scale;
 	
-	c = gal->halo_concentration;
-	f_conc = 2.0/3.0+ pow((c/21.5),0.7);
-	base = (gal->j_d*gal->lambda)/(0.1*gal->m_d);
-	power = (-0.06+2.71*gal->m_d+0.0047*gal->m_d/(gal->j_d*gal->lambda));
-	f = pow(base,power)*(1.0-3.0*gal->m_d+5.2*gal->m_d*gal->m_d)*(1.0-0.019*c+0.00025*c*c+0.52/c);
-	scale = (1.0/sqrt(2.0))*(gal->j_d/gal->m_d)*gal->lambda*gal->r200*(f/sqrt(f_conc));
+	f_c = 2.0/3.0+ pow((c/21.5),0.7);
 	
-	return scale;
-}
+	f_r_base = (gal->j_d*gal->lambda)/(0.1*gal->m_d);
+	f_r_power = (-0.06+2.71*gal->m_d+0.0047*gal->m_d/(gal->j_d*gal->lambda));
+	f_r = pow(f_r_base,f_r_power)*(1.0-3.0*gal->m_d+5.2*gal->m_d*gal->m_d)*(1.0-0.019*c+0.00025*c*c+0.52/c);
+	
+	disk_scale = (1.0/sqrt(2.0))*(gal->j_d/gal->m_d)*gal->lambda*gal->r200*(f_r/sqrt(f_c));
 
-// The next two functions are for calculating the angular momentum
-// of the disk. The first is the integral of the disk and the
-// second is the integrand. Please note that this returns the
-// specific angular momentum, J_d/M_d, not J_d. The units are cm/s.
-double j_d_func(galaxy *gal) {
-	
-	int status;
-	double result, error, j_d;
-	gsl_integration_workspace *w = gsl_integration_workspace_alloc(1000);
-	gsl_function F;
-	
-	F.function = &dj_d_func;
-	F.params = gal;
-	gsl_integration_qags(&F,0.0,100.0*gal->disk_scale_length,0.001,1.0e-7,1000,w,&result,&error);
-	
-	gsl_integration_workspace_free(w);
-	
-	return result;
+	return disk_scale;
 }
-
-// Integrand of the previous numerical integration
-double dj_d_func(double radius, void *params) {
-	
-	galaxy *gal = (galaxy *) params;
-	double v_c, scale;
-	
-	scale = gal->disk_scale_length;
-	v_c = v_c_func(gal,radius);
-	
-	return v_c*(radius/scale)*(radius/scale)*exp(-radius/scale);
-}*/
 
 // This function returns the energy fraction function of MMW for the
 // angular momentum.
@@ -904,12 +864,11 @@ double g_c_func(double c) {
 	
 	int status;
 	double result, error;
-	gsl_integration_workspace *w
-	= gsl_integration_workspace_alloc(1000);
+	gsl_integration_workspace *w = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
 	gsl_function F;
 	
 	F.function = &dg_c_func;
-	gsl_integration_qags(&F,0.0,c,0.001,1.0e-7,1000,w,&result,&error);
+	gsl_integration_qag(&F,0.0,c,epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&result,&error);
 	
 	gsl_integration_workspace_free(w);
 	
@@ -973,14 +932,12 @@ void lower_resolution(galaxy *gal) {
 	unsigned long int i;
 	int j;
 
-	printf("///// Lowering particule mass resolution:\n");
+	printf("/////\tLowering particule mass resolution\n");
 	for (j=0; j<AllVars.MaxCompNumber; j++) {
-    	if(gal->comp_npart[j]>0) printf("/////\tComponent %d -> particle mass %.2e solar mass\n",j,(gal->comp_cutted_mass[j]*1.0E10)/(gal->comp_npart[j]));
+    	if(gal->comp_npart[j]>0) printf("/////\t\t- Component %2d -> m=%.2e Msol\n",j,(gal->comp_cutted_mass[j]*1.0E10)/(gal->comp_npart[j]));
 		// Filling the arrays of the &galaxy structure
 		for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
 			gal->mass[i] 		= gal->comp_cutted_mass[j]/gal->comp_npart[j];
-			gal->id[i] 			= i;
-			gal->u[i] 			= gal->comp_u_init[j];
 		}
 	}
 	return;
