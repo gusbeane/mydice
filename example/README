@@ -4,6 +4,7 @@ To run DICE, and to start generating ICs, just type one of these line:
 dice dice_iso.config 		# Isolated disk
 dice dice_iso_streams.config	# Isolated disk with 2 streams
 dice dice_merger.config		# Merging pair
+dice dice_halo.config		# Cooling halo
 
 Warning: This example requires at least 8Gb of memory, and even more on OSX systems.
 Lower the level_grid parameter in order to use less memory

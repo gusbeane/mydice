@@ -1,0 +1,199 @@
+###################
+# Global parameters
+###################
+# Virial velocity of the galaxy [km/s]
+v200 			200.0
+# Redshit of the galaxy
+redshift		0.05
+# Disk angular momentum fraction
+j_d		 	0.0
+# Halo spin parameter
+lambda		 	0.04
+# Refinement level of the PM potential grid 
+level_grid		8
+# Refinement level of the plane plane density grid 
+level_grid_dens		7
+# Refinement level of the PM turbulence grid 
+level_grid_turb		7
+# Refinement level of the PM gaussian field grid
+level_grid_dens_gauss 	7
+# Size of the PM grid [kpc]
+boxsize		 	100.0
+# Axisymmetric_drift approximation in the Jeans equations
+axisymmetric_drift	0
+# Dispersion for the Gaussian field fluctuations
+dens_gauss_sigma        0.35
+# Physical scale of the gaussian field fluctuations [kpc]
+dens_gauss_scale        1.00
+# Position of the galactic center on XYZ-axis [kpc]
+xc			0.
+yc			0.
+zc			0.
+# XYZ-axis velocity component of the galaxy [km/s] 
+vel_xc			0.
+vel_yc			0.
+vel_zc			0.
+# Spin angle of the disk in the XY plane [degree]
+spin			0.
+# Inclination of the disk compare to XY plane [degree]
+incl 			0.
+# Seed for the random number generator
+seed			1246
+
+
+#######################
+# Components parameters
+#######################
+
+#######################
+# Component 1: Halo
+#######################
+# Fraction of the virial mass in the component 1
+mass_frac1		0.95
+# Number of particles for the component 1
+npart1			100000
+# Number of particles for the potential computation
+npart_pot1              2000000
+# Component 1 density model
+# Available models:
+# 1  = Exponential disk + sech-z profile
+# 2  = Myamoto-Nagai profile
+# 3  = Exponential disk + exponential-z profile
+# 4  = Hernquist profile
+# 5  = Plummer profile
+# 6  = Jaffe profile
+# 7  = Isothermal profile
+# 8  = NFW profile 
+# 9  = Burkert
+# 10 = Einasto profile
+model1			8
+# Scale length of the density profile [kpc]
+# If the value is zero, scale length is defined
+# by the concentration parameter
+# If the value is negative, the size is determined using the spin conservation
+# and the spin fraction initially present in the disk j_d 
+# (Fitting formula from Mo, Mao & White 1998)
+scale_length1		0.
+# Concentration parameter
+# if positive, the scale length is recomputed to match the concentration
+# the concentration parameter of an NFW halo with a mass M200*mass_frac
+concentration1		13.0
+# Component 1 radial density cut [kpc] 
+cut1			50.
+# Component 1 thickness parameter
+flat1			1.00
+# Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
+# expressed in units of the component scale length. Default value is 0.5.
+mcmc_step1		0.50
+# Maximum velocity for the component 1 particles in expressed in units of escape velocity
+vmax1			5.0
+# Particles type (GADGET format -- 0=Gas,1=Halo,2=Disk,3=Bulge,4=Stars)
+type1			1
+# Streaming fraction of the component 1
+streaming_fraction1	0.00
+# Radius at which the density profile should have the exact same
+# value as the NFW profile with the previously defined concentration
+# and with a mass M200*mass_frac [kpc]
+radius_nfw1		1.0
+
+################################
+# Component 2: Thin stellar disk
+################################
+mass_frac2		0.02
+npart2			50000
+npart_pot2              1000000
+model2			2
+# Negative value to compute the disk scalelength with the spin conservation
+scale_length2		-3.0
+cut2			9.0
+flat2			0.15
+mcmc_step2		0.3
+vmax2			2.0
+type2			2
+streaming_fraction2	1.00
+# Dispersion extinction coefficient. Values need to be in the interval [0,1].
+# For example, setting DispExtCoeff to 0.90 means that the azimuthal dispersion is equal to 90 percent
+# the value found by integrating the Jeans equations at a radius equal to the disk scale length.
+# The function used to extinguished is (1-exp(-r/rh))
+# If this coefficient is outside the range [0,1],
+# no extinction is applied to the radial an azimuthal velocity dispersion
+disp_ext2            	1.0
+# Minimal value for the Toomre parameter
+Q_lim2			1.25
+# Mean age of the stars [Myr]
+mean_age2               100.
+# Minimum age of the stars [Myr]
+min_age2                0.
+# Metallicity of the stars [Zsolar]
+metal2                  0.01
+# Gaussian fluctuations in the density field
+dens_gauss2		0
+
+###########################
+# Component 3: Gaseous disk
+###########################
+mass_frac3		0.01
+npart3			200000
+npart_pot3              1000000
+model3			1
+scale_length3		3.0
+cut3			9.0
+flat3			0.05
+mcmc_step3		0.3
+vmax3			10.5
+type3			0
+streaming_fraction3	1.00
+metal3                  0.01
+# Temperature of the gas particles [K]
+t_init3                 1e5
+# Turbulent velocity dispersion [km/s]
+turb_sigma3		10.0
+# Turbulence smoothing scale [kpc]
+turb_scale3		1.0
+# Compute vertical hydrostatic equilibrium for gas components
+hydro_eq3 		1
+# Number of iterations to reach hyfrostatic equilibrium
+hydro_eq_niter3 	6
+# Number 
+mcmc_step_hydro3	0.2
+
+############################
+# Component 4: Stellar bulge
+############################
+mass_frac4		0.005
+npart4			5000
+npart_pot4              100000
+model4			10
+scale_length4		2.0
+cut4			4.0
+flat4			0.80
+mcmc_step4		0.3
+vmax4			4.0
+type4			3
+streaming_fraction4	0.5
+mean_age4               1000.
+min_age4                50.
+metal4                  0.001
+# Structural parameter specific to the Einasto density profile
+alpha5			0.80
+Q_lim4			1.5
+
+###############################
+# Component 5: Stellar spheroid
+###############################
+mass_frac5		0.010
+npart5			50000
+npart_pot5              1000000
+model5			4
+scale_length5		4.0
+cut5			12.0
+flat5			0.40
+mcmc_step5		0.3
+vmax5			2.0
+type5			2
+streaming_fraction5	0.50
+mean_age5               1000.
+min_age5                50.
+metal5                  0.001
+Q_lim5			1.5
+

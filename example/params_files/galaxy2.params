@@ -2,7 +2,7 @@
 # Global parameters
 ###################
 # Virial velocity of the galaxy [km/s]
-v200 			200.0
+v200 			100.0
 # Redshit of the galaxy
 redshift		0.05
 # Disk angular momentum fraction
@@ -22,9 +22,9 @@ boxsize		 	100.0
 # Axisymmetric_drift approximation in the Jeans equations
 axisymmetric_drift	0
 # Dispersion for the Gaussian field fluctuations
-dens_gauss_sigma                0.35
+dens_gauss_sigma 	0.35
 # Physical scale of the gaussian field fluctuations [kpc]
-dens_gauss_scale                1.00
+dens_gauss_scale 	1.00
 # Position of the galactic center on XYZ-axis [kpc]
 xc			0.
 yc			0.
@@ -34,12 +34,11 @@ vel_xc			0.
 vel_yc			0.
 vel_zc			0.
 # Spin angle of the disk in the XY plane [degree]
-spin			0.
+spin			45.
 # Inclination of the disk compare to XY plane [degree]
-incl 			0.
+incl 			45.
 # Seed for the random number generator
-seed			1246
-
+seed			12468
 
 #######################
 # Components parameters
@@ -51,7 +50,7 @@ seed			1246
 # Fraction of the virial mass in the component 1
 mass_frac1		0.95
 # Number of particles for the component 1
-npart1			100000
+npart1			50000
 # Number of particles for the potential computation
 npart_pot1              2000000
 # Component 1 density model
@@ -76,7 +75,7 @@ scale_length1		0.
 # the concentration parameter of an NFW halo with a mass M200*mass_frac
 concentration1		13.0
 # Component 1 radial density cut [kpc] 
-cut1			50.
+cut1			25.
 # Component 1 thickness parameter
 flat1			1.00
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
@@ -97,11 +96,11 @@ radius_nfw1		1.0
 # Component 2: Thin stellar disk
 ################################
 mass_frac2		0.02
-npart2			50000
+npart2			25000
 npart_pot2              1000000
 model2			2
-scale_length2		3.0
-cut2			9.0
+scale_length2		1.5
+cut2			4.5
 flat2			0.15
 mcmc_step2		0.3
 vmax2			2.0
@@ -123,17 +122,17 @@ min_age2                0.
 # Metallicity of the stars [Zsolar]
 metal2                  0.01
 # Gaussian fluctuations in the density field
-dens_gauss2		0
+dens_gauss2             0
 
 ###########################
 # Component 3: Gaseous disk
 ###########################
 mass_frac3		0.01
-npart3			100000
+npart3			50000
 npart_pot3              1000000
 model3			1
-scale_length3		3.0
-cut3			9.0
+scale_length3		1.5
+cut3			4.5
 flat3			0.05
 mcmc_step3		0.3
 vmax3			10.5
@@ -141,7 +140,7 @@ type3			0
 streaming_fraction3	1.00
 metal3                  0.01
 # Temperature of the gas particles [K]
-t_init3                 1e4
+t_init3                 1e5
 # Turbulent velocity dispersion [km/s]
 turb_sigma3		10.0
 # Turbulence smoothing scale [kpc]
@@ -149,17 +148,17 @@ turb_scale3		1.0
 # Compute vertical hydrostatic equilibrium for gas components
 hydro_eq3 		1
 # Number of iterations to reach hyfrostatic equilibrium
-hydro_eq_niter3 	4
+hydro_eq_niter3 	6
 
 ############################
 # Component 4: Stellar bulge
 ############################
 mass_frac4		0.005
-npart4			5000
+npart4			2500
 npart_pot4              100000
 model4			10
-scale_length4		2.0
-cut4			4.0
+scale_length4		1.0
+cut4			2.0
 flat4			0.80
 mcmc_step4		0.3
 vmax4			4.0
@@ -176,11 +175,11 @@ Q_lim4			1.5
 # Component 5: Stellar spheroid
 ###############################
 mass_frac5		0.010
-npart5			50000
+npart5			25000
 npart_pot5              1000000
 model5			4
-scale_length5		4.0
-cut5			12.0
+scale_length5		2.0
+cut5			6.0
 flat5			0.40
 mcmc_step5		0.3
 vmax5			2.0
@@ -190,4 +189,3 @@ mean_age5               1000.
 min_age5                50.
 metal5                  0.001
 Q_lim5			1.5
-
