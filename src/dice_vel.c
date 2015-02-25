@@ -179,7 +179,7 @@ double v2a_theta_func(galaxy *gal, double radius, int component) {
 	#endif
 	
 	// Set the derivative stepsize.
-    h 						= 0.5*gal->space[0];
+    h 						= 0.5*gal->dx;
 	theta 					= gal->theta_cyl[gal->index[tid]];
     z 						= gal->z[gal->index[tid]];
     gal->selected_comp[tid] = component;
@@ -228,7 +228,7 @@ double v2a_z_toomre(galaxy *gal, double radius, double v2a_z, int component) {
 	#endif
     
 	// Set the derivative step
-	h 				= gal->space[0];
+	h 				= gal->dx;
 	// Calculate force and force derivative
 	force 			= potential_deriv_wrapper_func(radius,gal);
 	dforcedr 		= deriv_forward(gal,radius,h,potential_deriv_wrapper_func);
@@ -260,7 +260,7 @@ double sigma2_theta_disk_func(galaxy *gal, double radius, double v2a_z) {
 	double res, abserr;
     
 	// Set the derivative step
-	h = gal->space[0];
+	h = gal->dx;
 	// Calculate force and force derivative
 	force = potential_deriv_wrapper_func(radius,gal);
 	dforcedr = deriv_forward(gal,radius,h,potential_deriv_wrapper_func);
@@ -294,7 +294,7 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 	radius 					= fabs(radius);
 	gal->selected_comp[tid] = component;
 	// Set the derivative step
-	h 						= 1.5*gal->space_dens[0];
+	h 						= 1.5*gal->dx_dens;
 	density_derivative 		= deriv_central(gal,radius,h,gas_density_wrapper_func);
 	v_c2 					= pow(v_c_func(gal,radius),2.0);
 	pressure_force 			= radius*kpc*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);//-3.0*pow(gal->cs_init,2.0);
@@ -361,9 +361,23 @@ double v_c_func(galaxy *gal, double radius) {
 // routines.
 double galaxy_rforce_func(galaxy *gal, double radius) {
 	
+	int tid;
 	double force, h, abserr;
+	double x,y,r_sph;
 	
-	h = 1.5*gal->space[0];
+	#if USE_THREADS == 1
+		tid = omp_get_thread_num();
+	#else
+		tid = 0;
+	#endif
+	
+	x = radius*cos(gal->theta_cyl[gal->index[tid]]);
+	y = radius*sin(gal->theta_cyl[gal->index[tid]]);
+	
+	r_sph = sqrt(pow(x,2)+pow(y,2)+pow(gal->z[gal->index[tid]],2));
+	
+	h = 1.5*gal->dx;
+	if(r_sph<gal->boxsize_zoom/2.) h = 1.5*gal->dx_zoom;
 	
 	force = deriv_central(gal,radius,h,galaxyr_potential_wrapper_func);
 	
@@ -380,9 +394,20 @@ double galaxy_rforce_func(galaxy *gal, double radius) {
 // routines.
 double galaxy_zforce_func(galaxy *gal, double z) {
 	
+	int tid;
 	double force, h, abserr;
+	double r_sph;
 	
-	h = 1.5*gal->space[2];
+	#if USE_THREADS == 1
+		tid = omp_get_thread_num();
+	#else
+		tid = 0;
+	#endif
+	
+	r_sph = sqrt(pow(gal->z[gal->index[tid]],2)+pow(gal->z[gal->index[tid]],2)+pow(z,2));
+	
+	h = 1.5*gal->dx;
+	if(r_sph<gal->boxsize_zoom/2.) h = 1.5*gal->dx_zoom;	
 	
 	force = deriv_central(gal,z,h,galaxyz_potential_wrapper_func);
 	
@@ -401,7 +426,8 @@ double galaxy_rsphforce_func(galaxy *gal, double r_sph) {
 	
 	double force, h, abserr;
 	
-	h = 1.5*gal->space[0];
+	h = 1.5*gal->dx;
+	if(r_sph<gal->boxsize_zoom/2.) h = 1.5*gal->dx_zoom;	
 	
 	force = deriv_central(gal,r_sph,h,galaxyrsph_potential_wrapper_func);
 	

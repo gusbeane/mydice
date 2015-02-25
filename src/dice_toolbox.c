@@ -71,11 +71,10 @@ double deriv_central(galaxy *gal, double x, double h, function_to_derivate F){
 
 // Derivate a function using a 2-point forward scheme
 double deriv_forward(galaxy *gal, double x, double h, function_to_derivate F){
-	double new_x,f1,f2,f3,f4,derivative;
+	double f1,f2,f3,f4,derivative;
 
     f1 = F(x,gal);
-    new_x = x+h;
-    f2 = F(new_x,gal);
+    f2 = F(x+h,gal);
     
     derivative = (f2-f1)/(h*kpc);
 	return derivative;
@@ -91,7 +90,7 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	int i, j, k;
 	// Nodes coordinates
 	int node_x, node_y, node_z;
-	double space_x, space_y, space_z;
+	int ngrid_padded[3];
 	double dx, dy, dz, tx, ty, tz, n;
 	double x, y, z;
 	double rand_vel,rad;
@@ -102,6 +101,10 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	//size_t p_x[gal->num_part[1]], p_y[gal->num_part[1]], p_z[gal->num_part[1]];
 	fftw_plan fft_kernel, fft_gaussian_field, fftinv_gaussian_field;
 	fftw_complex *kernel,*gaussian_field;
+	
+	ngrid_padded[0] = 2*gal->ngrid_gauss[0];
+	ngrid_padded[1] = 2*gal->ngrid_gauss[1];
+	ngrid_padded[2] = 2*gal->ngrid_gauss[2];
 	
 
 	// Setup fftw threads
@@ -114,30 +117,30 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	#endif
 	
 	// Allocate grid storage variables
-	if (!(kernel = calloc(pow(gal->ngrid_gauss_padded,3),sizeof(fftw_complex)))) {
+	if (!(kernel = calloc(ngrid_padded[0]*ngrid_padded[1]*ngrid_padded[2],sizeof(fftw_complex)))) {
 		fprintf(stderr,"Unable to allocate space for kernel's function.\n");
 		return -1;
 	}
-	if (!(gaussian_field = calloc(pow(gal->ngrid_gauss_padded,3),sizeof(fftw_complex)))) {
+	if (!(gaussian_field = calloc(ngrid_padded[0]*ngrid_padded[1]*ngrid_padded[2],sizeof(fftw_complex)))) {
 		fprintf(stderr,"Unable to allocate space for gaussian_field buffer.\n");
 		return -1;
 	}
 	
-	if (!(kernel_grid=calloc(gal->ngrid_gauss_padded,sizeof(double *)))) {
+	if (!(kernel_grid=calloc(ngrid_padded[0],sizeof(double *)))) {
 		fprintf(stderr,"Unable to create kernel's function x axis.\n");
 		return -1;
 	}
 	// kernel grid allocation
 	// x-axis
-	for (i = 0; i < gal->ngrid_gauss_padded; ++i) {
+	for (i = 0; i < ngrid_padded[1]; ++i) {
 	    // y-axis
-	    if (!(kernel_grid[i] = calloc(gal->ngrid_gauss_padded,sizeof(double *)))) {
+	    if (!(kernel_grid[i] = calloc(ngrid_padded[1],sizeof(double *)))) {
 			fprintf(stderr,"Unable to create kernel's function y axis.\n");
         	return -1;
         }
 	    // z-axis
-        for (j = 0; j < gal->ngrid_gauss_padded; ++j) {
-			if (!(kernel_grid[i][j] = calloc(gal->ngrid_gauss_padded,sizeof(double)))) {
+        for (j = 0; j < ngrid_padded[2]; ++j) {
+			if (!(kernel_grid[i][j] = calloc(ngrid_padded[2],sizeof(double)))) {
 				fprintf(stderr,"Unable to create kernel's function z axis.\n");
 				return -1;
 			}
@@ -145,16 +148,16 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	}
 
 	// Allocate the fftw complex output value and the fftw dft plan.
-	fft_gaussian_field	= fftw_plan_dft_3d(gal->ngrid_gauss_padded,gal->ngrid_gauss_padded,gal->ngrid_gauss_padded,gaussian_field,gaussian_field,FFTW_FORWARD,FFTW_ESTIMATE);
-	fft_kernel		= fftw_plan_dft_3d(gal->ngrid_gauss_padded,gal->ngrid_gauss_padded,gal->ngrid_gauss_padded,kernel,kernel,FFTW_FORWARD,FFTW_ESTIMATE);
+	fft_gaussian_field	= fftw_plan_dft_3d(ngrid_padded[0],ngrid_padded[1],ngrid_padded[2],gaussian_field,gaussian_field,FFTW_FORWARD,FFTW_ESTIMATE);
+	fft_kernel			= fftw_plan_dft_3d(ngrid_padded[0],ngrid_padded[1],ngrid_padded[2],kernel,kernel,FFTW_FORWARD,FFTW_ESTIMATE);
 	
 	// Normalization constant
 	// See FFTW reference guide for more details
-	n = (int)pow(gal->ngrid_gauss_padded,3.0);
+	n = (int)(ngrid_padded[0]*ngrid_padded[1]*ngrid_padded[2]);
 	
 	// Check for bad grids
-	if (gal->ngrid_gauss_padded <= 0) {
-		fprintf(stderr,"\t\tGrid dimensions must be greater than zero! (ngrid=%d)\n",gal->ngrid_gauss_padded);
+	if (gal->ngrid_gauss[0] <= 0) {
+		fprintf(stderr,"\t\tGrid dimensions must be greater than zero! (ngrid=%d)\n",gal->ngrid_gauss[0]);
 		return -1;
 	}
 	
@@ -164,19 +167,16 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	//gsl_sort_index(p_x,gal->x,1,gal->num_part[0]);
 	//gsl_sort_index(p_y,gal->y,1,gal->num_part[0]);
 	//gsl_sort_index(p_z,gal->z,1,gal->num_part[0]);
-	space_x = gal->space_gauss[0];
-	space_y = gal->space_gauss[1];
-	space_z = gal->space_gauss[2];
 
 	// Initialization loop
-	for (i = 0; i < gal->ngrid_gauss_padded; ++i) {
-		for (j = 0; j < gal->ngrid_gauss_padded; ++j) {
-			for (k = 0; k < gal->ngrid_gauss_padded; ++k) {
+	for (i = 0; i < ngrid_padded[0]; ++i) {
+		for (j = 0; j < ngrid_padded[1]; ++j) {
+			for (k = 0; k < ngrid_padded[2]; ++k) {
 				gal->gaussian_field[i][j][k] = gsl_ran_gaussian(r[0],1.0);
 			}
 		}
 	}
-	if(gauss_scale<space_x){
+	if(gauss_scale<gal->dx_gauss){
 		printf("/////\t\t-Gaussian field scale < grid size -> no convolution\n");
 		return 0;
 	}	
@@ -190,30 +190,30 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	// isolated (vacuum) boundary conditions. See Hockney and Eastwood, 1980, ch. 6 for a
 	// discussion. The octants start in the lower left at (p,q) = (0,0) and progress
 	// counter clockwise.
-	for (i = 0; i < gal->ngrid_gauss_padded/2; ++i) {
-	    for (j = 0; j < gal->ngrid_gauss_padded/2; ++j) {
+	for (i = 0; i < ngrid_padded[0]/2; ++i) {
+	    for (j = 0; j < ngrid_padded[1]/2; ++j) {
 	        #pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
-			for (k = 0; k < gal->ngrid_gauss_padded/2; ++k) {
-		    	dx = sqrt(pow((double)(i+0.5)*space_x,2.0));
-		        dy = sqrt(pow((double)(j+0.5)*space_y,2.0));
-		    	dz = sqrt(pow((double)(k+0.5)*space_z,2.0));
+			for (k = 0; k < ngrid_padded[2]/2; ++k) {
+		    	dx = sqrt(pow((double)(i+0.5)*gal->dx_gauss,2.0));
+		        dy = sqrt(pow((double)(j+0.5)*gal->dx_gauss,2.0));
+		    	dz = sqrt(pow((double)(k+0.5)*gal->dx_gauss,2.0));
 		        rad = sqrt(dx*dx+dy*dy+dz*dz);
 				// Octant 1
-		        kernel_grid[i][j][k] = exp(-pow(rad,2.0)/(2.0*pow(gauss_scale,2.0)));
+		        kernel_grid[i][j][k] 														= exp(-pow(rad,2.0)/(2.0*pow(gauss_scale,2.0)));
 		        // Octant 2
-                kernel_grid[gal->ngrid_gauss_padded-1-i][j][k] = kernel_grid[i][j][k];
+                kernel_grid[ngrid_padded[0]-1-i][j][k] 										= kernel_grid[i][j][k];
                 // Octant 3
-                kernel_grid[gal->ngrid_gauss_padded-1-i][gal->ngrid_gauss_padded-1-j][k] = kernel_grid[i][j][k];
+                kernel_grid[ngrid_padded[0]-1-i][ngrid_padded[1]-1-j][k] 					= kernel_grid[i][j][k];
                 // Octant 4
-                kernel_grid[i][gal->ngrid_gauss_padded-1-j][k] = kernel_grid[i][j][k];
+                kernel_grid[i][ngrid_padded[1]-1-j][k] 										= kernel_grid[i][j][k];
                 // Octant 5
-                kernel_grid[i][j][gal->ngrid_gauss_padded-1-k] = kernel_grid[i][j][k];
+                kernel_grid[i][j][ngrid_padded[2]-1-k] 										= kernel_grid[i][j][k];
                 // Octant 6
-                kernel_grid[gal->ngrid_gauss_padded-1-i][j][gal->ngrid_gauss_padded-1-k] = kernel_grid[i][j][k];
+                kernel_grid[ngrid_padded[0]-1-i][j][ngrid_padded[2]-1-k] 					= kernel_grid[i][j][k];
                 // Octant 7
-                kernel_grid[gal->ngrid_gauss_padded-1-i][gal->ngrid_gauss_padded-1-j][gal->ngrid_gauss_padded-1-k] = kernel_grid[i][j][k];
+                kernel_grid[ngrid_padded[0]-1-i][ngrid_padded[1]-1-j][ngrid_padded[2]-1-k] 	= kernel_grid[i][j][k];
                 // Octant 8
-                kernel_grid[i][gal->ngrid_gauss_padded-1-j][gal->ngrid_gauss_padded-1-k] = kernel_grid[i][j][k];
+                kernel_grid[i][ngrid_padded[1]-1-j][ngrid_padded[2]-1-k] 					= kernel_grid[i][j][k];
 			}
 		}
 	}
@@ -221,9 +221,9 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	
 	// Pack kernel's function and the density into 1D arrays
 	l = 0;
-	for (i = 0; i < gal->ngrid_gauss_padded; ++i) {
-	    for (j = 0; j < gal->ngrid_gauss_padded; ++j) {
-			for (k = 0; k < gal->ngrid_gauss_padded; ++k) {
+	for (i = 0; i < ngrid_padded[0]; ++i) {
+	    for (j = 0; j < ngrid_padded[1]; ++j) {
+			for (k = 0; k < ngrid_padded[2]; ++k) {
 		       	kernel[l] = kernel_grid[i][j][k];
 		       	gaussian_field[l] = gal->gaussian_field[i][j][k];
 				l++;
@@ -238,7 +238,7 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	fftw_destroy_plan(fft_gaussian_field);
 	fftw_destroy_plan(fft_kernel);
 	// Allocating memory for the inverse fourier computation
-	fftinv_gaussian_field = fftw_plan_dft_3d(gal->ngrid_gauss_padded,gal->ngrid_gauss_padded,gal->ngrid_gauss_padded,gaussian_field,gaussian_field,FFTW_BACKWARD,FFTW_ESTIMATE);
+	fftinv_gaussian_field = fftw_plan_dft_3d(ngrid_padded[0],ngrid_padded[1],ngrid_padded[2],gaussian_field,gaussian_field,FFTW_BACKWARD,FFTW_ESTIMATE);
 	// Multiply the density by kernel's function to find the k-space gaussian_field and
 	// invert for the real potenital. Second, normalize the system and, finally,
 	// put the gaussian_field information into the grid.
@@ -258,9 +258,9 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	stddev = sqrt(stddev/n);
 
 	l = 0;
-	for (i = 0; i < gal->ngrid_gauss_padded; ++i) {
-	        for (j = 0; j < gal->ngrid_gauss_padded; ++j) {
-				for (k = 0; k < gal->ngrid_gauss_padded; ++k) {
+	for (i = 0; i < ngrid_padded[0]; ++i) {
+	        for (j = 0; j < ngrid_padded[1]; ++j) {
+				for (k = 0; k < ngrid_padded[2]; ++k) {
 					// Fix the grid info
 					gal->gaussian_field[i][j][k] = gaussian_field[l]/stddev;
 					l++;
@@ -271,8 +271,8 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	// Kill the storage arrays since they are no longer needed.
 	fftw_free(kernel);
 	fftw_free(gaussian_field);
-	for (i = 0; i < gal->ngrid_gauss_padded; ++i) {
-	        for (j = 0; j < gal->ngrid_gauss_padded; ++j) {
+	for (i = 0; i < ngrid_padded[1]; ++i) {
+	        for (j = 0; j < ngrid_padded[2]; ++j) {
 			free(kernel_grid[i][j]);
 		}
 		free(kernel_grid[i]);
@@ -297,7 +297,7 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	int i, j, k;
 	// Nodes coordinates
 	int node_x, node_y, node_z;
-	double space_x, space_y, space_z;
+	int ngrid_padded[3];
 	double dx, dy, dz, tx, ty, tz, n;
 	double x, y, z;
 	double rand_vel,rad;
@@ -309,6 +309,9 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	fftw_plan fft_kernel, fft_gaussian_field, fftinv_gaussian_field;
 	fftw_complex *kernel,*gaussian_field;
 	
+	ngrid_padded[0] = 2*st->ngrid_gauss[0];
+	ngrid_padded[1] = 2*st->ngrid_gauss[1];
+	ngrid_padded[2] = 2*st->ngrid_gauss[2];
 
 	// Setup fftw threads
 	#if USE_THREADS == 1
@@ -320,30 +323,30 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	#endif
 	
 	// Allocate grid storage variables
-	if (!(kernel = calloc(pow(st->ngrid_gauss_padded,3),sizeof(fftw_complex)))) {
+	if (!(kernel = calloc(ngrid_padded[0]*ngrid_padded[1]*ngrid_padded[2],sizeof(fftw_complex)))) {
 		fprintf(stderr,"Unable to allocate space for kernel's function.\n");
 		return -1;
 	}
-	if (!(gaussian_field = calloc(pow(st->ngrid_gauss_padded,3),sizeof(fftw_complex)))) {
+	if (!(gaussian_field = calloc(ngrid_padded[0]*ngrid_padded[1]*ngrid_padded[2],sizeof(fftw_complex)))) {
 		fprintf(stderr,"Unable to allocate space for gaussian_field buffer.\n");
 		return -1;
 	}
 	
-	if (!(kernel_grid=calloc(st->ngrid_gauss_padded,sizeof(double *)))) {
+	if (!(kernel_grid=calloc(ngrid_padded[0],sizeof(double *)))) {
 		fprintf(stderr,"Unable to create kernel's function x axis.\n");
 		return -1;
 	}
 	// kernel grid allocation
 	// x-axis
-	for (i = 0; i < st->ngrid_gauss_padded; ++i) {
+	for (i = 0; i < ngrid_padded[1]; ++i) {
 	        // y-axis
-	        if (!(kernel_grid[i] = calloc(st->ngrid_gauss_padded,sizeof(double *)))) {
+	        if (!(kernel_grid[i] = calloc(ngrid_padded[1],sizeof(double *)))) {
 			fprintf(stderr,"Unable to create kernel's function y axis.\n");
            		return -1;
         	}
 	        // z-axis
-        	for (j = 0; j < st->ngrid_gauss_padded; ++j) {
-			if (!(kernel_grid[i][j] = calloc(st->ngrid_gauss_padded,sizeof(double)))) {
+        	for (j = 0; j < ngrid_padded[2]; ++j) {
+			if (!(kernel_grid[i][j] = calloc(ngrid_padded[2],sizeof(double)))) {
 				fprintf(stderr,"Unable to create kernel's function z axis.\n");
 				return -1;
 			}
@@ -351,16 +354,16 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	}
 
 	// Allocate the fftw complex output value and the fftw dft plan.
-	fft_gaussian_field	= fftw_plan_dft_3d(st->ngrid_gauss_padded,st->ngrid_gauss_padded,st->ngrid_gauss_padded,gaussian_field,gaussian_field,FFTW_FORWARD,FFTW_ESTIMATE);
-	fft_kernel		= fftw_plan_dft_3d(st->ngrid_gauss_padded,st->ngrid_gauss_padded,st->ngrid_gauss_padded,kernel,kernel,FFTW_FORWARD,FFTW_ESTIMATE);
+	fft_gaussian_field	= fftw_plan_dft_3d(ngrid_padded[0],ngrid_padded[1],ngrid_padded[2],gaussian_field,gaussian_field,FFTW_FORWARD,FFTW_ESTIMATE);
+	fft_kernel			= fftw_plan_dft_3d(ngrid_padded[0],ngrid_padded[1],ngrid_padded[2],kernel,kernel,FFTW_FORWARD,FFTW_ESTIMATE);
 	
 	// Normalization constant
 	// See FFTW reference guide for more details
-	n = (int)pow(st->ngrid_gauss_padded,3.0);
+	n = (int)(ngrid_padded[0]*ngrid_padded[1]*ngrid_padded[2]);
 	
 	// Check for bad grids
-	if (st->ngrid_gauss_padded <= 0) {
-		fprintf(stderr,"\t\tGrid dimensions must be greater than zero! (ngrid=%d)\n",st->ngrid_gauss_padded);
+	if (st->ngrid_gauss <= 0) {
+		fprintf(stderr,"\t\tGrid dimensions must be greater than zero! (ngrid=%d)\n",st->ngrid_gauss);
 		return -1;
 	}
 	
@@ -370,22 +373,20 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	//gsl_sort_index(p_x,st->x,1,st->num_part[0]);
 	//gsl_sort_index(p_y,st->y,1,st->num_part[0]);
 	//gsl_sort_index(p_z,st->z,1,st->num_part[0]);
-	space_x = st->space_gauss[0];
-	space_y = st->space_gauss[1];
-	space_z = st->space_gauss[2];
+
 	// Print the gaussian_field in the xy-plane for z = 0 if the option is set.
 	//if (verbose) printf("/////\t\t-Grid cell spacings [kpc]: dx = %.3f dy = %.3f dz = %.3f\n",space_x,space_y,space_z);
 	fflush(stdout);
 
 	// Initialization loop
-	for (i = 0; i < st->ngrid_gauss_padded; ++i) {
-		for (j = 0; j < st->ngrid_gauss_padded; ++j) {
-			for (k = 0; k < st->ngrid_gauss_padded; ++k) {
+	for (i = 0; i < ngrid_padded[0]; ++i) {
+		for (j = 0; j < ngrid_padded[1]; ++j) {
+			for (k = 0; k < ngrid_padded[2]; ++k) {
 				st->gaussian_field[i][j][k] = gsl_ran_gaussian(r[0],1.0);
 			}
 		}
 	}
-	
+
 	// Define kernel's function.
 	// These are the grid points as measured from the center of kernel's function
 	// and the local value of the truncation function. The density is also packed into a
@@ -395,30 +396,30 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	// isolated (vacuum) boundary conditions. See Hockney and Eastwood, 1980, ch. 6 for a
 	// discussion. The octants start in the lower left at (p,q) = (0,0) and progress
 	// counter clockwise.
-	for (i = 0; i < st->ngrid_gauss_padded/2; ++i) {
-	    for (j = 0; j < st->ngrid_gauss_padded/2; ++j) {
+	for (i = 0; i < ngrid_padded[0]/2; ++i) {
+	    for (j = 0; j < ngrid_padded[1]/2; ++j) {
 	        #pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
-			for (k = 0; k < st->ngrid_gauss_padded/2; ++k) {
-		    	dx = sqrt(pow((double)(i+0.5)*space_x,2.0));
-		        dy = sqrt(pow((double)(j+0.5)*space_y,2.0));
-		    	dz = sqrt(pow((double)(k+0.5)*space_z,2.0));
+			for (k = 0; k < ngrid_padded[2]/2; ++k) {
+		    	dx = sqrt(pow((double)(i+0.5)*st->dx_gauss,2.0));
+		        dy = sqrt(pow((double)(j+0.5)*st->dx_gauss,2.0));
+		    	dz = sqrt(pow((double)(k+0.5)*st->dx_gauss,2.0));
 		        rad = sqrt(dx*dx+dy*dy+dz*dz);
 				// Octant 1
-		        kernel_grid[i][j][k] = 1.0/(pow(gauss_scale*sqrt(2.0*pi),3.0))*exp(-pow(rad,2.0)/(2.0*pow(gauss_scale,2.0)));
+		        kernel_grid[i][j][k] 														= 1.0/(pow(gauss_scale*sqrt(2.0*pi),3.0))*exp(-pow(rad,2.0)/(2.0*pow(gauss_scale,2.0)));
 		        // Octant 2
-                kernel_grid[st->ngrid_gauss_padded-1-i][j][k] = kernel_grid[i][j][k];
+                kernel_grid[ngrid_padded[0]-1-i][j][k] 										= kernel_grid[i][j][k];
                 // Octant 3
-                kernel_grid[st->ngrid_gauss_padded-1-i][st->ngrid_gauss_padded-1-j][k] = kernel_grid[i][j][k];
+                kernel_grid[ngrid_padded[0]-1-i][ngrid_padded[1]-1-j][k] 					= kernel_grid[i][j][k];
                 // Octant 4
-                kernel_grid[i][st->ngrid_gauss_padded-1-j][k] = kernel_grid[i][j][k];
+                kernel_grid[i][ngrid_padded[1]-1-j][k] 										= kernel_grid[i][j][k];
                 // Octant 5
-                kernel_grid[i][j][st->ngrid_gauss_padded-1-k] = kernel_grid[i][j][k];
+                kernel_grid[i][j][ngrid_padded[2]-1-k] 										= kernel_grid[i][j][k];
                 // Octant 6
-                kernel_grid[st->ngrid_gauss_padded-1-i][j][st->ngrid_gauss_padded-1-k] = kernel_grid[i][j][k];
+                kernel_grid[ngrid_padded[0]-1-i][j][ngrid_padded[2]-1-k] 					= kernel_grid[i][j][k];
                 // Octant 7
-                kernel_grid[st->ngrid_gauss_padded-1-i][st->ngrid_gauss_padded-1-j][st->ngrid_gauss_padded-1-k] = kernel_grid[i][j][k];
+                kernel_grid[ngrid_padded[0]-1-i][ngrid_padded[1]-1-j][ngrid_padded[2]-1-k] 	= kernel_grid[i][j][k];
                 // Octant 8
-                kernel_grid[i][st->ngrid_gauss_padded-1-j][st->ngrid_gauss_padded-1-k] = kernel_grid[i][j][k];
+                kernel_grid[i][ngrid_padded[1]-1-j][ngrid_padded[2]-1-k] 					= kernel_grid[i][j][k];
 			}
 		}
 	}
@@ -426,9 +427,9 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	
 	// Pack kernel's function and the density into 1D arrays
 	l = 0;
-	for (i = 0; i < st->ngrid_gauss_padded; ++i) {
-	    for (j = 0; j < st->ngrid_gauss_padded; ++j) {
-			for (k = 0; k < st->ngrid_gauss_padded; ++k) {
+	for (i = 0; i < ngrid_padded[0]; ++i) {
+	    for (j = 0; j < ngrid_padded[1]; ++j) {
+			for (k = 0; k < ngrid_padded[2]; ++k) {
 		       	kernel[l] = kernel_grid[i][j][k];
 		       	gaussian_field[l] = st->gaussian_field[i][j][k];
 				l++;
@@ -443,7 +444,7 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	fftw_destroy_plan(fft_gaussian_field);
 	fftw_destroy_plan(fft_kernel);
 	// Allocating memory for the inverse fourier computation
-	fftinv_gaussian_field = fftw_plan_dft_3d(st->ngrid_gauss_padded,st->ngrid_gauss_padded,st->ngrid_gauss_padded,gaussian_field,gaussian_field,FFTW_BACKWARD,FFTW_ESTIMATE);
+	fftinv_gaussian_field = fftw_plan_dft_3d(ngrid_padded[0],ngrid_padded[0],ngrid_padded[0],gaussian_field,gaussian_field,FFTW_BACKWARD,FFTW_ESTIMATE);
 	// Multiply the density by kernel's function to find the k-space gaussian_field and
 	// invert for the real potenital. Second, normalize the system and, finally,
 	// put the gaussian_field information into the grid.
@@ -463,9 +464,9 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	stddev = sqrt(stddev/n);
 
 	l = 0;
-	for (i = 0; i < st->ngrid_gauss_padded; ++i) {
-	        for (j = 0; j < st->ngrid_gauss_padded; ++j) {
-				for (k = 0; k < st->ngrid_gauss_padded; ++k) {
+	for (i = 0; i < ngrid_padded[0]; ++i) {
+	        for (j = 0; j < ngrid_padded[0]; ++j) {
+				for (k = 0; k < ngrid_padded[0]; ++k) {
 					// Fix the grid info
 					st->gaussian_field[i][j][k] = gaussian_field[l]/stddev;
 					l++;
@@ -476,8 +477,8 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	// Kill the storage arrays since they are no longer needed.
 	fftw_free(kernel);
 	fftw_free(gaussian_field);
-	for (i = 0; i < st->ngrid_gauss_padded; ++i) {
-	        for (j = 0; j < st->ngrid_gauss_padded; ++j) {
+	for (i = 0; i < ngrid_padded[0]; ++i) {
+	        for (j = 0; j < ngrid_padded[0]; ++j) {
 			free(kernel_grid[i][j]);
 		}
 		free(kernel_grid[i]);
@@ -501,19 +502,28 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 double galaxy_gaussian_field_func(galaxy *gal, double x, double y, double z) {
 	
 	int node_x, node_y, node_z, offset;
+	int ngrid_padded[3];
 	double gauss1, gauss2, gauss3, gauss4, gauss5, gauss6, gauss7, gauss8;
 	double a, dx, dy, dz, tx, ty, tz, gaussian_field;
 	double xtemp,ytemp,ztemp,theta,phi,xmax,ymax,zmax,rnorm;
 		
+	ngrid_padded[0] = 2*gal->ngrid_gauss[0];
+	ngrid_padded[1] = 2*gal->ngrid_gauss[1];
+	ngrid_padded[2] = 2*gal->ngrid_gauss[2];
+		
 	// Scale the coordinates
-	xtemp = x/gal->space_gauss[0] + ((double)(gal->ngrid_gauss_padded/2)-0.5-0.5);
-	ytemp = y/gal->space_gauss[1] + ((double)(gal->ngrid_gauss_padded/2)-0.5-0.5);
-	ztemp = z/gal->space_gauss[2] + ((double)(gal->ngrid_gauss_padded/2)-0.5-0.5);
+	xtemp = x/gal->dx_gauss + ((double)(ngrid_padded[0]/2)-0.5-0.5);
+	ytemp = y/gal->dx_gauss + ((double)(ngrid_padded[1]/2)-0.5-0.5);
+	ztemp = z/gal->dx_gauss + ((double)(ngrid_padded[2]/2)-0.5-0.5);
 	offset = 0;
 	// Determine the parent node.
 	node_x = floor(xtemp);
 	node_y = floor(ytemp);
 	node_z = floor(ztemp);
+	
+	if(node_x<0||node_x>=ngrid_padded[0]) printf("%d %d %d %lf %lf %lf\n",node_x,node_y,node_z,x,y,z);
+	if(node_y<0||node_y>=ngrid_padded[1]) printf("%d %d %d %lf %lf %lf\n",node_x,node_y,node_z,x,y,z);
+	if(node_z<0||node_z>=ngrid_padded[2]) printf("%d %d %d %lf %lf %lf\n",node_x,node_y,node_z,x,y,z);
 	
 	// Check to see if (x,y,z) is a grid point.
 	if (xtemp == (double) node_y && ytemp == (double) node_y && ztemp == (double) node_z) {
@@ -556,14 +566,19 @@ double galaxy_gaussian_field_func(galaxy *gal, double x, double y, double z) {
 double stream_gaussian_field_func(stream *st, double x, double y, double z) {
 	
 	int node_x, node_y, node_z, offset;
+	int ngrid_padded[3];
 	double gauss1, gauss2, gauss3, gauss4, gauss5, gauss6, gauss7, gauss8;
 	double a, dx, dy, dz, tx, ty, tz, gaussian_field;
 	double xtemp,ytemp,ztemp,theta,phi,xmax,ymax,zmax,rnorm;
 		
+	ngrid_padded[0] = 2*st->ngrid_gauss[0];
+	ngrid_padded[1] = 2*st->ngrid_gauss[1];
+	ngrid_padded[2] = 2*st->ngrid_gauss[2];
+		
 	// Scale the coordinates
-	xtemp = x/st->space_gauss[0] + ((double)(st->ngrid_gauss_padded/2)-0.5-0.5);
-	ytemp = y/st->space_gauss[1] + ((double)(st->ngrid_gauss_padded/2)-0.5-0.5);
-	ztemp = z/st->space_gauss[2] + ((double)(st->ngrid_gauss_padded/2)-0.5-0.5);
+	xtemp = x/st->dx_gauss + ((double)(ngrid_padded[0]/2)-0.5-0.5);
+	ytemp = y/st->dx_gauss + ((double)(ngrid_padded[1]/2)-0.5-0.5);
+	ztemp = z/st->dx_gauss + ((double)(ngrid_padded[2]/2)-0.5-0.5);
 	offset = 0;
 	// Determine the parent node.
 	node_x = floor(xtemp);

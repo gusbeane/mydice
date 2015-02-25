@@ -78,6 +78,7 @@
 #define hydrogen_massfrac		0.76				// mass fraction of hydrogen, relevant only for radiative cooling
 #define boltzmann				1.3806e-16			// Boltzmann constant in [erg.K^-1] = [g.cm^2.s^-2.K^-1]
 #define protonmass				1.6726e-24			// proton mass in [g]
+#define solarmass				1.989E33			// Mass of the Sun in [g]
 #define pi						3.14159274101257 	// pi = 4.0*atan(1.0)
 #define	G						6.67428E-8			// G = 6.67428E-8 [cm^3 g^-1 s^-2]
 #define	kpc						3.085678E21			// 1 kpc = 3.085678E21 [cm]
@@ -163,6 +164,7 @@ typedef struct {
 	int 				*comp_dens_gauss;
 	double 				*comp_cut_in;
 	int 				*comp_thermal_eq;
+	double 				*comp_part_mass;
 	// Virial quantities
 	double v200;
 	double r200;
@@ -203,25 +205,33 @@ typedef struct {
 	double *metal;
 	// Particle Mesh potential grid
 	double ***potential;
+	// Particle Mesh potential grid
+	double ***potential_zoom;
 	// Particle Mesh gaussian field grid
 	double ***gaussian_field;
 	// Gas midplane density grid
 	double **midplane_dens;
 	// Potential grid cell size vector [kpc]
-	double space[3];
+	double dx;
+	// Potential zoom grid cell size vector [kpc]
+	double dx_zoom;
 	// Gas midplane density grid cell size vector [kpc]
-	double space_dens[2];
+	double dx_dens;
 	// Gaussian field grid cell size vector [kpc]
-	double space_gauss[3];
+	double dx_gauss;
 	// Number of particles per particle type
 	unsigned long int num_part[4];
 	unsigned long int num_part_pot[4];
 	// Total potential grid size [kpc]
 	double boxsize;
+	// Total potential zoom grid size [kpc]
+	double boxsize_zoom;
 	// Total gas midplane density grid size [kpc]
 	double boxsize_dens;
 	// Level of refinement of the potential grid
 	int level_grid;
+	// Level of refinement of the potential zoom grid
+	int level_grid_zoom;
 	// Level of refinement of the gas density grid
 	int level_grid_dens;
 	// Level of refinement of the gas turbulence grid
@@ -229,15 +239,13 @@ typedef struct {
 	// Level of refinement of the density gaussian fluctuations
 	int level_grid_dens_gauss;
 	// Number of cells in the potential grid
-	int ngrid;
+	int ngrid[3];
+	// Number of cells in the zoomed potential grid
+	int ngrid_zoom[3];
 	// Number of cells in the midplane density grid
-	int ngrid_dens;
+	int ngrid_dens[2];
 	// Number of cells in the turbulence grid
-	int ngrid_gauss;
-	// Number of cells in the potential grid after padding
-	int ngrid_padded;
-	// Number of cells in the turbulence grid after padding
-	int ngrid_gauss_padded;
+	int ngrid_gauss[3];
 	// Storage array
 	double **storage;
 	// Identifier of particle
@@ -252,11 +260,13 @@ typedef struct {
 	// Boolean variable checking the computation of the gaussian field
 	int gaussian_field_defined;
 	// Boolean which enable the axisymmetric drift approximation for the stellar disk
-	int axisymmetric_drift;
+	int epicycle;
 	// Seed for random number generator
 	long seed;
 	// Pseudo density boolean
 	int *pseudo;
+	// Shift term for the gravitational potential in the zoom region
+	double potential_shift_zoom;
 } galaxy;
 
 // This is a type definition of a stream. The thought here is to create streams
@@ -265,29 +275,30 @@ typedef struct {
 typedef struct {
 	int *selected_comp;
 	// Stream's peak coordinates
-	double *comp_xc;
-	double *comp_yc;
-	double *comp_zc;
-	double *comp_mass;
-	double *comp_dens;
-	double *comp_opening_angle;
-	double *comp_turb_sigma;
-	double *comp_turb_scale;
-	double *comp_t_init;
+	double 				*comp_xc;
+	double 				*comp_yc;
+	double 				*comp_zc;
+	double 				*comp_mass;
+	double 				*comp_dens;
+	double 				*comp_opening_angle;
+	double 				*comp_turb_sigma;
+	double 				*comp_turb_scale;
+	double 				*comp_t_init;
 	// Stream's spin orientation spherical angles
-	double *comp_theta_sph;
-	double *comp_phi_sph;
-	double *comp_length;
-	double *comp_scale;
-	unsigned long int *comp_npart;
-	int	*comp_bool;
-	int	*comp_model;
-	double *comp_mcmc_step;
-	double *comp_metal;
-	double *comp_u_init;
-	double *comp_cs_init;
-	unsigned long int *comp_start_part;
-	char **comp_profile_name;
+	double 				*comp_theta_sph;
+	double 				*comp_phi_sph;
+	double 				*comp_length;
+	double 				*comp_scale;
+	unsigned long int 	*comp_npart;
+	int					*comp_bool;
+	int					*comp_model;
+	double 				*comp_mcmc_step;
+	double 				*comp_metal;
+	double 				*comp_u_init;
+	double 				*comp_cs_init;
+	unsigned long int 	*comp_start_part;
+	char 				**comp_profile_name;
+	int					*comp_dens_gauss;
 	// Coordinates vectors
 	double *x;
 	double *y;
@@ -312,12 +323,12 @@ typedef struct {
 	unsigned long int *id;
 	// Level of refinement of the gas turbulence grid
 	int level_grid_turb;
+	// Level of refinement of the density gaussian fluctuations
+	int level_grid_dens_gauss;
 	// Number of cells in the turbulence grid
-	unsigned long int ngrid_gauss;
-	// Number of cells in the turbulence grid after padding
-	int ngrid_gauss_padded;
+	unsigned long int ngrid_gauss[3];
 	// Gaussian field grid cell size vector [kpc]
-	double space_gauss[3];
+	double dx_gauss;
 	// Particle Mesh gaussian_field grid
 	double ***gaussian_field;
 	// Storage array
@@ -326,6 +337,12 @@ typedef struct {
 	double total_mass;
 	int n_component;
 	long seed;
+	// Density fluctuation dispersion
+	double dens_gauss_sigma;
+	// Density fluctuation scale
+	double dens_gauss_scale;
+	// Boolean variable checking the computation of the gaussian field
+	int gaussian_field_defined;
 } stream;
 
 //Gadget2-style header for Gadget2 snapshots.
@@ -390,6 +407,7 @@ struct GlobalVars {
 	int MeanPartDist;
 	int AcceptImaginary;
 	int OutputRc;
+	int OutputPot;
 	int MaxCompNumber;
 	double H0;
 	double Omega_m;
@@ -478,8 +496,8 @@ int set_turbulent_grid(galaxy *, int);
 double galaxy_turbulence_func(galaxy *, double, double, double, int);
 
 // Potential and force functions
-int set_galaxy_potential(galaxy *, int);
-double galaxy_potential_func(galaxy *, double, double, double);
+int set_galaxy_potential(galaxy *, double ***, double, int [3], int);
+double galaxy_potential_func(galaxy *, double ***, double, int [3], double, double, double, int);
 double galaxy_zforce_func(galaxy *, double);
 double galaxy_rforce_func(galaxy *, double);
 double galaxy_rsphforce_func(galaxy *, double);
@@ -493,7 +511,8 @@ void copy_potential(galaxy *, galaxy *, int);
 void write_dice_version();
 int parse_config_file(char *);
 int parse_galaxy_file(galaxy *, char *);
-void write_galaxy_rotation_curve(galaxy *, double, char *);
+void write_galaxy_rotation_curve(galaxy *, double, char *, double);
+void write_galaxy_potential_curve(galaxy *, double, char *, double);
 int write_gadget1_ics(galaxy *, char *);
 int write_gadget2_ics(galaxy *, char *);
 int load_snapshot(char *, int);

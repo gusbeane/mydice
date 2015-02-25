@@ -46,6 +46,7 @@
 int main (int argc, char **argv) {
 
 	int i, j, k, l, ngal, N;
+	double zoom_bound[6];
 	// Galaxy pointers
 	galaxy *gal, *pgal, *stack1, *stack2;
 	stream *st;
@@ -160,10 +161,18 @@ int main (int argc, char **argv) {
 				        fprintf(stderr,"[Error] Unable to set coordinates\n");
 				        exit(0);
 				}
-				if(set_galaxy_potential(gal,1) != 0) {
+				if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,1) != 0) {
 					printf("[Error] Unable to set the potential\n");
 					exit(0);
 				}
+				if(gal->level_grid_zoom>gal->level_grid){
+					if(set_galaxy_potential(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,1) != 0) {
+						printf("[Error] Unable to set the zoomed potential\n");
+						exit(0);
+					}
+				}
+				gal->potential_shift_zoom = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->boxsize_zoom/2.,0.,0.,1)
+					-galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,gal->boxsize_zoom/2.,0.,0.,0);
 				if(set_galaxy_velocity(gal) != 0) {
 					printf("[Error] Unable to set the velocities\n");
 					exit(0);
@@ -177,10 +186,18 @@ int main (int argc, char **argv) {
 			        fprintf(stderr,"[Error] Unable to set coordinates\n");
 			        exit(0);
 			}
-			if(set_galaxy_potential(gal,1) != 0) {
+			if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,1) != 0) {
 				fprintf(stderr,"[Error] Unable to set the potential\n");
 				exit(0);
 			}
+			if(gal->level_grid_zoom>gal->level_grid){
+				if(set_galaxy_potential(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,1) != 0) {
+					printf("[Error] Unable to set the zoomed potential\n");
+					exit(0);
+				}
+			}
+			gal->potential_shift_zoom = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->boxsize_zoom/2.,0.,0.,1)
+				-galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,gal->boxsize_zoom/2.,0.,0.,0);
 			if(set_galaxy_velocity(gal) != 0) {
 				fprintf(stderr,"[Error] Unable to set the velocities\n");
 				exit(0);
@@ -301,6 +318,7 @@ int main (int argc, char **argv) {
 	clock_end 	= clock();
 	cpu_time 	= ((double)(clock_end-clock_start))/CLOCKS_PER_SEC;
 	printf("/////\tICs successfully created [%d seconds]\n",(int)ceil(cpu_time));
+	printf("/////\t--------------------------------------------------\n");
 	return 0;
 }
 
