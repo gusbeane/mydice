@@ -9,18 +9,22 @@ redshift		0.05
 j_d		 	0.04
 # Halo spin parameter
 lambda		 	0.04
-# Refinement level of the PM potential grid 
+# Refinement level of the potential grid 
 level_grid		8
+# Refinement level of the zoomed potential grid 
+level_grid_zoom		10
 # Refinement level of the plane plane density grid 
 level_grid_dens		7
-# Refinement level of the PM turbulence grid 
+# Refinement level of the turbulence grid 
 level_grid_turb		8
-# Refinement level of the PM gaussian field grid
+# Refinement level of the gaussian field grid
 level_grid_dens_gauss
-# Size of the PM grid [kpc]
+# Size of the potential grid [kpc]
 boxsize		 	100.0
-# Axisymmetric_drift approximation in the Jeans equations
-axisymmetric_drift	0
+# Size of the zoomed potential grid [kpc]
+boxsize		 	14.0
+# Epicycle approximation in the Jeans equations
+epicycle		0
 # Dispersion for the Gaussian field fluctuations
 dens_gauss_sigma 	0.35
 # Physical scale of the gaussian field fluctuations [kpc]
@@ -67,8 +71,6 @@ npart_pot1              2000000
 # 10 = Einasto profile
 model1			8
 # Scale length of the density profile [kpc]
-# If the value is zero, scale length is defined
-# by the concentration parameter
 scale_length1		0.
 # Concentration parameter
 # if positive, the scale length is recomputed to match the concentration
@@ -99,7 +101,10 @@ mass_frac2		0.02
 npart2			25000
 npart_pot2              1000000
 model2			2
-scale_length2		1.5
+# If the value is zero and the particle type is not 1 the size is determined using the spin conservation
+# and the spin fraction initially present in the disk j_d 
+# (Fitting formula from Mo, Mao & White 1998)
+scale_length2		0.
 cut2			4.5
 flat2			0.15
 mcmc_step2		0.3
@@ -131,7 +136,7 @@ mass_frac3		0.01
 npart3			50000
 npart_pot3              1000000
 model3			1
-scale_length3		1.5
+scale_length3		0.
 cut3			4.5
 flat3			0.05
 mcmc_step3		0.3

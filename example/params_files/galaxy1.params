@@ -3,28 +3,35 @@
 ###################
 # Virial velocity of the galaxy [km/s]
 v200 			200.0
+# Virial mass of the galaxy [1e10 Msol]
+# Overrides the v200 parameter
+#m200			100.
 # Redshit of the galaxy
 redshift		0.05
 # Disk angular momentum fraction
 j_d		 	0.0
 # Halo spin parameter
 lambda		 	0.04
-# Refinement level of the PM potential grid 
+# Refinement level of the potential grid 
 level_grid		8
+# Refinement level of the zoomed potential grid 
+level_grid_zoom		10
 # Refinement level of the plane plane density grid 
 level_grid_dens		7
-# Refinement level of the PM turbulence grid 
+# Refinement level of the turbulence grid 
 level_grid_turb		7
-# Refinement level of the PM gaussian field grid
+# Refinement level of the gaussian field grid
 level_grid_dens_gauss 	7
-# Size of the PM grid [kpc]
+# Size of the potential grid [kpc]
 boxsize		 	100.0
-# Axisymmetric_drift approximation in the Jeans equations
-axisymmetric_drift	0
+# Size of the zoomed potential grid [kpc]
+boxsize_zoom	 	14.0
+# Epicycle approximation in the Jeans equations
+epicycle		0
 # Dispersion for the Gaussian field fluctuations
-dens_gauss_sigma        0.35
+dens_gauss_sigma        0.50
 # Physical scale of the gaussian field fluctuations [kpc]
-dens_gauss_scale        1.00
+dens_gauss_scale        0.25
 # Position of the galactic center on XYZ-axis [kpc]
 xc			0.
 yc			0.
@@ -53,7 +60,7 @@ mass_frac1		0.95
 # Number of particles for the component 1
 npart1			100000
 # Number of particles for the potential computation
-npart_pot1              2000000
+npart_pot1              3000000
 # Component 1 density model
 # Available models:
 # 1  = Exponential disk + sech-z profile
@@ -68,12 +75,7 @@ npart_pot1              2000000
 # 10 = Einasto profile
 model1			8
 # Scale length of the density profile [kpc]
-# If the value is zero, scale length is defined
-# by the concentration parameter
-# If the value is negative, the size is determined using the spin conservation
-# and the spin fraction initially present in the disk j_d 
-# (Fitting formula from Mo, Mao & White 1998)
-scale_length1		0.
+scale_length1		1.
 # Concentration parameter
 # if positive, the scale length is recomputed to match the concentration
 # the concentration parameter of an NFW halo with a mass M200*mass_frac
@@ -95,16 +97,20 @@ streaming_fraction1	0.00
 # value as the NFW profile with the previously defined concentration
 # and with a mass M200*mass_frac [kpc]
 radius_nfw1		1.0
+# Target mass of individual particles [Msol]
+part_mass1		0.0
 
 ################################
 # Component 2: Thin stellar disk
 ################################
 mass_frac2		0.02
 npart2			50000
-npart_pot2              1000000
+npart_pot2              4000000
 model2			2
-# Negative value to compute the disk scalelength with the spin conservation
-scale_length2		-3.0
+# If the value is zero and the particle type is not 1 the size is determined using the spin conservation
+# and the spin fraction initially present in the disk j_d 
+# (Fitting formula from Mo, Mao & White 1998)
+scale_length2		0.0
 cut2			9.0
 flat2			0.15
 mcmc_step2		0.3
@@ -133,13 +139,13 @@ dens_gauss2		0
 # Component 3: Gaseous disk
 ###########################
 mass_frac3		0.01
-npart3			200000
-npart_pot3              1000000
+npart3			150000
+npart_pot3              2000000
 model3			1
-scale_length3		3.0
+scale_length3		0.
 cut3			9.0
 flat3			0.05
-mcmc_step3		0.3
+mcmc_step3		0.15
 vmax3			10.5
 type3			0
 streaming_fraction3	1.00
@@ -147,7 +153,7 @@ metal3                  0.01
 # Temperature of the gas particles [K]
 t_init3                 1e5
 # Turbulent velocity dispersion [km/s]
-turb_sigma3		10.0
+turb_sigma3		0.0
 # Turbulence smoothing scale [kpc]
 turb_scale3		1.0
 # Compute vertical hydrostatic equilibrium for gas components
@@ -155,14 +161,14 @@ hydro_eq3 		1
 # Number of iterations to reach hyfrostatic equilibrium
 hydro_eq_niter3 	6
 # Number 
-mcmc_step_hydro3	0.2
+mcmc_step_hydro3	0.3
 
 ############################
 # Component 4: Stellar bulge
 ############################
 mass_frac4		0.005
 npart4			5000
-npart_pot4              100000
+npart_pot4              1000000
 model4			10
 scale_length4		2.0
 cut4			4.0
@@ -183,7 +189,7 @@ Q_lim4			1.5
 ###############################
 mass_frac5		0.010
 npart5			50000
-npart_pot5              1000000
+npart_pot5              10000000
 model5			4
 scale_length5		4.0
 cut5			12.0

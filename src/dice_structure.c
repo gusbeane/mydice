@@ -66,7 +66,7 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 		case 2:
 			// Myamoto-Nagai profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
-			strcpy(gal->comp_profile_name[component],"Myamoto-Nagai");
+			strcpy(gal->comp_profile_name[component],"      Myamoto-Nagai      ");
 			zpz0 = sqrt(z*z+z0*z0);
 			density = gal->comp_scale_dens[component]*(h*radius*radius+(h+3.0*zpz0)*pow(h+zpz0,2.0))
 			/(pow(radius*radius+pow((h+zpz0),2.0),2.5)*pow(zpz0,3.0));
@@ -74,49 +74,49 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 		case 3:
 			// Exponential disk + exponential z-profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
-			strcpy(gal->comp_profile_name[component],"Exponential disk / exp z");
+			strcpy(gal->comp_profile_name[component],"Exponential disk / exp z ");
 			density = gal->comp_scale_dens[component]*exp(-radius/h)*exp(-fabs(z)/z0);
 			break;
 		case 4:
 			// Hernquist profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
-			strcpy(gal->comp_profile_name[component],"Hernquist");
+			strcpy(gal->comp_profile_name[component],"        Hernquist        ");
 			density = gal->comp_scale_dens[component]*1.0/(m*pow((m+1.0),3.0));
 			break;
 		case 5:
             // Plummer profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
-			strcpy(gal->comp_profile_name[component],"Plummer");
+			strcpy(gal->comp_profile_name[component],"          Plummer        ");
 			density = gal->comp_scale_dens[component]*pow(1.0+pow(m,2.0),-2.5);
 			break;
         case 6:
             // Jaffe profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
-			strcpy(gal->comp_profile_name[component],"Jaffe");
+			strcpy(gal->comp_profile_name[component],"          Jaffe          ");
 			density = gal->comp_scale_dens[component]*1.0/(pow(m*(m+1),2.0));
             break;
         case 7:
             // Isothermal profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
-			strcpy(gal->comp_profile_name[component],"Isothermal");
+			strcpy(gal->comp_profile_name[component],"       Isothermal        ");
 			density = gal->comp_scale_dens[component]*1.0/(pow(m,2.0));
             break;
         case 8:
             // NFW profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
-			strcpy(gal->comp_profile_name[component],"NFW");
+			strcpy(gal->comp_profile_name[component],"           NFW           ");
 			density = gal->comp_scale_dens[component]*1.0/(m*pow(1.0+m,2.0));
             break;
     	case 9:
             // Burkert profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
-			strcpy(gal->comp_profile_name[component],"Burkert");
+			strcpy(gal->comp_profile_name[component],"         Burkert         ");
 			density = gal->comp_scale_dens[component]*1.0/((m+1)*(pow(m,2.0)+1));
             break;
         case 10:
             // Einasto profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
-			strcpy(gal->comp_profile_name[component],"Einasto");
+			strcpy(gal->comp_profile_name[component],"         Einasto         ");
 			density = gal->comp_scale_dens[component]*exp(-pow(m,alpha));
             break;
 		default:
@@ -124,9 +124,12 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 			exit(0);
 	}
 	if(gal->dens_gauss_sigma>0. && gal->comp_dens_gauss[component]==1 && gal->gaussian_field_defined){
-		density *= (galaxy_gaussian_field_func(gal,x,y,z)*gal->dens_gauss_sigma+1.0);
-		if(density<0.) density = 0.0;
-		if(radius>gal->comp_cut[component]) density = 0.0;
+		if(radius>gal->comp_cut[component]) {
+			density = 0.0;
+		} else {
+			density *= (galaxy_gaussian_field_func(gal,x,y,z)*gal->dens_gauss_sigma+1.0);
+			if(density<0.) density = 0.0;
+		}
 	}
 	// Cutting the density at cutr & cutz
     if(cut && density<gal->comp_cut_dens[component]) 	density = 0.0;
@@ -136,18 +139,21 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 }
 
 double density_functions_stream_pool(stream *st, double radius, double theta, double z, int model, int component) {
-	double alpha, h, rs, density;
+	double alpha, h, rs, density, x, y;
 	// We consider only positive values
     alpha		= pi/180.*st->comp_opening_angle[component];
     h			= st->comp_length[component];
     rs			= st->comp_scale[component]*fabs(z)*atan(pi/180.*st->comp_opening_angle[component]/2.);
 
+	x = radius*cos(theta);
+	y = radius*sin(theta);
+	
 	// Select a disk model
     switch(model) {
 		case 1:
 			// Uniform density cone
 			if(strcmp(st->comp_profile_name[component],"")==0)
-			strcpy(st->comp_profile_name[component],"Uniform cone");
+			strcpy(st->comp_profile_name[component],"      Uniform cone       ");
 			if(fabs(radius)<z*atan(alpha) && z>0 && z<h) {
 				density = st->comp_dens[component]/unit_nh;
 			} else {
@@ -157,7 +163,7 @@ double density_functions_stream_pool(stream *st, double radius, double theta, do
 		case 2:
 			// Exponential profile density cone
 			if(strcmp(st->comp_profile_name[component],"")==0)
-			strcpy(st->comp_profile_name[component],"Exp cone");
+			strcpy(st->comp_profile_name[component],"        Exp cone         ");
 			if(fabs(radius)<z*atan(alpha) && z>0 && z<h) {
 				density = exp(-fabs(radius)/rs)*st->comp_dens[component]/unit_nh;
 			} else {
@@ -168,12 +174,16 @@ double density_functions_stream_pool(stream *st, double radius, double theta, do
 			fprintf(stderr,"/////\t\t\tSpecify a valid model for component %d\n",component);
 			exit(0);		
 	}
+	if(st->dens_gauss_sigma>0. && st->comp_dens_gauss[component]==1 && st->gaussian_field_defined){
+		density *= (stream_gaussian_field_func(st,x,y,z)*st->dens_gauss_sigma+1.0);
+		if(density<0.) density = 0.0;
+	}
 	return density;
 }
 
 void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 	unsigned long int i,j,start_part,npart;
-	double pi_x, pi_y, q_x, q_y, prob, *radius, delta_pot;
+	double pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, proposal, prop_r, prop_theta, prop_z, step_r, step_z, new_step_r, new_step_z;
 	double acceptance;
 	
@@ -238,13 +248,16 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 			q_y  = gsl_ran_gaussian_pdf(gal->r_cyl[i-1]-prop_r,step_r)*gsl_ran_gaussian_pdf(gal->z[i-1]-prop_z,step_z);
 			prob = min(1.0,(pi_y/pi_x));//*(q_x/q_y));
 			randval = gsl_rng_uniform_pos(r[0]);
+			// Proposal accepted
 			if (randval <= prob) {
 				gal->r_cyl[i] 		= prop_r;
 				gal->theta_cyl[i] 	= prop_theta;
 				gal->z[i] 			= prop_z;
 				gal->rho[i]			= pi_y/fabs(gal->r_cyl[i]);
 				acceptance+=1.0;
+			// Proposal rejected, the particle keeps the same postion
 			} else {
+				// To avoid tree codes to break, add a slight displacement for the particle
 				gal->r_cyl[i] 		= gal->r_cyl[i-1];
 				gal->theta_cyl[i] 	= gal->theta_cyl[i-1];
 				gal->z[i] 			= gal->z[i-1];
@@ -260,7 +273,7 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
             gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
 		}
 		acceptance /= gal->comp_npart_pot[component];
-		printf("[acceptance=%.2lf]",acceptance);
+		printf("[acceptance=%.2lf]\n",acceptance);
 		if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component);
 		if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component);
 		if (AllVars.MeanPartDist) printf("/////\t\t\tMean inter-particle distance -> %lf [kpc]\n",mean_interparticle_distance(gal,component));
@@ -273,10 +286,11 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 // Springel, Di Matteo er al. 2005 method.
 int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	
-	unsigned long int i,j;
-	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius, delta_pot;
+	unsigned long int i,j,k;
+	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, x, y, z, step, proposal, acceptance;
     double cut_dens,theta_max_dens;
+    double xtemp,ytemp,rtemp;
     
 	printf("/////\tTargeting gas azimuthal hydrostatic equilibrium\n");
 
@@ -288,13 +302,20 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 		printf("/////\t\t- Component %d -> recomputing gas particles position\n",component);
 		// Starting equilibrium iterations
 		for(j = 0; j < n_iter; ++j) {
-			printf("/////\t\t\tIteration %ld ",j+1);
+			printf("/////\t\t\tIteration %d -> evaluating potential [%d threads]",j+1,AllVars.Nthreads);
 			fflush(stdout);
 			// Now that we've got gas particles positions, we can compute the full potential.
-			if(set_galaxy_potential(gal,0) != 0) {
+			if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,0) != 0) {
 				fprintf(stderr,"\n[Error] Unable to set the potential\n");
 				exit(0);
 			}
+			if(gal->level_grid_zoom>gal->level_grid){
+				if(set_galaxy_potential(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,0) != 0) {
+					printf("[Error] Unable to set the zoomed potential\n");
+					exit(0);
+				}
+			}
+			fflush(stdout);
 			// Now, we have to set the gaseous disk density at (0.,0.,0.).
 			// We have to make a guess: we use the disk density function to compute a realistic rho_gas(r=0,z=0).
 			z0 = gal->comp_scale_height[component];
@@ -305,7 +326,22 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 			gal->index[0] = gal->comp_start_part[component];
 			gal->z[gal->comp_start_part[component]] = 0.0;
 			// Recomputing density cut
-			//gal->comp_cut_dens[component] = pseudo_density_gas_func(gal,0.99*gal->comp_cut[component],0.0,0.0,0,k);
+			gal->comp_cut_dens[component] = 0.;
+			for(k=0; k<1000; k=k+1) {
+				rtemp = 0.95*gal->comp_cut[component];
+				xtemp = rtemp*cos(2.0*pi*k/1000.);
+				ytemp = rtemp*sin(2.0*pi*k/1000.);
+				cut_dens = pseudo_density_gas_func(gal,xtemp,ytemp,0.,0,component);
+				if(cut_dens>gal->comp_cut_dens[component]){
+					gal->comp_cut_dens[component] = cut_dens;
+					theta_max_dens = (2.0*pi*k/1000.);
+				}
+			}
+			xtemp = rtemp*cos(theta_max_dens);
+			ytemp = rtemp*sin(theta_max_dens);
+			step = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,xtemp,ytemp,0.0,0,component)*unit_dens))/kpc;			
+			gal->comp_cut_dens[component] = pseudo_density_gas_func(gal,xtemp,ytemp,step,0,component);
+			printf(" / Computing z-coords ");
 			for(i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component] + gal->comp_npart_pot[component]; ++i) {
 				// Generating a proposal
 				// Step is chosen as if the azimuthal distribution is sech^2(z/h)
@@ -320,9 +356,11 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				if(step != step) step = gal->comp_mcmc_step_hydro[component]*gal->comp_scale_height[component];
 				// Computing the probability of the proposal
 				// according to the updated potential value
+				if(fabs(z)>step) z = 0.99*step;
 				proposal 	= gsl_ran_gaussian(r[0],step);
 				pi_x 		= pseudo_density_gas_func(gal,x,y,z,0,component);
-				pi_y 		= pseudo_density_gas_func(gal,x,y,proposal,0,component);
+				pi_y 		= pseudo_density_gas_func(gal,x,y,proposal,1,component);
+				if(fabs(proposal)>1.0*step) pi_y = 0.;
 				q_x  		= gsl_ran_gaussian_pdf(proposal-z,step);
 				q_y  		= gsl_ran_gaussian_pdf(z-proposal,step);
 				prob 		= min(1.0,(pi_y/pi_x)*(q_x/q_y));
@@ -355,7 +393,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 
 void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model) {
 	unsigned long int i,j,start_part,npart;
-	double pi_x, pi_y, q_x, q_y, prob, *radius, delta_pot;
+	double pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, proposal, prop_r, prop_theta, prop_z, step_r, step_z, new_step_r, new_step_z;
 	double acceptance;
 
@@ -442,7 +480,7 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
             st->phi_sph[i]		= acos(st->z[i]/st->r_sph[i]);
 		}
 		acceptance /= st->comp_npart[component];
-		printf("[acceptance=%.2lf]",acceptance);
+		printf("[acceptance=%.2lf]\n",acceptance);
 		if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component);
 		if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component);
 	}
@@ -693,12 +731,11 @@ static double d_cumulative_mass_func_stream(double r, void *params) {
 double pseudo_density_gas_func(galaxy *gal, double x, double y, double z, int cut, int component) {
 	
 	double h, z0, density, delta_pot, rho_0;
-	if(gal->potential_defined != 1) {
-		if(set_galaxy_potential(gal,0) != 0) printf("[Error] Unable to set the potential\n");
-	}
+
 	// Computing the potential gradient between 0 and z
 	// in cgs unit
-	delta_pot 	= galaxy_potential_func(gal,x,y,z) - galaxy_potential_func(gal,x,y,0.);
+		
+	delta_pot 	= galaxyz_potential_wrapper_func(z,gal) - galaxyz_potential_wrapper_func(0.,gal);
     z0 			= gal->comp_scale_height[component];
     h 			= gal->comp_scale_length[component];
 	// Density in the xy-plane in 1e10 solar mass / kpc^3
@@ -761,7 +798,7 @@ static double dmidplane_density_gas_func(double z, void *params) {
 	x = gal->storage[3][tid];
 	y = gal->storage[4][tid];
     
-	delta_pot = galaxy_potential_func(gal,x,y,z)-galaxy_potential_func(gal,x,y,0.);
+	delta_pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,z,1)-galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,0.,1);
     
 	integrand = exp(-delta_pot/pow(gal->comp_cs_init[gal->selected_comp[tid]],2.0));
 
@@ -776,19 +813,21 @@ void fill_midplane_dens_grid(galaxy *gal, int component) {
 	double x,y;	
 	
 	#pragma omp parallel for private(i,j) shared(gal)
-	for (i=0;i<gal->ngrid_dens;i++) {
-		for (j=0;j<gal->ngrid_dens;j++) {
+	for (i=0;i<gal->ngrid_dens[0];i++) {
+		for (j=0;j<gal->ngrid_dens[1];j++) {
 			gal->midplane_dens[i][j] = 0.0;
 		}
 	}
 
 	#pragma omp parallel for private(x,y,node_x,node_y,k) shared(gal)	
     for (k = gal->comp_start_part[component]; k<gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++k) {
-		x 		= gal->x[k]/gal->space_dens[0] + ((double)(gal->ngrid_dens/2)-0.5);
-		y 		= gal->y[k]/gal->space_dens[1] + ((double)(gal->ngrid_dens/2)-0.5);
+		x 		= gal->x[k]/gal->dx_dens + ((double)(gal->ngrid_dens[0]/2)-0.5);
+		y 		= gal->y[k]/gal->dx_dens + ((double)(gal->ngrid_dens[1]/2)-0.5);
 		node_x 	= (int)x;
-		node_y 	= (int)y;		
-		gal->midplane_dens[node_x][node_y] += gal->mass[k]/(gal->space_dens[0]*gal->space_dens[1]);
+		node_y 	= (int)y;
+		if(node_x>=0 && node_x<gal->ngrid_dens[0]-1 && node_y>=0 && node_y<gal->ngrid_dens[1]-1) {    		
+			gal->midplane_dens[node_x][node_y] += gal->mass[k]/(pow(gal->dx_dens,2));
+		}
 	}
 }
 
@@ -798,13 +837,13 @@ double get_midplane_density(galaxy *gal, double x, double y) {
 	double xtemp,ytemp,dens1,dens2,dens3,dens4,dens_interp;
 	double dx,dy,tx,ty;
     
-	xtemp = x/gal->space_dens[0] + ((double)(gal->ngrid_dens/2)-0.5-0.5);
-	ytemp = y/gal->space_dens[1] + ((double)(gal->ngrid_dens/2)-0.5-0.5);
+	xtemp = x/gal->dx_dens + ((double)(gal->ngrid_dens[0]/2)-0.5-0.5);
+	ytemp = y/gal->dx_dens + ((double)(gal->ngrid_dens[1]/2)-0.5-0.5);
 	// Determine the parent node.
 	node_x = floor(xtemp);
 	node_y = floor(ytemp);
 	
-	if(node_x>=0 && node_x<gal->ngrid_dens-1 && node_y>=0 && node_y<gal->ngrid_dens-1) {    
+	if(node_x>=0 && node_x<gal->ngrid_dens[0]-1 && node_y>=0 && node_y<gal->ngrid_dens[1]-1) {    
 		// Interpolation function to compute the potential.
 		dens1 = gal->midplane_dens[node_x][node_y];
 		dens2 = gal->midplane_dens[node_x+1][node_y];

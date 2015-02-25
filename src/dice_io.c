@@ -160,12 +160,14 @@ int parse_config_file(char *fname) {
 	id[nt++] = DOUBLE;
     
 	strcpy(tag[nt], "OrbitPlanePhi");
+	AllVars.OrbitPlanePhi = 0.0;
 	addr[nt] = &AllVars.OrbitPlanePhi;
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = DOUBLE;
     
 	strcpy(tag[nt], "OrbitPlaneTheta");
+	AllVars.OrbitPlaneTheta = 0.0;
 	addr[nt] = &AllVars.OrbitPlaneTheta;
 	read[nt] = 0;
 	mandatory[nt] = 0;
@@ -194,6 +196,13 @@ int parse_config_file(char *fname) {
 	strcpy(tag[nt], "OutputRc");
 	AllVars.OutputRc = 0;
 	addr[nt] = &AllVars.OutputRc;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
+	strcpy(tag[nt], "OutputPot");
+	AllVars.OutputPot = 0;
+	addr[nt] = &AllVars.OutputPot;
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = INT;
@@ -315,7 +324,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	32*AllVars.MaxCompNumber+21
+	#define MAXTAGS	34*AllVars.MaxCompNumber+21
 	
 	FILE *fd;
 	int i,j,n;
@@ -388,6 +397,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	mandatory[nt] = 1;
 	id[nt++] = INT;
 	
+	strcpy(tag[nt], "level_grid_zoom");
+	addr[nt] = &gal->level_grid_zoom;
+	gal->level_grid_zoom=0;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
 	strcpy(tag[nt], "level_grid_dens");
 	addr[nt] = &gal->level_grid_dens;
 	gal->level_grid_dens=7;
@@ -415,8 +431,15 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	mandatory[nt] = 1;
 	id[nt++] = DOUBLE;
 	
-	strcpy(tag[nt], "axisymmetric_drift");
-	addr[nt] = &gal->axisymmetric_drift;
+	strcpy(tag[nt], "boxsize_zoom");
+	addr[nt] = &gal->boxsize_zoom;
+	gal->boxsize_zoom = 0.;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "epicycle");
+	addr[nt] = &gal->epicycle;
 	read[nt] = 0;
 	mandatory[nt] = 1;
 	id[nt++] = INT;
@@ -470,14 +493,12 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	id[nt++] = DOUBLE;
 	
 	strcpy(tag[nt], "seed");
-	gal->seed = time(NULL);
 	addr[nt] = &gal->seed;
 	read[nt] = 0;
-	mandatory[nt] = 0;
+	mandatory[nt] = 1;
 	id[nt++] = INT;
 	
 	strcpy(tag[nt], "dens_gauss_sigma");
-	gal->seed = time(NULL);
 	addr[nt] = &gal->dens_gauss_sigma;
 	gal->dens_gauss_sigma = 0.;
 	read[nt] = 0;
@@ -485,7 +506,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	id[nt++] = DOUBLE;
 	
 	strcpy(tag[nt], "dens_gauss_scale");
-	gal->seed = time(NULL);
 	addr[nt] = &gal->dens_gauss_scale;
 	gal->dens_gauss_scale = 0.5;
 	read[nt] = 0;
@@ -742,6 +762,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = INT;
+		
+		n = sprintf(temp_tag,"part_mass%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &gal->comp_part_mass[j];
+		gal->comp_part_mass[j] = 0.;
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
 	}
 	
 	printf("/////\tReading galaxy params file [%s]\n",fname);
@@ -802,7 +830,7 @@ int parse_stream_file(stream *st, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	500
+	#define MAXTAGS	17*AllVars.MaxCompNumber+5
 	
 	FILE 	*fd;
 	int 	i,j,n;
@@ -810,8 +838,8 @@ int parse_stream_file(stream *st, char *fname) {
 	int 	nt;
 	int 	id[MAXTAGS];
 	void 	*addr[MAXTAGS];
-	char 	tag[MAXTAGS][200];
-	char	temp_tag[200];
+	char 	tag[MAXTAGS][400];
+	char	temp_tag[400];
 	int 	read[MAXTAGS];
 	int 	mandatory[MAXTAGS];
 	int 	errorFlag = 0;
@@ -837,7 +865,41 @@ int parse_stream_file(stream *st, char *fname) {
 	}
 	
 	nt = 0;
-		
+	
+	strcpy(tag[nt], "level_grid_turb");
+	addr[nt] = &st->level_grid_turb;
+	st->level_grid_turb=7;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+
+	strcpy(tag[nt], "level_grid_dens_gauss");
+	addr[nt] = &st->level_grid_dens_gauss;
+	st->level_grid_dens_gauss=7;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+
+	strcpy(tag[nt], "seed");
+	addr[nt] = &st->seed;
+	read[nt] = 0;
+	mandatory[nt] = 1;
+	id[nt++] = INT;
+	
+	strcpy(tag[nt], "dens_gauss_sigma");
+	addr[nt] = &st->dens_gauss_sigma;
+	st->dens_gauss_sigma = 0.;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "dens_gauss_scale");
+	addr[nt] = &st->dens_gauss_scale;
+	st->dens_gauss_scale = 0.5;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+	
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
 	
 		n = sprintf(temp_tag,"dens%d",j+1);
@@ -967,21 +1029,15 @@ int parse_stream_file(stream *st, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"dens_gauss%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		st->comp_dens_gauss[j] = 0;
+		addr[nt] = &st->comp_dens_gauss[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = INT;
 	}
-	
-	strcpy(tag[nt], "level_grid_turb");
-	addr[nt] = &st->level_grid_turb;
-	st->level_grid_turb=7;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = INT;
-
-	strcpy(tag[nt], "seed");
-	st->seed = time(NULL);
-	addr[nt] = &st->seed;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = INT;
 	
 	printf("/////\tReading stream params file [%s]\n",fname);
 	if((fd = fopen(fname, "r"))) {
@@ -1549,9 +1605,9 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
 //    plot 'rcurve.dat','rcurve_disk.dat','rcurve_halo.dat'
 //
 // to produce a cumulative rotation curve and its parts on the same graph.
-void write_galaxy_rotation_curve(galaxy *gal, double rmax, char *fname) {
+void write_galaxy_rotation_curve(galaxy *gal, double rmax, char *fname, double interval) {
 	int i,tid;
-	double radius, theta, v_c, save;
+	double radius, theta, v_c, save1, save2;
 	char filename[200];
 	FILE *fp1;
     
@@ -1567,16 +1623,54 @@ void write_galaxy_rotation_curve(galaxy *gal, double rmax, char *fname) {
 	#else
 	    tid = 0;
 	#endif
-	gal->index[tid] 		= 0;
-	save 					= gal->z[gal->index[tid]];
-	gal->z[gal->index[tid]] = 0.;
-	for (i = 1; i < 500; ++i) {
-		radius = (i/500.)*rmax;
-		v_c = v_c_func(gal,radius)/1.0E5;
+	gal->index[tid] 				= 0;
+	save1 							= gal->z[gal->index[tid]];
+	save2 							= gal->theta_cyl[gal->index[tid]];
+	gal->z[gal->index[tid]] 		= 0.;
+	gal->theta_cyl[gal->index[tid]] = 0.;
+	
+	
+	for (i = 0; i < (int)(rmax/interval); ++i) {
+		radius = i*interval;
+		v_c = v_c_func(gal,radius)/unit_velocity;
 		// Write the radius and circular velocity to file in kpc and km/s respectively.
 		fprintf(fp1,"%lf %lf\n",radius,v_c);
 	}
-	gal->z[gal->index[tid]] = save;
+	gal->z[gal->index[tid]] 		= save1;
+	gal->theta_cyl[gal->index[tid]] = save2;
+	fclose(fp1);
+	
+	return;
+}
+
+void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double interval) {
+	int i,tid;
+	double radius, theta, pot, save;
+	char filename[200];
+	FILE *fp1;
+    
+	// Total rotation curve
+	sprintf(filename,fname);
+	fp1 = fopen(filename, "w");
+	if (fp1 == NULL) {
+		printf("[Warning] Cannot open %s\n",fname);
+		return;
+	}
+	#if USE_THREADS == 1
+	    tid = omp_get_thread_num();
+	#else
+	    tid = 0;
+	#endif
+	
+	for (i = 0; i < (int)(rmax/interval); ++i) {
+		radius = i*interval;
+		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,radius,0.,0.,1);
+		if(gal->level_grid_zoom>gal->level_grid&&radius<gal->boxsize_zoom/2.) {
+			pot = galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,radius,0.,0.,0)+gal->potential_shift_zoom;
+		}
+		// Write the radius and circular velocity to file in kpc and g*cm^2/s^2 respectively.
+		fprintf(fp1,"%lf %le\n",radius,pot);
+	}
 	fclose(fp1);
 	
 	return;
