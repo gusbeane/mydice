@@ -1260,6 +1260,7 @@ int set_galaxy_velocity(galaxy *gal) {
 		// Particle velocities.
 		if(gal->comp_npart[j]>0&&gal->comp_compute_vel[j]==1) {
 			printf("/////\t\t- Component %2d -> setting velocities ",j+1);
+			if(gal->comp_thermal_eq[j]) printf("[thermal equilibrium]");
 			fflush(stdout);
 			#pragma omp parallel for private(v_c, v_r, v_theta, v_z, v2a_r, v2a_z, v2a_theta, v2_theta, va_theta, sigma_theta, vel_x, vel_y, vel_z) shared(j,gal)
 			for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j]+gal->comp_npart[j]; ++i) {
@@ -1274,7 +1275,6 @@ int set_galaxy_velocity(galaxy *gal) {
 				if(gal->comp_type[j]==0) {
 					if(gal->comp_hydro_eq[j]==1) gal->pseudo[tid] = 1; 
 					v2_theta = v2_theta_gas_func(gal,gal->r_cyl[i],gal->z[i],j);
-					if(v2_theta!=v2_theta) printf("\n%ld %lf %lf %lf %le\n",i,gal->x[i],gal->y[i],gal->z[i],v2_theta);
 					// No velocity dispersion is needed because we are dealing with a fluid
 					// ie. collisional particles
 					v_r 	= 0.;
@@ -1282,7 +1282,6 @@ int set_galaxy_velocity(galaxy *gal) {
 					v_z 	= 0.;
 					// If required, overrides the thermal energy to get equilibrium
 					if(gal->comp_thermal_eq[j]) {
-						printf("[thermal equilibrium]");
 						v2a_r 		= v2a_1D_func(gal,w[tid],j);
 						v_theta 	= gal->comp_streaming_fraction[j]*v_c_func(gal,fabs(gal->r_cyl[i]));
 						gal->u[i] 	= v2a_r/(gamma_minus1)*unit_mass/unit_energy;
