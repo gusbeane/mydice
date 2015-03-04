@@ -19,12 +19,12 @@ level_grid_turb		8
 level_grid_dens_gauss
 # Size of the PM grid [kpc]
 boxsize		 	100.0
-# Axisymmetric_drift approximation in the Jeans equations
-axisymmetric_drift	0
+# Epicycle approximation in the Jeans equations
+epicycle		0
 # Dispersion for the Gaussian field fluctuations
-dens_gauss_sigma                0.35
+dens_gauss_sigma        0.35
 # Physical scale of the gaussian field fluctuations [kpc]
-dens_gauss_scale                1.00
+dens_gauss_scale        1.00
 # Position of the galactic center on XYZ-axis [kpc]
 xc			0.
 yc			0.
@@ -51,9 +51,9 @@ seed			1246
 # Fraction of the virial mass in the component 1
 mass_frac1		0.95
 # Number of particles for the component 1
-npart1			50000000
+npart1			1000000
 # Number of particles for the potential computation
-npart_pot1              50000000
+npart_pot1              4000000
 # Component 1 density model
 # Available models:
 # 1  = Exponential disk + sech-z profile
@@ -97,7 +97,7 @@ radius_nfw1		1.0
 # Component 2: Gaseous halo
 ###########################
 mass_frac2		0.05
-npart2			200000
+npart2			4000000
 npart_pot2              4000000
 model2			8
 scale_length2		0.
