@@ -76,9 +76,10 @@
 #define gamma					(5.0/3.0)			// adiabatic index of simulated gas (mono-atomic)
 #define gamma_minus1			(gamma-1.0)			// adiabatic index of simulated gas minus 1
 #define hydrogen_massfrac		0.76				// mass fraction of hydrogen, relevant only for radiative cooling
-#define boltzmann				1.3806e-16			// Boltzmann constant in [erg.K^-1] = [g.cm^2.s^-2.K^-1]
-#define protonmass				1.6726e-24			// proton mass in [g]
+#define boltzmann				1.3806200e-16		// Boltzmann constant in [erg.K^-1] = [g.cm^2.s^-2.K^-1]
+#define protonmass				1.6600000e-24		// proton mass in [g]
 #define solarmass				1.989E33			// Mass of the Sun in [g]
+#define mu_mol					1.2195e0			// Molecular weight
 #define pi						3.14159274101257 	// pi = 4.0*atan(1.0)
 #define	G						6.67428E-8			// G = 6.67428E-8 [cm^3 g^-1 s^-2]
 #define	kpc						3.085678E21			// 1 kpc = 3.085678E21 [cm]

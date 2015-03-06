@@ -98,7 +98,7 @@ radius_nfw1		1.0
 # Component 2: Thin stellar disk
 ################################
 mass_frac2		0.02
-npart2			25000
+npart2			250000
 npart_pot2              1000000
 model2			2
 # If the value is zero and the particle type is not 1 the size is determined using the spin conservation
