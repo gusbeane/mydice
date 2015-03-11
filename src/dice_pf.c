@@ -379,14 +379,18 @@ double galaxyr_potential_wrapper_func(double radius, void *params) {
 	y = radius*sin(gal->theta_cyl[gal->index[tid]]);
 	
 	r_sph = sqrt(pow(x,2)+pow(y,2)+pow(gal->z[gal->index[tid]],2));
-	
-	sigma = 2*gal->dx;
-	transition_factor1 = 0.5*(1+erf((r_sph-(gal->boxsize_zoom/2.-gal->dx_zoom))/(sigma*sqrt(2))));
-	transition_factor2 = 1-transition_factor1;	
-	pot = transition_factor1*galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,gal->z[gal->index[tid]],1)
-		+ (galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,x,y,gal->z[gal->index[tid]],0)
-		+ gal->potential_shift_zoom)*transition_factor2;
-	
+
+	if(gal->level_grid_zoom>gal->level_grid) {
+		sigma = 2*gal->dx;
+		transition_factor1 = 0.5*(1+erf((r_sph-(gal->boxsize_zoom/2.-gal->dx_zoom))/(sigma*sqrt(2))));
+		transition_factor2 = 1-transition_factor1;	
+		pot = transition_factor1*galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,gal->z[gal->index[tid]],1)
+			+ (galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,x,y,gal->z[gal->index[tid]],0)
+			+ gal->potential_shift_zoom)*transition_factor2;
+	} else {
+		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,gal->z[gal->index[tid]],1);
+
+	}
 	return pot;
 }
 
@@ -411,14 +415,17 @@ double galaxyrsph_potential_wrapper_func(double r_sph, void *params) {
 	x = r_cyl*cos(gal->theta_cyl[gal->index[tid]]);
 	y = r_cyl*sin(gal->theta_cyl[gal->index[tid]]);
 	
-	sigma = 2*gal->dx;
-	transition_factor1 = 0.5*(1+erf((r_sph-(gal->boxsize_zoom/2.-gal->dx_zoom))/(sigma*sqrt(2))));
-	transition_factor2 = 1-transition_factor1;	
+	if(gal->level_grid_zoom>gal->level_grid) {
+		sigma = 2*gal->dx;
+		transition_factor1 = 0.5*(1+erf((r_sph-(gal->boxsize_zoom/2.-gal->dx_zoom))/(sigma*sqrt(2))));
+		transition_factor2 = 1-transition_factor1;	
 		
-	pot = transition_factor1*galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,z,1)
-		+ (galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,x,y,z,0)
-		+ gal->potential_shift_zoom)*transition_factor2;
-		
+		pot = transition_factor1*galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,z,1)
+			+ (galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,x,y,z,0)
+			+ gal->potential_shift_zoom)*transition_factor2;
+	} else {
+		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,z,1);
+	}
 	return pot;
 }
 
@@ -439,14 +446,18 @@ double galaxyz_potential_wrapper_func(double z, void *params) {
 	
 	r_sph = sqrt(pow(gal->x[gal->index[tid]],2)+pow(gal->y[gal->index[tid]],2)+pow(z,2));
 	
-	sigma = 2*gal->dx;
-	transition_factor1 = 0.5*(1+erf((r_sph-(gal->boxsize_zoom/2.-gal->dx_zoom))/(sigma*sqrt(2))));
-	transition_factor2 = 1-transition_factor1;	
+	if(gal->level_grid_zoom>gal->level_grid) {
+		sigma = 2*gal->dx;
+		transition_factor1 = 0.5*(1+erf((r_sph-(gal->boxsize_zoom/2.-gal->dx_zoom))/(sigma*sqrt(2))));
+		transition_factor2 = 1-transition_factor1;	
 	
-	pot = transition_factor1*galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,1)
-		+ (galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0)
-		+ gal->potential_shift_zoom)*transition_factor2;
-	
+		pot = transition_factor1*galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,1)
+			+ (galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0)
+			+ gal->potential_shift_zoom)*transition_factor2;
+	} else {
+		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,1);
+
+	}
 	return pot;
 }
 

@@ -204,3 +204,24 @@ min_age5                50.
 metal5                  0.001
 Q_lim5			1.5
 
+###########################
+# Component 6: Gaseous disk
+###########################
+mass_frac6		0.01
+npart6			5000000
+npart_pot6              2000000
+model6			8
+concentration1		13.0
+cut6			50.0
+flat6			1.00
+mcmc_step6		0.50
+vmax6			10.5
+type6			0
+streaming_fraction3	1.00
+metal6                  0.01
+turb_sigma6		0.0
+turb_scale6		1.0
+hydro_eq6 		0
+# Compute gas temperature to reach hydrostatic equilibrium
+thermal_eq6		1
+

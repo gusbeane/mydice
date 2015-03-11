@@ -611,8 +611,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	unsigned long int i;
 	int j,nt;
 	int dens_gauss,index_halo;
-	// Molecular weigth t compute the gas internal energy
-	double molecular_weight;
 	// Hubble parameter
 	double H;
 	// Seed for the random number generator
@@ -881,14 +879,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			gal->comp_u_init[i] = (boltzmann / protonmass) * gal->comp_t_init[i];
 			gal->comp_u_init[i] *= unit_mass / unit_energy;
 			gal->comp_u_init[i] *= (1.0 / gamma_minus1);
-			// Assuming full ionization (HII)
-			/*if(gal->t_init > 1.0e4)
-    		    molecular_weight = 4./(8.-5.*(1.-hydrogen_massfrac));
-			// Assuming neutral gas (HI)
-			else
-    		    molecular_weight = 4./(1.+3.*hydrogen_massfrac);*/
-    		molecular_weight = 4./(1.+3.*hydrogen_massfrac);
-			gal->comp_u_init[i] /= molecular_weight;
+			gal->comp_u_init[i] /= mu_mol;
 			// Computing isothermal sound speed
 			gal->comp_cs_init[i] = sqrt(gamma_minus1*gal->comp_u_init[i]*unit_energy/unit_mass);
 		}
@@ -986,7 +977,6 @@ int create_stream(stream *st, char *fname, int info) {
 	unsigned long int i;
 	int j,nt;
 	int dens_gauss;
-	double molecular_weight;
 	double base;
 	// Seed for the random number generator
 	long seed;
@@ -1088,14 +1078,7 @@ int create_stream(stream *st, char *fname, int info) {
 			st->comp_u_init[i] = (boltzmann / protonmass) * st->comp_t_init[i];
 			st->comp_u_init[i] *= unit_mass / unit_energy;
 			st->comp_u_init[i] *= (1.0 / gamma_minus1);
-			// Assuming full ionization (HII)
-			/*if(gal->t_init > 1.0e4)
-    		    molecular_weight = 4./(8.-5.*(1.-hydrogen_massfrac));
-			// Assuming neutral gas (HI)
-			else
-    		    molecular_weight = 4./(1.+3.*hydrogen_massfrac);*/
-    		molecular_weight = 4./(1.+3.*hydrogen_massfrac);
-			st->comp_u_init[i] /= molecular_weight;
+			st->comp_u_init[i] /= mu_mol;
 			// Computing isothermal sound speed
 			st->comp_cs_init[i] = sqrt(gamma_minus1*st->comp_u_init[i]*unit_energy/unit_mass);
 		}

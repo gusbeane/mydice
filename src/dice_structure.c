@@ -274,8 +274,8 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 		}
 		acceptance /= gal->comp_npart_pot[component];
 		printf("[acceptance=%.2lf]\n",acceptance);
-		if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component);
-		if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component);
+		if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component+1);
+		if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component+1);
 		if (AllVars.MeanPartDist) printf("/////\t\t\tMean inter-particle distance -> %lf [kpc]\n",mean_interparticle_distance(gal,component));
 	}
 	return;
@@ -288,7 +288,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	
 	unsigned long int i,j,k;
 	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius;
-	double theta, phi, randval, x, y, z, step, proposal, acceptance;
+	double theta, phi, randval, x, y, z, step, previous_step, proposal, acceptance;
     double cut_dens,theta_max_dens;
     double xtemp,ytemp,rtemp;
     
@@ -299,7 +299,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	for(i=0;i<AllVars.Nthreads;i++) gal->pseudo[i] = 1;
 	// Looking for gas particles
 	if(gal->comp_type[component]==0 && gal->comp_npart_pot[component]>0) {
-		printf("/////\t\t- Component %d -> recomputing gas particles position\n",component);
+		printf("/////\t\t- Component %d -> recomputing gas particles position\n",component+1);
 		// Starting equilibrium iterations
 		for(j = 0; j < n_iter; ++j) {
 			printf("/////\t\t\tIteration %d -> evaluating potential [%d threads]",j+1,AllVars.Nthreads);
@@ -315,6 +315,8 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 					exit(0);
 				}
 			}
+			gal->potential_shift_zoom = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->boxsize_zoom/2.,0.,0.,1)
+					-galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,gal->boxsize_zoom/2.,0.,0.,0);
 			fflush(stdout);
 			// Now, we have to set the gaseous disk density at (0.,0.,0.).
 			// We have to make a guess: we use the disk density function to compute a realistic rho_gas(r=0,z=0).
@@ -324,7 +326,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 			acceptance = 0;
 			fill_midplane_dens_grid(gal,component);
 			gal->index[0] = gal->comp_start_part[component];
-			gal->z[gal->comp_start_part[component]] = 0.0;
+			gal->z[gal->comp_start_part[component]] = 0.;
 			// Recomputing density cut
 			gal->comp_cut_dens[component] = 0.;
 			for(k=0; k<1000; k=k+1) {
@@ -341,6 +343,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 			ytemp = rtemp*sin(theta_max_dens);
 			step = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,xtemp,ytemp,0.0,0,component)*unit_dens))/kpc;			
 			gal->comp_cut_dens[component] = pseudo_density_gas_func(gal,xtemp,ytemp,step,0,component);
+			step = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,gal->x[gal->comp_start_part[component]],gal->y[gal->comp_start_part[component]],gal->z[gal->comp_start_part[component]],0,component)*unit_dens))/kpc;
 			printf(" / Computing z-coords ");
 			for(i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component] + gal->comp_npart_pot[component]; ++i) {
 				// Generating a proposal
@@ -350,18 +353,20 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				// The Gaussian step is scaled by gal->comp_mcmc_step_hydro[component]
 				x = gal->x[i];
 				y = gal->y[i];
-				z = gal->z[i];
+				z = gal->z[i-1];
+				previous_step = step;
 				step = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,x,y,0.0,0,component)*unit_dens))/kpc;
 				// Preventing NaN values for step
 				if(step != step) step = gal->comp_mcmc_step_hydro[component]*gal->comp_scale_height[component];
+				//step = gal->comp_mcmc_step_hydro[component]*gal->comp_scale_height[component];
 				// Computing the probability of the proposal
 				// according to the updated potential value
-				if(fabs(z)>step) z = 0.99*step;
-				proposal 	= gsl_ran_gaussian(r[0],step);
+				//if(fabs(z)>step) z = 0.99*step;
+				proposal 	= z+gsl_ran_gaussian(r[0],step);
 				pi_x 		= pseudo_density_gas_func(gal,x,y,z,0,component);
 				pi_y 		= pseudo_density_gas_func(gal,x,y,proposal,1,component);
-				if(fabs(proposal)>1.0*step) pi_y = 0.;
-				q_x  		= gsl_ran_gaussian_pdf(proposal-z,step);
+				if(fabs(proposal)>5.0*step) pi_y = 0.;
+				q_x  		= gsl_ran_gaussian_pdf(proposal-z,previous_step);
 				q_y  		= gsl_ran_gaussian_pdf(z-proposal,step);
 				prob 		= min(1.0,(pi_y/pi_x)*(q_x/q_y));
 				// Draw a uniform random value to test the acceptance of the proposal
@@ -381,9 +386,11 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				}
 			}
 			acceptance /= gal->comp_npart_pot[component];
+			if(acceptance<0.6) gal->comp_mcmc_step_hydro[component]/=2.0;
+			if(acceptance>0.95) gal->comp_mcmc_step_hydro[component]*=2.0;
 			printf("[acceptance=%.2lf]\n",acceptance);
-			if(acceptance<0.50) printf("/////\t\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step_hydro%d\n",component);
-			if(acceptance>0.90) printf("/////\t\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step_hydro%d\n",component);
+			if(acceptance<0.50) printf("/////\t\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step_hydro%d\n",component+1);
+			if(acceptance>0.90) printf("/////\t\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step_hydro%d\n",component+1);
 		}
 		// Final gas midplane density
 		fill_midplane_dens_grid(gal,component);
@@ -481,8 +488,8 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
 		}
 		acceptance /= st->comp_npart[component];
 		printf("[acceptance=%.2lf]\n",acceptance);
-		if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component);
-		if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component);
+		if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component+1);
+		if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component+1);
 	}
 	return;
 }
@@ -973,7 +980,7 @@ void lower_resolution(galaxy *gal) {
 
 	printf("/////\tLowering particule mass resolution\n");
 	for (j=0; j<AllVars.MaxCompNumber; j++) {
-    	if(gal->comp_npart[j]>0) printf("/////\t\t- Component %2d -> m=%.2e Msol\n",j,(gal->comp_cutted_mass[j]*1.0E10)/(gal->comp_npart[j]));
+    	if(gal->comp_npart[j]>0) printf("/////\t\t- Component %2d -> m=%.2e Msol\n",j+1,(gal->comp_cutted_mass[j]*1.0E10)/(gal->comp_npart[j]));
 		// Filling the arrays of the &galaxy structure
 		for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
 			gal->mass[i] 		= gal->comp_cutted_mass[j]/gal->comp_npart[j];

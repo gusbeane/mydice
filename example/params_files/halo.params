@@ -11,6 +11,8 @@ j_d		 	0.05
 lambda		 	0.04
 # Refinement level of the PM potential grid 
 level_grid		8
+# Refinement level of the zoomed potential grid 
+level_grid_zoom		10
 # Refinement level of the plane plane density grid 
 level_grid_dens		7
 # Refinement level of the PM turbulence grid 
@@ -19,6 +21,8 @@ level_grid_turb		8
 level_grid_dens_gauss
 # Size of the PM grid [kpc]
 boxsize		 	100.0
+# Size of the zoomed potential grid [kpc]
+boxsize_zoom	 	14.0
 # Epicycle approximation in the Jeans equations
 epicycle		0
 # Dispersion for the Gaussian field fluctuations
@@ -97,8 +101,8 @@ radius_nfw1		1.0
 # Component 2: Gaseous halo
 ###########################
 mass_frac2		0.05
-npart2			4000000
-npart_pot2              4000000
+npart2			5000000
+npart_pot2              7000000
 model2			8
 scale_length2		0.
 concentration2		13.0
@@ -107,7 +111,7 @@ flat2			1.00
 mcmc_step2		0.3
 vmax2			5.0
 type2			0
-streaming_fraction2	1.00
+streaming_fraction2	0.1
 metal2                  0.01
 # Compute gas temperature to reach hydrostatic equilibrium
 thermal_eq2		1
