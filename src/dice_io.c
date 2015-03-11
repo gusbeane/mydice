@@ -1645,7 +1645,7 @@ void write_galaxy_rotation_curve(galaxy *gal, double rmax, char *fname, double i
 
 void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double interval) {
 	int i,tid;
-	double radius, theta, pot, save;
+	double radius, theta, pot, save1, save2;
 	char filename[200];
 	FILE *fp1;
     
@@ -1661,16 +1661,23 @@ void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double 
 	#else
 	    tid = 0;
 	#endif
+	gal->index[tid] 				= 0;
+	save1 							= gal->x[gal->index[tid]];
+	save2 							= gal->y[gal->index[tid]];
+	gal->x[gal->index[tid]] 		= 0.;
+	gal->y[gal->index[tid]] 		= 0.;
 	
 	for (i = 0; i < (int)(rmax/interval); ++i) {
 		radius = i*interval;
-		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,radius,0.,0.,1);
+		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,3.,0.,radius,1);
 		if(gal->level_grid_zoom>gal->level_grid&&radius<gal->boxsize_zoom/2.) {
-			pot = galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,radius,0.,0.,0)+gal->potential_shift_zoom;
+			pot = galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,3.,0.,radius,0)+gal->potential_shift_zoom;
 		}
 		// Write the radius and circular velocity to file in kpc and g*cm^2/s^2 respectively.
-		fprintf(fp1,"%lf %le\n",radius,pot);
+		fprintf(fp1,"%lf %le\n",radius,galaxyz_potential_wrapper_func(radius,gal));
 	}
+	gal->x[gal->index[tid]] 		= save1;
+	gal->y[gal->index[tid]] 		= save2;
 	fclose(fp1);
 	
 	return;
