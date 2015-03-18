@@ -58,7 +58,7 @@ seed			1246
 # Fraction of the virial mass in the component 1
 mass_frac1		0.95
 # Number of particles for the component 1
-npart1			100000
+npart1			1000000
 # Number of particles for the potential computation
 npart_pot1              3000000
 # Component 1 density model
@@ -104,7 +104,7 @@ part_mass1		0.0
 # Component 2: Thin stellar disk
 ################################
 mass_frac2		0.02
-npart2			50000
+npart2			500000
 npart_pot2              4000000
 model2			2
 # If the value is zero and the particle type is not 1 the size is determined using the spin conservation
@@ -139,12 +139,12 @@ dens_gauss2		0
 # Component 3: Gaseous disk
 ###########################
 mass_frac3		0.01
-npart3			500000
-npart_pot3              2000000
+npart3			3000000
+npart_pot3              3000000
 model3			1
 scale_length3		0.
 cut3			9.0
-flat3			0.05
+flat3			0.15
 mcmc_step3		0.15
 vmax3			10.5
 type3			0
@@ -168,7 +168,7 @@ mcmc_step_hydro3	0.3
 # Component 4: Stellar bulge
 ############################
 mass_frac4		0.005
-npart4			5000
+npart4			50000
 npart_pot4              1000000
 model4			10
 scale_length4		2.0
@@ -189,7 +189,7 @@ Q_lim4			1.5
 # Component 5: Stellar spheroid
 ###############################
 mass_frac5		0.010
-npart5			50000
+npart5			500000
 npart_pot5              10000000
 model5			4
 scale_length5		4.0
@@ -203,4 +203,3 @@ mean_age5               1000.
 min_age5                50.
 metal5                  0.001
 Q_lim5			1.5
-

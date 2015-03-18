@@ -408,7 +408,9 @@ struct GlobalVars {
 	int MeanPartDist;
 	int AcceptImaginary;
 	int OutputRc;
+	int OutputGasRc;
 	int OutputPot;
+	int OutputRho;
 	int MaxCompNumber;
 	double H0;
 	double Omega_m;
@@ -466,7 +468,7 @@ double cumulative_mass_func_stream(stream *, double, int);
 static double d_cumulative_mass_func_stream(double, void *);
 
 static double integrand_density_gas_func(double, void *);
-double pseudo_density_gas_func(galaxy *, double, double, double, int, int);
+double pseudo_density_gas_func(galaxy *, double, double, double, int, int, int);
 double midplane_density_gas_func(galaxy *, gsl_integration_workspace *, double, double, int);
 static double dmidplane_density_gas_func(double, void *);
 void fill_midplane_dens_grid(galaxy *, int);
@@ -531,4 +533,3 @@ int set_galaxy_gaussian_field_grid(galaxy *, double);
 int set_stream_gaussian_field_grid(stream *, double);
 double galaxy_gaussian_field_func(galaxy *, double, double, double);
 double stream_gaussian_field_func(stream *, double, double, double);
-

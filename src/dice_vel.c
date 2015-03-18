@@ -281,7 +281,8 @@ double sigma2_theta_disk_func(galaxy *gal, double radius, double v2a_z) {
 // Gas theta squared velocity component
 // This formulation is the same as the one used by Springel et al. 2005
 double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
-	double v2_theta_gas, v_c2, pressure_force;
+
+	double v2_theta_gas, v_c2, pressure_force, save;
 	double h, abserr, density_derivative;
 	int tid;
     
@@ -294,22 +295,27 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 	radius 					= fabs(radius);
 	gal->selected_comp[tid] = component;
 	// Set the derivative step
-	h 						= 1.5*gal->dx_dens;
+	h 						= 1.0*gal->dx_dens;
+	// Save z coordinate
+	save 					= gal->z[gal->index[tid]];
+	// Integrations done in the z=0 plane	
+	gal->z[gal->index[tid]] = 0.;
 	density_derivative 		= deriv_central(gal,radius,h,gas_density_wrapper_func);
 	v_c2 					= pow(v_c_func(gal,radius),2.0);
-	pressure_force 			= radius*kpc*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);//-3.0*pow(gal->cs_init,2.0);
-	// If the derivate fails
-	if(pressure_force>0) 	pressure_force = 0.;
+	pressure_force 			= radius*kpc*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);
 	v2_theta_gas 			= v_c2 + pressure_force;
 	if(v2_theta_gas<0) v2_theta_gas = 0.;
+	// Restore z cordinate
+	gal->z[gal->index[tid]] = save;
+	
 	return v2_theta_gas;
 }
 
 // A wrapper for the gas density function.
 double gas_density_wrapper_func(double radius, void *params) {
     
-	double theta, rho, x, y;
-	int tid;
+	double theta, rho, x, y, sigma, smooth_in_factor, smooth_out_factor;
+	int tid, component;
 	galaxy *gal = (galaxy *) params;
     
 	#if USE_THREADS == 1
@@ -318,15 +324,23 @@ double gas_density_wrapper_func(double radius, void *params) {
     	tid = 0;
 	#endif
 	
+	component = gal->selected_comp[tid];
 	x = radius*cos(gal->theta_cyl[gal->index[tid]]);
 	y = radius*sin(gal->theta_cyl[gal->index[tid]]);
     
 	if(gal->pseudo[tid]) {
-		rho = pseudo_density_gas_func(gal,x,y,gal->z[gal->index[tid]],0,gal->selected_comp[tid]);
+		rho = pseudo_density_gas_func(gal,fabs(radius),gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+	} else {
+		rho = density_functions_pool(gal,fabs(radius),gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 	}
-	else {
-		rho = density_functions_pool(gal,fabs(radius),0.,gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
-	}
+	
+	// Edge smoothing
+    sigma 				= 0.025*gal->comp_scale_length[component];
+	smooth_in_factor  	= 0.5*(1+erf((radius-gal->comp_cut_in[component])/(sigma*sqrt(2.0))));
+	smooth_out_factor	= 1.0-0.5*(1+erf((radius-gal->comp_cut[component])/(sigma*sqrt(2.0))));
+	
+	rho *= smooth_out_factor;
+
 	return rho;
 }
 
