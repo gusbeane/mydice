@@ -139,7 +139,7 @@ dens_gauss2		0
 # Component 3: Gaseous disk
 ###########################
 mass_frac3		0.01
-npart3			500000
+npart3			3000000
 npart_pot3              2000000
 model3			1
 scale_length3		0.
@@ -208,7 +208,7 @@ Q_lim5			1.5
 # Component 6: Gaseous disk
 ###########################
 mass_frac6		0.01
-npart6			5000000
+npart6			10000000
 npart_pot6              2000000
 model6			8
 concentration1		13.0

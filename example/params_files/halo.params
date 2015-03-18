@@ -101,7 +101,7 @@ radius_nfw1		1.0
 # Component 2: Gaseous halo
 ###########################
 mass_frac2		0.05
-npart2			5000000
+npart2			10000000
 npart_pot2              7000000
 model2			8
 scale_length2		0.
@@ -111,8 +111,8 @@ flat2			1.00
 mcmc_step2		0.3
 vmax2			5.0
 type2			0
-streaming_fraction2	0.1
-metal2                  0.01
+streaming_fraction2	0.165
+metal2                  1e-4
 # Compute gas temperature to reach hydrostatic equilibrium
 thermal_eq2		1
 

@@ -200,9 +200,23 @@ int parse_config_file(char *fname) {
 	mandatory[nt] = 0;
 	id[nt++] = INT;
 	
+	strcpy(tag[nt], "OutputGasRc");
+	AllVars.OutputGasRc = 0;
+	addr[nt] = &AllVars.OutputGasRc;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
 	strcpy(tag[nt], "OutputPot");
 	AllVars.OutputPot = 0;
 	addr[nt] = &AllVars.OutputPot;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
+	strcpy(tag[nt], "OutputRho");
+	AllVars.OutputRho = 0;
+	addr[nt] = &AllVars.OutputRho;
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = INT;
@@ -403,7 +417,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = INT;
-	
+
 	strcpy(tag[nt], "level_grid_dens");
 	addr[nt] = &gal->level_grid_dens;
 	gal->level_grid_dens=7;
@@ -1643,6 +1657,54 @@ void write_galaxy_rotation_curve(galaxy *gal, double rmax, char *fname, double i
 	return;
 }
 
+// This function calculates and writes the rotation curve for a particular galaxy.
+// The circular velocity is calculated out to the virial radius.
+//
+// Unlike some of the other output functions, this function writes the output to
+// a set of files -- rcurve.dat, rcurve_disk.dat, rcurve_halo.dat -- These files
+// can be plotted in gnuplot with the command
+//
+//    plot 'rcurve.dat','rcurve_disk.dat','rcurve_halo.dat'
+//
+// to produce a cumulative rotation curve and its parts on the same graph.
+void write_galaxy_gas_rotation_curve(galaxy *gal, double rmax, char *fname, double interval) {
+	int i,tid;
+	double radius, theta, v_c, save1, save2;
+	char filename[200];
+	FILE *fp1;
+    
+	// Total rotation curve
+	sprintf(filename,fname);
+	fp1 = fopen(filename, "w");
+	if (fp1 == NULL) {
+		printf("[Warning] Cannot open %s\n",fname);
+		return;
+	}
+	#if USE_THREADS == 1
+	    tid = omp_get_thread_num();
+	#else
+	    tid = 0;
+	#endif
+	gal->index[tid] 				= 0;
+	save1 							= gal->z[gal->index[tid]];
+	save2 							= gal->theta_cyl[gal->index[tid]];
+	gal->z[gal->index[tid]] 		= 0.;
+	gal->theta_cyl[gal->index[tid]] = 0.;
+	
+	
+	for (i = 0; i < (int)(rmax/interval); ++i) {
+		radius = i*interval;
+		v_c = sqrt(v2_theta_gas_func(gal,radius,0.0,2))/unit_velocity;
+		// Write the radius and circular velocity to file in kpc and km/s respectively.
+		fprintf(fp1,"%lf %lf\n",radius,v_c);
+	}
+	gal->z[gal->index[tid]] 		= save1;
+	gal->theta_cyl[gal->index[tid]] = save2;
+	fclose(fp1);
+	
+	return;
+}
+
 void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double interval) {
 	int i,tid;
 	double radius, theta, pot, save1, save2;
@@ -1675,6 +1737,47 @@ void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double 
 		}
 		// Write the radius and circular velocity to file in kpc and g*cm^2/s^2 respectively.
 		fprintf(fp1,"%lf %le\n",radius,galaxyz_potential_wrapper_func(radius,gal));
+	}
+	gal->x[gal->index[tid]] 		= save1;
+	gal->y[gal->index[tid]] 		= save2;
+	fclose(fp1);
+	
+	return;
+}
+
+void write_galaxy_gas_density_curve(galaxy *gal, double rmax, char *fname, double interval) {
+	int i,tid;
+	double radius, theta, rho, save1, save2;
+	char filename[200];
+	FILE *fp1;
+    
+	// Total rotation curve
+	sprintf(filename,fname);
+	fp1 = fopen(filename, "w");
+	if (fp1 == NULL) {
+		printf("[Warning] Cannot open %s\n",fname);
+		return;
+	}
+	#if USE_THREADS == 1
+	    tid = omp_get_thread_num();
+	#else
+	    tid = 0;
+	#endif
+	gal->index[tid] 				= 0;
+	save1 							= gal->x[gal->index[tid]];
+	save2 							= gal->y[gal->index[tid]];
+	gal->x[gal->index[tid]] 		= 0.;
+	gal->y[gal->index[tid]] 		= 0.;
+	
+	for (i = 0; i < (int)(rmax/interval); ++i) {
+		radius = i*interval;
+		if(gal->pseudo[tid]) {
+			rho = pseudo_density_gas_func(gal,radius,0.,0.,0,gal->comp_model[gal->selected_comp[0]],gal->selected_comp[0]);
+		}
+		else {
+			rho = density_functions_pool(gal,radius,0.,0.,0,gal->comp_model[gal->selected_comp[0]],gal->selected_comp[0]);
+		}
+		fprintf(fp1,"%lf %le\n",radius,rho);
 	}
 	gal->x[gal->index[tid]] 		= save1;
 	gal->y[gal->index[tid]] 		= save2;

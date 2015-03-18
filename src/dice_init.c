@@ -375,7 +375,7 @@ int allocate_variable_arrays(galaxy *gal) {
 			}
 		}
 	}
-    
+
 	// Allocate the midplane density grid, starting with x-axis
 	if (!(gal->midplane_dens=calloc(gal->ngrid_dens[0],sizeof(double *)))) {
 		fprintf(stderr,"[Error] Unable to create midplane_dens x axis.\n");
@@ -389,7 +389,7 @@ int allocate_variable_arrays(galaxy *gal) {
 			return -1;
 		}
 	}
-    
+	
 	// Allocate index all the threads.
 	if (!(gal->index=calloc(AllVars.Nthreads,sizeof(unsigned long int)))) {
 		fprintf(stderr,"[Error] Unable to allocate particle index.\n");
@@ -694,7 +694,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	}
 	
 	gal->dx_dens 	= gal->boxsize_dens/((double)gal->ngrid_dens[0]);
-
+	
 	allocate_galaxy_storage_variable(gal,10);
 
 	// Initialisations
@@ -813,6 +813,17 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			gal->n_component++;
 		}
 		else gal->comp_bool[i] 		= 0;
+		
+		if(gal->comp_type[i]==0) {
+			// Set the gas specific internal energy
+			// We assume the gas is in an isothermal state
+			gal->comp_u_init[i] = (boltzmann / protonmass) * gal->comp_t_init[i];
+			gal->comp_u_init[i] *= unit_mass / unit_energy;
+			gal->comp_u_init[i] *= (1.0 / gamma_minus1);
+			gal->comp_u_init[i] /= mu_mol;
+			// Computing isothermal sound speed
+			gal->comp_cs_init[i] = sqrt(gamma_minus1*gal->comp_u_init[i]*unit_energy/unit_mass);
+		}
 
 		// Computing the mass of the component after cuts
 		if(gal->comp_bool[i]) {
@@ -873,16 +884,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		if(gal->comp_type[i]==1) gal->num_part_pot[1] 	+= gal->comp_npart_pot[i];
 		if(gal->comp_type[i]==2) gal->num_part_pot[2] 	+= gal->comp_npart_pot[i];
 		if(gal->comp_type[i]==3) gal->num_part_pot[3] 	+= gal->comp_npart_pot[i];
-		if(gal->comp_type[i]==0) {
-			// Set the gas specific internal energy
-			// We assume the gas is in an isothermal state
-			gal->comp_u_init[i] = (boltzmann / protonmass) * gal->comp_t_init[i];
-			gal->comp_u_init[i] *= unit_mass / unit_energy;
-			gal->comp_u_init[i] *= (1.0 / gamma_minus1);
-			gal->comp_u_init[i] /= mu_mol;
-			// Computing isothermal sound speed
-			gal->comp_cs_init[i] = sqrt(gamma_minus1*gal->comp_u_init[i]*unit_energy/unit_mass);
-		}
 	}
     
     baryonic_fraction 			= (cutted_disk_mass+cutted_gas_mass+cutted_bulge_mass)/gal->m200;
@@ -1358,19 +1359,23 @@ int set_galaxy_velocity(galaxy *gal) {
 			if(gal->comp_Q_lim[j]>0.) printf("[Q_min=%.2lf]\n",gal->comp_Q_min[j]);
 			else printf("\n");
 		}
-		if(warning2) printf("/////\t\t[Warning] Gaseous halo unstable -> Lower streaming_fraction%d\n",j);
+		if(warning2) printf("/////\t\t[Warning] Gaseous halo unstable -> Lower streaming_fraction%d\n",j+1);
 		warning2 = 0;
 	}
 
-	if(warning1) printf("/////\t\tWarning: The potential derivative seems unstable. Increase particule number.\n");
+	if(warning1) printf("/////\t\t[Warning] Potential derivative unstable -> Increase particule number\n");
 	// Be nice to memory
 	free(gal->storage);
     
     char buffer[MAXLEN_FILENAME];
-	double maxrad;
+	double maxrad, maxrad_gas;
 
 	maxrad = 0.;
-	for(j=0; j<AllVars.MaxCompNumber; j++) if(gal->comp_cut[j]>maxrad) maxrad = gal->comp_cut[j];
+	maxrad_gas = 0.;
+	for(j=0; j<AllVars.MaxCompNumber; j++) {
+		if(gal->comp_cut[j]>maxrad) maxrad = gal->comp_cut[j];
+		if(gal->comp_cut[j]>maxrad_gas && gal->comp_type[j]==0) maxrad_gas = gal->comp_cut[j];
+	}
 
     // Writing rotation curve to ascii file
     if(AllVars.OutputRc==1){
@@ -1378,14 +1383,26 @@ int set_galaxy_velocity(galaxy *gal) {
 		printf("/////\tWriting rotation curve [%s.rc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_rotation_curve(gal,maxrad,strcat(buffer,".rc"),0.01);
 	}
+    // Writing gas rotation curve to ascii file
+    if(AllVars.OutputGasRc==1){
+		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting gas rotation curve [%s.gasrc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		write_galaxy_gas_rotation_curve(gal,maxrad_gas,strcat(buffer,".gasrc"),0.01);
+	}
 	// Writing potential curve to ascii file
     if(AllVars.OutputPot==1){
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		printf("/////\tWriting potential curve [%s.rc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_potential_curve(gal,maxrad,strcat(buffer,".pot"),0.01);
 	}
+	// Writing gas density curve to ascii file
+    if(AllVars.OutputRho>0){
+    	gal->selected_comp[0] = AllVars.OutputRho-1;
+		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting gas density curve [%s.rho]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		write_galaxy_gas_density_curve(gal,maxrad,strcat(buffer,".rho"),0.01);
+	}
     
-    printf("/////\tSetting gas turbulent velocities\n");
     // Loop over components
 	for(k=0; k<AllVars.MaxCompNumber; k++) {
     	if(gal->comp_type[k]==0 && gal->comp_turb_sigma[k]>0.) {
