@@ -391,7 +391,7 @@ double galaxy_rforce_func(galaxy *gal, double radius) {
 	r_sph = sqrt(pow(x,2)+pow(y,2)+pow(gal->z[gal->index[tid]],2));
 	
 	h = 1.5*gal->dx;
-	if(r_sph<gal->boxsize_zoom/2.) h = 1.5*gal->dx_zoom;
+	if(r_sph<gal->boxsize_zoom/2.&&gal->level_grid_zoom>gal->level_grid) h = 1.5*gal->dx_zoom;
 	
 	force = deriv_central(gal,radius,h,galaxyr_potential_wrapper_func);
 	
@@ -421,7 +421,7 @@ double galaxy_zforce_func(galaxy *gal, double z) {
 	r_sph = sqrt(pow(gal->z[gal->index[tid]],2)+pow(gal->z[gal->index[tid]],2)+pow(z,2));
 	
 	h = 1.5*gal->dx;
-	if(r_sph<gal->boxsize_zoom/2.) h = 1.5*gal->dx_zoom;	
+	if(r_sph<gal->boxsize_zoom/2.&&gal->level_grid_zoom>gal->level_grid) h = 1.5*gal->dx_zoom;	
 	
 	force = deriv_central(gal,z,h,galaxyz_potential_wrapper_func);
 	
@@ -441,7 +441,7 @@ double galaxy_rsphforce_func(galaxy *gal, double r_sph) {
 	double force, h, abserr;
 	
 	h = 1.5*gal->dx;
-	if(r_sph<gal->boxsize_zoom/2.) h = 1.5*gal->dx_zoom;	
+	if(r_sph<gal->boxsize_zoom/2.&&gal->level_grid_zoom>gal->level_grid) h = 1.5*gal->dx_zoom;	
 	
 	force = deriv_central(gal,r_sph,h,galaxyrsph_potential_wrapper_func);
 	

@@ -1458,7 +1458,7 @@ int set_galaxy_velocity(galaxy *gal) {
 
     		gal->dx_gauss = 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss[0]);
 
-   			printf("/////\t\t- Component %d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc]\n",k,gal->comp_turb_sigma[k],gal->comp_turb_scale[k],gal->dx_gauss);
+   			printf("/////\t\t- Component %d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc]\n",k+1,gal->comp_turb_sigma[k],gal->comp_turb_scale[k],gal->dx_gauss);
     		set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k]);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
 				gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
