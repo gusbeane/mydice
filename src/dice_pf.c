@@ -465,8 +465,12 @@ double galaxyz_potential_wrapper_func(double z, void *params) {
 double potential_deriv_wrapper_func(double radius, void *params) {
 	
 	galaxy *gal = (galaxy *) params;
-		
-	return (pow(v_c_func(gal,radius),2.0))/(radius*kpc);
+	
+	if(radius==0.) {
+		return 0.;
+	} else {	
+		return (pow(v_c_func(gal,radius),2.0))/(radius*kpc);
+	}
 }
 
 // This function copies one galaxy to another.

@@ -26,8 +26,6 @@ level_grid_dens_gauss 	7
 boxsize		 	100.0
 # Size of the zoomed potential grid [kpc]
 boxsize_zoom	 	14.0
-# Epicycle approximation in the Jeans equations
-epicycle		0
 # Dispersion for the Gaussian field fluctuations
 dens_gauss_sigma        0.50
 # Physical scale of the gaussian field fluctuations [kpc]
@@ -99,6 +97,8 @@ streaming_fraction1	0.00
 radius_nfw1		1.0
 # Target mass of individual particles [Msol]
 part_mass1		0.0
+# Cut the density function in the Jeans equation integration
+jeans_mass_cut1		0
 
 ################################
 # Component 2: Thin stellar disk
@@ -116,6 +116,8 @@ flat2			0.15
 mcmc_step2		0.3
 vmax2			2.0
 type2			2
+# Epicycle approximation in the Jeans equations
+epicycle2		0
 streaming_fraction2	1.00
 # Dispersion extinction coefficient. Values need to be in the interval [0,1].
 # For example, setting DispExtCoeff to 0.90 means that the azimuthal dispersion is equal to 90 percent
@@ -134,6 +136,8 @@ min_age2                0.
 metal2                  0.01
 # Gaussian fluctuations in the density field
 dens_gauss2		0
+# Cut the density function in the Jeans equation integration
+jeans_mass_cut2		1
 
 ###########################
 # Component 3: Gaseous disk
