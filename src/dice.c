@@ -45,8 +45,8 @@
 // The All-Powerful & All-Mighty Main!
 int main (int argc, char **argv) {
 
-	int i, j, k, l, ngal, N;
-	double zoom_bound[6];
+	int i, j, k, l, ngal, N, neval;
+	double x,y;
 	// Galaxy pointers
 	galaxy *gal, *pgal, *stack1, *stack2;
 	stream *st;
@@ -124,7 +124,7 @@ int main (int argc, char **argv) {
 	printf("/////\tAllocating GSL integration workspaces\n");
 	w = (gsl_integration_workspace **) malloc(AllVars.Nthreads * sizeof(gsl_integration_workspace *));
 	for(i=0;i<AllVars.Nthreads;i++) {
-		w[i] = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
+		w[i] = gsl_integration_workspace_alloc(AllVars.GslWorkspaceSize);
 	}
 	if (AllVars.Ngal>0) {
 		printf("/////\t--------------------------------------------------\n");
@@ -171,8 +171,14 @@ int main (int argc, char **argv) {
 						exit(0);
 					}
 				}
-				gal->potential_shift_zoom = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->boxsize_zoom/2.,0.,0.,1)
-					-galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,gal->boxsize_zoom/2.,0.,0.,0);
+				neval = 1000;
+				for(k=0; k<neval; k=k+1){
+					x = gal->boxsize_zoom/2.*cos(2.0*pi*j/neval);
+					y = gal->boxsize_zoom/2.*sin(2.0*pi*j/neval);
+					gal->potential_shift_zoom += galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,0.,1)
+						-galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,x,y,0.,0);
+				}
+				gal->potential_shift_zoom /= neval;
 				if(set_galaxy_velocity(gal) != 0) {
 					printf("[Error] Unable to set the velocities\n");
 					exit(0);
@@ -256,6 +262,7 @@ int main (int argc, char **argv) {
 	for(l=0; l<AllVars.Nstream; l++) {
 		// Provide values for the free parameters of the galaxy. If the galaxy can
 		// not be created, return an error.
+		printf("/////\t--------------------------------------------------\n");
 		if ((i = create_stream(st,AllVars.StreamFiles[l],1))!= 0) {
 		        fprintf(stderr,"[Error] Unable to create galaxy\n");
 		        exit(0);

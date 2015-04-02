@@ -188,27 +188,27 @@ int allocate_component_arrays(galaxy *gal) {
 		return -1;
 	}
 	if (!(gal->comp_turb_sigma=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"[Error] Unable to allocate particle comp_turb_sigma array\n");
+		fprintf(stderr,"[Error] Unable to allocate comp_turb_sigma array\n");
 		return -1;
 	}
 	if (!(gal->comp_turb_scale=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"[Error] Unable to allocate particle comp_turb_scale array\n");
+		fprintf(stderr,"[Error] Unable to allocate comp_turb_scale array\n");
 		return -1;
 	}
 	if (!(gal->comp_compute_vel=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"[Error] Unable to allocate particle comp_compute_vel array\n");
+		fprintf(stderr,"[Error] Unable to allocate comp_compute_vel array\n");
 		return -1;
 	}
 	if (!(gal->comp_hydro_eq=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"[Error] Unable to allocate particle comp_hydro_eq array\n");
+		fprintf(stderr,"[Error] Unable to allocate comp_hydro_eq array\n");
 		return -1;
 	}
 	if (!(gal->comp_hydro_eq_niter=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"[Error] Unable to allocate particle comp_hydro_eq_niter array\n");
+		fprintf(stderr,"[Error] Unable to allocate comp_hydro_eq_niter array\n");
 		return -1;
 	}
 	if (!(gal->comp_dens_gauss=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"[Error] Unable to allocate particle comp_dens_gauss array\n");
+		fprintf(stderr,"[Error] Unable to allocate comp_dens_gauss array\n");
 		return -1;
 	}
 	if (!(gal->comp_cut_in=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -216,11 +216,19 @@ int allocate_component_arrays(galaxy *gal) {
 		return -1;
 	}
 	if (!(gal->comp_thermal_eq=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-		fprintf(stderr,"[Error] Unable to allocate particle comp_thermal_eq array\n");
+		fprintf(stderr,"[Error] Unable to allocate comp_thermal_eq array\n");
 		return -1;
 	}
 	if (!(gal->comp_part_mass=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"[Error] Unable to allocate particle comp_part_mass array\n");
+		fprintf(stderr,"[Error] Unable to allocate comp_part_mass array\n");
+		return -1;
+	}
+	if (!(gal->comp_jeans_mass_cut=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_jeans_mass_cut array\n");
+		return -1;
+	}
+	if (!(gal->comp_epicycle=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_epicycle array\n");
 		return -1;
 	}
 	return 0;
@@ -772,7 +780,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	// Do not work with pseudo densities yet
 	for(i=0; i<AllVars.Nthreads; i++) gal->pseudo[i] = 0;
 	// Rescale the baryon fraction 
-	gal->m_d /= effective_mass_factor;
+	if(AllVars.NormMassFact==1) gal->m_d /= effective_mass_factor;
 	// Define disk spin fraction if not specified
 	if(gal->j_d==0.) gal->j_d = gal->m_d;
 	// Set up component properties
@@ -782,7 +790,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		if(gal->comp_npart_pot[i]<gal->comp_npart[i]) gal->comp_npart_pot[i] = gal->comp_npart[i];
 		if(gal->comp_npart[i]==0) gal->comp_npart_pot[i] = 0;
 		// Rescale the mass fractions
-		gal->comp_mass_frac[i] 			= gal->comp_mass_frac[i]/effective_mass_factor;
+		if(AllVars.NormMassFact==1) gal->comp_mass_frac[i] = gal->comp_mass_frac[i]/effective_mass_factor;
 		// Set the start index for each component
 		if(i>0) gal->comp_start_part[i] = gal->comp_start_part[i-1]+gal->comp_npart_pot[i-1];
 		// Computing mass component
@@ -842,7 +850,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			}
 					
 			if(gal->comp_radius_nfw[i]==-1.0) {
-				gal->comp_scale_dens[i] 	= gal->comp_mass[i]/cumulative_mass_func(gal,gal->comp_cut[i],i);
+				gal->comp_scale_dens[i] 	= gal->comp_mass[i]/cumulative_mass_func(gal,2*gal->comp_cut[i],i);
 			} else {
 				// Case where the final cutted mass is defined by a scaling with respect to a NFW halo density
 				m_scale_nfw 				= sqrt(pow(gal->comp_radius_nfw[i]/gal->comp_scale_length[i],2.0));
@@ -853,11 +861,11 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     			rho_scale_nfw 				= rho0_nfw/(m_scale_nfw*pow(1.0+m_scale_nfw,2.0));
     			gal->comp_scale_dens[i] 	= rho_scale_nfw/density_functions_pool(gal,gal->comp_radius_nfw[i],theta_max_dens,0.,0,gal->comp_model[i],i);
 			}
-		}
 		
-		gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],theta_max_dens,0.,0,gal->comp_model[i],i);
-		gal->comp_cutted_mass[i] 	= cumulative_mass_func(gal,gal->comp_cut[i],i);
-		gal->total_mass				+= gal->comp_cutted_mass[i];
+			gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],theta_max_dens,0.,0,gal->comp_model[i],i);
+			gal->comp_cutted_mass[i] 	= cumulative_mass_func(gal,gal->comp_cut[i],i);
+			gal->total_mass				+= gal->comp_cutted_mass[i];
+		}
 
 		if(gal->comp_part_mass[i]>0.&&gal->comp_npart[i]>0) gal->comp_npart[i] = (int)round(gal->comp_cutted_mass[i]/(gal->comp_part_mass[i]*solarmass/unit_mass));
 		if(gal->comp_npart_pot[i]<gal->comp_npart[i]) gal->comp_npart_pot[i] = gal->comp_npart[i];
@@ -925,7 +933,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		}
 		for(i=0;i<AllVars.MaxCompNumber;i++) {
 			if(gal->comp_hydro_eq[i]) {
-				printf("/////\t\t- Midplane density \t\t[%4d,%4d]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens));
+				printf("/////\t\t- Midplane gas density \t\t[%4d,%4d]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens));
 				break;
 			}
 		}
@@ -1197,8 +1205,8 @@ int set_stream_coords(stream *st) {
 			printf("/////\t\t- Component %2d [%s]",i+1,st->comp_profile_name[i]);
 			fflush(stdout);
 			mcmc_metropolis_hasting_stream(st,i,st->comp_model[i]);
-			rotate_stream(st,st->comp_theta_sph[i],st->comp_phi_sph[i],i);
 			position_stream(st,st->comp_xc[i],st->comp_yc[i],st->comp_zc[i],i);
+			rotate_stream(st,st->comp_theta_sph[i],st->comp_phi_sph[i],i);
 		}
 	}
 	// Be nice to the memory
@@ -1297,12 +1305,12 @@ int set_galaxy_velocity(galaxy *gal) {
 						v2a_r *= disp_softening;
 						//v2a_z = v2a_r;
 					}
-					if(gal->comp_type[j]==2 && gal->epicycle==1) {
+					if(gal->comp_epicycle[j]==1) {
 						va_theta = gal->comp_streaming_fraction[j]*v_c;
 						sigma_theta = sqrt(sigma2_theta_disk_func(gal,fabs(gal->r_cyl[i]),v2a_z));
 					} else {
 						va_theta 		= gal->comp_streaming_fraction[j]*v_c;
-						v2a_theta 		= v2a_r + v2a_theta_func(gal,gal->r_cyl[i],j) + v_c*v_c;
+						v2a_theta 		= v2a_r + pow(v_c,2.0) + v2a_theta_func(gal,gal->r_cyl[i],j);
 						// Check if the dispersion is a real or complex number
 						if(AllVars.AcceptImaginary==1) {
 							sigma_theta = sqrt(fabs(v2a_theta - va_theta*va_theta));
@@ -1364,14 +1372,12 @@ int set_galaxy_velocity(galaxy *gal) {
 	}
 
 	if(warning1) printf("/////\t\t[Warning] Potential derivative unstable -> Increase particule number\n");
-	// Be nice to memory
-	free(gal->storage);
     
     char buffer[MAXLEN_FILENAME];
 	double maxrad, maxrad_gas;
 
-	maxrad = 0.;
-	maxrad_gas = 0.;
+	maxrad 		= 0.;
+	maxrad_gas 	= 0.;
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
 		if(gal->comp_cut[j]>maxrad) maxrad = gal->comp_cut[j];
 		if(gal->comp_cut[j]>maxrad_gas && gal->comp_type[j]==0) maxrad_gas = gal->comp_cut[j];
@@ -1380,29 +1386,48 @@ int set_galaxy_velocity(galaxy *gal) {
     // Writing rotation curve to ascii file
     if(AllVars.OutputRc==1){
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting rotation curve [%s.rc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting rotation curve \t\t[%s.rc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_rotation_curve(gal,maxrad,strcat(buffer,".rc"),0.01);
 	}
     // Writing gas rotation curve to ascii file
     if(AllVars.OutputGasRc==1){
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting gas rotation curve [%s.gasrc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting gas rotation curve \t[%s.gasrc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_gas_rotation_curve(gal,maxrad_gas,strcat(buffer,".gasrc"),0.01);
 	}
 	// Writing potential curve to ascii file
     if(AllVars.OutputPot==1){
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting potential curve [%s.rc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting potential curve \t[%s.pot]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_potential_curve(gal,maxrad,strcat(buffer,".pot"),0.01);
 	}
 	// Writing gas density curve to ascii file
     if(AllVars.OutputRho>0){
     	gal->selected_comp[0] = AllVars.OutputRho-1;
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting gas density curve [%s.rho]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		write_galaxy_gas_density_curve(gal,maxrad,strcat(buffer,".rho"),0.01);
+		printf("/////\tWriting density curve \t\t[%s.rho]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		write_galaxy_density_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".rho"),0.01);
 	}
-    
+	// Writing gas density curve to ascii file
+    if(AllVars.OutputToomre>0){
+    	gal->selected_comp[0] = AllVars.OutputToomre-1;
+		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting Toomre criterion curve \t[%s.toomre]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		write_galaxy_toomre_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".toomre"),0.01);
+	}
+	// Writing dispersion curves to ascii file
+    if(AllVars.OutputSigma>0){
+    	gal->selected_comp[0] = AllVars.OutputSigma-1;
+		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting vz dispersion curve \t[%s.sigma_z]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		write_galaxy_sigma_z_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".sigma_z"),0.01);
+		
+		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting vz dispersion curve \t[%s.sigma_theta]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		write_galaxy_sigma_theta_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".sigma_theta"),0.01);
+	}
+	// Be nice to memory
+	free(gal->storage);
     // Loop over components
 	for(k=0; k<AllVars.MaxCompNumber; k++) {
     	if(gal->comp_type[k]==0 && gal->comp_turb_sigma[k]>0.) {

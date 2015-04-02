@@ -42,18 +42,20 @@
 
 
 double density_functions_pool(galaxy *gal, double radius, double theta, double z, int cut, int model, int component) {
-	double h, z0, density, zpz0, m, alpha;
+	double h, z0, density, zpz0, m, n, alpha, smooth_factor, sigma, r_sph;
 	double x,y;
 	// We consider only positive values
-    if(sqrt(radius*radius+z*z) <= 0.) return 0.;
+    if(sqrt(radius*radius+z*z) < 0.) return 0.;
 
     z0 			= gal->comp_scale_height[component];
     h 			= gal->comp_scale_length[component];
     alpha		= gal->comp_alpha[component];
 	m 			= sqrt(pow(radius/h,2.0)+pow(z/z0,2.0));
+	n 			= sqrt(pow(radius/gal->comp_cut[component],2.0)+pow(z/(gal->comp_cut[component]*gal->comp_flat[component]),2.0));
 	
-	x = radius*cos(theta);
-	y = radius*sin(theta);
+	x 		= radius*cos(theta);
+	y 		= radius*sin(theta);
+	r_sph 	= sqrt(x*x+y*y+z*z);
 	
 	// Select a disk model
     switch(model) {
@@ -120,9 +122,12 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 			density = gal->comp_scale_dens[component]*exp(-pow(m,alpha));
             break;
 		default:
-			fprintf(stderr,"[Error] Specify a valid model for component %d\n",component);
+			fprintf(stderr,"[Error] model%d=%d is not a valid value\n",component+1,model);
 			exit(0);
 	}
+	
+	sigma 			= 0.05;
+	smooth_factor 	= 1-0.5*(1+erf((n-1.0)/(sigma*sqrt(2))));
 	
 	if(gal->dens_gauss_sigma>0. && gal->comp_dens_gauss[component]==1 && gal->gaussian_field_defined){
 		if(radius>gal->comp_cut[component]) {
@@ -133,8 +138,9 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 		}
 	}
 	// Cutting the density
-    if(cut && density<gal->comp_cut_dens[component]) 	density = 0.;
-	if(cut && radius<gal->comp_cut_in[component]) 		density = 0.;
+    if(cut==1) 	density *= smooth_factor;
+    //if(cut==1 && density<gal->comp_cut_dens[component]) 	density = 0.;
+	//if(cut==1 && radius<gal->comp_cut_in[component]) 		density = 0.;
 	// Unit is 10e10 solar mass / kpc^3
 	return density;
 }
@@ -286,7 +292,7 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	
 	unsigned long int i,j,k;
-	int density_model;
+	int density_model, neval;
 	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, x, y, z, step, previous_step, prop_r, prop_theta, prop_z, acceptance;
 	double step_r, step_z, prev_step_z;
@@ -316,8 +322,14 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 					printf("[Error] Unable to set the zoomed potential\n");
 					exit(0);
 				}
-				gal->potential_shift_zoom = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->boxsize_zoom/2.,0.,0.,1)
-					-galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,gal->boxsize_zoom/2.,0.,0.,0);
+				neval = 1000;
+				for(k=0; k<neval; k=k+1){
+					x = gal->boxsize_zoom/2.*cos(2.0*pi*j/neval);
+					y = gal->boxsize_zoom/2.*sin(2.0*pi*j/neval);
+					gal->potential_shift_zoom += galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,0.,1)
+						-galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,x,y,0.,0);
+				}
+				gal->potential_shift_zoom /= neval;
 			}
 			fflush(stdout);
 			printf(" / Computing midplane dens");
@@ -416,11 +428,15 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
 			}
 			acceptance /= gal->comp_npart_pot[component];
-			if(acceptance<0.6) gal->comp_mcmc_step_hydro[component]/=2.0;
-			if(acceptance>0.95) gal->comp_mcmc_step_hydro[component]*=2.0;
 			printf("[acceptance=%.2lf]\n",acceptance);
-			if(acceptance<0.50) printf("/////\t\t\t[Warning] MCMC acceptance is low -> Decreasing mcmc_step_hydro%d to %.3lf\n",component+1,gal->comp_mcmc_step_hydro[component]);
-			if(acceptance>0.90) printf("/////\t\t\t[Warning] MCMC acceptance is high -> Increasing mcmc_step_hydro%d to %.3lf\n",component+1,gal->comp_mcmc_step_hydro[component]);
+			if(acceptance<0.85) {
+				gal->comp_mcmc_step_hydro[component]/=2.0;
+				printf("/////\t\t\t[Warning] MCMC acceptance is low -> Decreasing mcmc_step_hydro%d to %.3lf\n",component+1,gal->comp_mcmc_step_hydro[component]);
+			}
+			if(acceptance>0.95) {
+				gal->comp_mcmc_step_hydro[component]*=2.0;
+				printf("/////\t\t\t[Warning] MCMC acceptance is high -> Increasing mcmc_step_hydro%d to %.3lf\n",component+1,gal->comp_mcmc_step_hydro[component]);
+			}
 		}
 	}
 	return 0;
@@ -529,7 +545,7 @@ double surface_density_func(galaxy *gal, double r, double theta, int cut, int co
 	int status,tid;
 	double surface_density,error,h;
 	
-	gsl_integration_workspace *w = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
+	gsl_integration_workspace *w = gsl_integration_workspace_alloc(AllVars.GslWorkspaceSize);
 	gsl_function F;
 	
 	#if USE_THREADS == 1
@@ -543,8 +559,9 @@ double surface_density_func(galaxy *gal, double r, double theta, int cut, int co
 	gal->storage[0][tid] 	= r;
 	gal->storage[1][tid] 	= theta;
 	gal->storage[2][tid] 	= cut;
-	gal->selected_comp[tid] = component; 
-	gsl_integration_qag(&F,-gal->comp_cut[component]*gal->comp_flat[component],gal->comp_cut[component]*gal->comp_flat[component],epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&surface_density,&error);
+	gal->selected_comp[tid] = component;
+
+	gsl_integration_qag(&F,-gal->comp_cut[component]*gal->comp_flat[component],gal->comp_cut[component]*gal->comp_flat[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&surface_density,&error);
     
 	gsl_integration_workspace_free(w);
 
@@ -663,7 +680,7 @@ double surface_density_func_stream(stream *st, double r, double theta, int compo
 	int status,tid;
 	double surface_density,error,h;
 	
-	gsl_integration_workspace *w = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
+	gsl_integration_workspace *w = gsl_integration_workspace_alloc(AllVars.GslWorkspaceSize);
 	gsl_function F;
 	
 	#if USE_THREADS == 1
@@ -679,7 +696,7 @@ double surface_density_func_stream(stream *st, double r, double theta, int compo
 	st->storage[1][tid] 	= theta;
 	
 	st->selected_comp[tid] 	= component; 
-	gsl_integration_qag(&F,0.,st->comp_length[component],epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&surface_density,&error);
+	gsl_integration_qag(&F,0.,st->comp_length[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&surface_density,&error);
     
 	gsl_integration_workspace_free(w);
 	return surface_density;
@@ -721,7 +738,7 @@ double cumulative_mass_func_stream(stream *st, double radius, int component) {
 	    tid = 0;
 	#endif
 	
-	gsl_integration_workspace *wk = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
+	gsl_integration_workspace *wk = gsl_integration_workspace_alloc(AllVars.GslWorkspaceSize);
 	gsl_function F;
 	
 	F.function 	= &d_cumulative_mass_func_stream;
@@ -729,7 +746,7 @@ double cumulative_mass_func_stream(stream *st, double radius, int component) {
 		
 	st->selected_comp[tid] = component; 
 	
-	gsl_integration_qag(&F,0,radius,epsabs,epsrel,GSL_WORKSPACE_SIZE,key,wk,&integral,&error);
+	gsl_integration_qag(&F,0,radius,epsabs,epsrel,AllVars.GslWorkspaceSize,key,wk,&integral,&error);
 	gsl_integration_workspace_free(wk);
 	
 	result = 2*pi*integral;
@@ -821,7 +838,7 @@ double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, doub
     F.function 	= &dmidplane_density_gas_func;
     F.params 	= gal;
     
-    gsl_integration_qag(&F,-10.*gal->comp_scale_height[component],10.*gal->comp_scale_height[component],epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&integral,&error);
+    gsl_integration_qag(&F,-10.*gal->comp_scale_height[component],10.*gal->comp_scale_height[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
 
 	return initial_surface_density/integral;
 }
@@ -861,11 +878,9 @@ void fill_midplane_dens_grid(galaxy *gal, int component) {
 	
 	wk = (gsl_integration_workspace **) malloc(AllVars.Nthreads * sizeof(gsl_integration_workspace *));
 	for(i=0;i<AllVars.Nthreads;i++) {
-		wk[i] = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
+		wk[i] = gsl_integration_workspace_alloc(AllVars.GslWorkspaceSize);
 	}
 	
-	//gsl_integration_workspace *wk = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
-
 	#pragma omp parallel shared(gal) private(x,y,i,j)
 	for (i=0;i<gal->ngrid_dens[0];i++) {	
 		for (j=0;j<gal->ngrid_dens[1];j++) {
@@ -878,7 +893,6 @@ void fill_midplane_dens_grid(galaxy *gal, int component) {
 			x = ((double)i-((double)(gal->ngrid_dens[0]/2)-0.5))*gal->dx_dens;
 			y = ((double)j-((double)(gal->ngrid_dens[1]/2)-0.5))*gal->dx_dens;
 			gal->midplane_dens[i][j] = midplane_density_gas_func(gal,wk[tid],x,y,component);
-		//	printf("%d %le\n",tid,gal->midplane_dens[i][j]);
 		}
 	}
 	for(i=0;i<AllVars.Nthreads;i++) {
@@ -959,11 +973,11 @@ double g_c_func(double c) {
 	
 	int status;
 	double result, error;
-	gsl_integration_workspace *w = gsl_integration_workspace_alloc(GSL_WORKSPACE_SIZE);
+	gsl_integration_workspace *w = gsl_integration_workspace_alloc(AllVars.GslWorkspaceSize);
 	gsl_function F;
 	
 	F.function = &dg_c_func;
-	gsl_integration_qag(&F,0.0,c,epsabs,epsrel,GSL_WORKSPACE_SIZE,key,w,&result,&error);
+	gsl_integration_qag(&F,0.0,c,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&result,&error);
 	
 	gsl_integration_workspace_free(w);
 	

@@ -53,6 +53,7 @@
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_deriv.h>
 #include <gsl/gsl_sf_ellint.h>
+#include <gsl/gsl_monte_vegas.h>
 #include <complex.h>
 #include <fftw3.h>
 #include "dice_config.h"
@@ -166,6 +167,8 @@ typedef struct {
 	double 				*comp_cut_in;
 	int 				*comp_thermal_eq;
 	double 				*comp_part_mass;
+	int 				*comp_jeans_mass_cut;
+	int 				*comp_epicycle;
 	// Virial quantities
 	double v200;
 	double r200;
@@ -260,8 +263,6 @@ typedef struct {
 	int potential_defined;
 	// Boolean variable checking the computation of the gaussian field
 	int gaussian_field_defined;
-	// Boolean which enable the axisymmetric drift approximation for the stellar disk
-	int epicycle;
 	// Seed for random number generator
 	long seed;
 	// Pseudo density boolean
@@ -411,6 +412,8 @@ struct GlobalVars {
 	int OutputGasRc;
 	int OutputPot;
 	int OutputRho;
+	int OutputSigma;
+	int OutputToomre;
 	int MaxCompNumber;
 	double H0;
 	double Omega_m;
@@ -418,6 +421,8 @@ struct GlobalVars {
 	double Omega_k;
 	int GaussianRejectIter;
 	int CurrentGalaxy;
+	int NormMassFact;
+	unsigned long int GslWorkspaceSize; 
 } AllVars;
 
 // ------------------------------------------
@@ -490,8 +495,9 @@ static double dv2a_z_func(double, void *);
 double v2a_1D_func(galaxy *, gsl_integration_workspace *, int);
 static double dv2a_1D_func(double, void *);
 double v2a_theta_func(galaxy *, double, int);
-double sigma2_theta_func(galaxy *, double, double);
+double sigma2_theta_disk_func(galaxy *, double, double);
 double v2a_z_toomre(galaxy *, double, double, int);
+double toomre(galaxy *, double, double, int);
 double rho_v2a_r_func(double, void *);
 double v2_theta_gas_func(galaxy *, double, double, int);
 double gas_density_wrapper_func(double, void *);
@@ -516,6 +522,11 @@ int parse_config_file(char *);
 int parse_galaxy_file(galaxy *, char *);
 void write_galaxy_rotation_curve(galaxy *, double, char *, double);
 void write_galaxy_potential_curve(galaxy *, double, char *, double);
+void write_galaxy_sigma_z_curve(galaxy *, double , char *, double);
+void write_galaxy_sigma_theta_curve(galaxy *, double , char *, double);
+void write_galaxy_potential_curve(galaxy *, double , char *, double);
+void write_galaxy_density_curve(galaxy *, double , char *, double);
+void write_galaxy_toomre_curve(galaxy *, double , char *, double);
 int write_gadget1_ics(galaxy *, char *);
 int write_gadget2_ics(galaxy *, char *);
 int load_snapshot(char *, int);
