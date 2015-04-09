@@ -366,7 +366,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	36*AllVars.MaxCompNumber+20
+	#define MAXTAGS	36*AllVars.MaxCompNumber+21
 	
 	FILE *fd;
 	int i,j,n;
@@ -439,9 +439,16 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	mandatory[nt] = 1;
 	id[nt++] = INT;
 	
-	strcpy(tag[nt], "level_grid_zoom");
-	addr[nt] = &gal->level_grid_zoom;
-	gal->level_grid_zoom=0;
+	strcpy(tag[nt], "level_grid_zoom1");
+	addr[nt] = &gal->level_grid_zoom1;
+	gal->level_grid_zoom1=0;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+
+	strcpy(tag[nt], "level_grid_zoom2");
+	addr[nt] = &gal->level_grid_zoom2;
+	gal->level_grid_zoom2=0;
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = INT;
@@ -473,9 +480,16 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	mandatory[nt] = 1;
 	id[nt++] = DOUBLE;
 	
-	strcpy(tag[nt], "boxsize_zoom");
-	addr[nt] = &gal->boxsize_zoom;
-	gal->boxsize_zoom = 0.;
+	strcpy(tag[nt], "boxsize_zoom1");
+	addr[nt] = &gal->boxsize_zoom1;
+	gal->boxsize_zoom1 = 0.;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+
+	strcpy(tag[nt], "boxsize_zoom2");
+	addr[nt] = &gal->boxsize_zoom2;
+	gal->boxsize_zoom2 = 0.;
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = DOUBLE;
@@ -1772,6 +1786,7 @@ void write_galaxy_sigma_z_curve(galaxy *gal, double rmax, char *fname, double in
 		radius = i*interval;
 		gal->r_cyl[gal->index[tid]] = radius;
 		v2az 						= v2a_z_func(gal,w[tid],gal->selected_comp[0]);
+		
 		// Enforce Q>Q_min
 		if(gal->comp_Q_lim[gal->selected_comp[0]]>0) {
 			v2az = v2a_z_toomre(gal,radius,v2az,gal->selected_comp[0]);
@@ -1890,7 +1905,7 @@ void write_galaxy_toomre_curve(galaxy *gal, double rmax, char *fname, double int
 
 void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double interval) {
 	int i,tid;
-	double radius, theta, pot, save1, save2;
+	double radius, theta, pot, save1, save2, save3;
 	char filename[200];
 	FILE *fp1;
     
@@ -1909,20 +1924,24 @@ void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double 
 	gal->index[tid] 				= 0;
 	save1 							= gal->x[gal->index[tid]];
 	save2 							= gal->y[gal->index[tid]];
+	save3 							= gal->z[gal->index[tid]];
 	gal->x[gal->index[tid]] 		= 0.;
 	gal->y[gal->index[tid]] 		= 0.;
+	gal->z[gal->index[tid]] 		= 0.;
 	
 	for (i = 0; i < (int)(rmax/interval); ++i) {
 		radius = i*interval;
-		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,3.,0.,radius,1);
+		/*pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,3.,0.,radius,1);
 		if(gal->level_grid_zoom>gal->level_grid&&radius<gal->boxsize_zoom/2.) {
 			pot = galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,3.,0.,radius,0)+gal->potential_shift_zoom;
-		}
+		}*/
+		pot = galaxyr_potential_wrapper_func(radius,gal);
 		// Write the radius and circular velocity to file in kpc and g*cm^2/s^2 respectively.
-		fprintf(fp1,"%lf %le\n",radius,galaxyz_potential_wrapper_func(radius,gal));
+		fprintf(fp1,"%lf %le\n",radius,pot);
 	}
 	gal->x[gal->index[tid]] 		= save1;
 	gal->y[gal->index[tid]] 		= save2;
+	gal->z[gal->index[tid]] 		= save3;
 	fclose(fp1);
 	
 	return;

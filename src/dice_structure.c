@@ -43,19 +43,25 @@
 
 double density_functions_pool(galaxy *gal, double radius, double theta, double z, int cut, int model, int component) {
 	double h, z0, density, zpz0, m, n, alpha, smooth_factor, sigma, r_sph;
-	double x,y;
+	double x,y,m_min;
 	// We consider only positive values
     if(sqrt(radius*radius+z*z) < 0.) return 0.;
 
     z0 			= gal->comp_scale_height[component];
     h 			= gal->comp_scale_length[component];
     alpha		= gal->comp_alpha[component];
+	//l			= sqrt(pow(x/h,2.0)+pow(y/h,2.0)+pow(z/z0,2.0));
 	m 			= sqrt(pow(radius/h,2.0)+pow(z/z0,2.0));
 	n 			= sqrt(pow(radius/gal->comp_cut[component],2.0)+pow(z/(gal->comp_cut[component]*gal->comp_flat[component]),2.0));
 	
 	x 		= radius*cos(theta);
 	y 		= radius*sin(theta);
 	r_sph 	= sqrt(x*x+y*y+z*z);
+
+	/*if(cut==2) {
+		m_min 			= 0.25;
+		m 				= sqrt(pow(m_min,2)+pow(m,2));
+	}*/
 	
 	// Select a disk model
     switch(model) {
@@ -317,20 +323,23 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				fprintf(stderr,"\n[Error] Unable to set the potential\n");
 				exit(0);
 			}
-			if(gal->level_grid_zoom>gal->level_grid){
-				if(set_galaxy_potential(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,0) != 0) {
+			// Zoom 1
+			if(gal->level_grid_zoom1>gal->level_grid){
+				if(set_galaxy_potential(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,0) != 0) {
 					printf("[Error] Unable to set the zoomed potential\n");
 					exit(0);
 				}
-				neval = 1000;
-				for(k=0; k<neval; k=k+1){
-					x = gal->boxsize_zoom/2.*cos(2.0*pi*j/neval);
-					y = gal->boxsize_zoom/2.*sin(2.0*pi*j/neval);
-					gal->potential_shift_zoom += galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,0.,1)
-						-galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,x,y,0.,0);
+				compute_potential_shift(gal,gal->potential,gal->potential_zoom1,gal->dx,gal->dx_zoom1,gal->ngrid,gal->ngrid_zoom1);
+				// Zoom 2
+				if(gal->level_grid_zoom2>gal->level_grid_zoom1){
+					if(set_galaxy_potential(gal,gal->potential_zoom2,gal->dx_zoom2,gal->ngrid_zoom2,1) != 0) {
+						printf("[Error] Unable to set the zoomed potential\n");
+						exit(0);
+					}
+					compute_potential_shift(gal,gal->potential_zoom1,gal->potential_zoom2,gal->dx_zoom1,gal->dx_zoom2,gal->ngrid_zoom1,gal->ngrid_zoom2);
 				}
-				gal->potential_shift_zoom /= neval;
 			}
+			
 			fflush(stdout);
 			printf(" / Computing midplane dens");
 			fflush(stdout);
@@ -429,13 +438,17 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 			}
 			acceptance /= gal->comp_npart_pot[component];
 			printf("[acceptance=%.2lf]\n",acceptance);
-			if(acceptance<0.85) {
+			if(acceptance<0.80) {
 				gal->comp_mcmc_step_hydro[component]/=2.0;
 				printf("/////\t\t\t[Warning] MCMC acceptance is low -> Decreasing mcmc_step_hydro%d to %.3lf\n",component+1,gal->comp_mcmc_step_hydro[component]);
 			}
 			if(acceptance>0.95) {
 				gal->comp_mcmc_step_hydro[component]*=2.0;
 				printf("/////\t\t\t[Warning] MCMC acceptance is high -> Increasing mcmc_step_hydro%d to %.3lf\n",component+1,gal->comp_mcmc_step_hydro[component]);
+			}
+			if((acceptance<0.10)&&((j+1)==n_iter)) {
+				printf("[Error] MCMC failed to converge\n");
+				exit(0);
 			}
 		}
 	}
