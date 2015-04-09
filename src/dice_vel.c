@@ -63,7 +63,7 @@ double v2a_z_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 	infinity = 10.*gal->comp_scale_height[gal->selected_comp[tid]];
 	gsl_integration_qag(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
 
-    rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],2,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 	res 		= integral*kpc/rho;
 	
 	if(AllVars.AcceptImaginary==1) {
@@ -121,7 +121,7 @@ double v2a_1D_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 	infinity = 10.*gal->comp_scale_length[gal->selected_comp[tid]];
 	gsl_integration_qag(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
     
-    rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],2,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 	res 		= integral*kpc/rho;
 	        
 	if(AllVars.AcceptImaginary==1) {
@@ -186,7 +186,7 @@ double v2a_theta_func(galaxy *gal, double radius, int component) {
     gal->selected_comp[tid] = component;
 	derivative 				= deriv_forward(gal,radius,h,rho_v2a_r_func);
 		
-	rho 					= density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],z,0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+	rho 					= density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],z,2,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 	res 					= derivative*radius*kpc/rho;
 	
 	return res;
@@ -207,7 +207,7 @@ double rho_v2a_r_func(double radius, void *params) {
 	    tid = 0;
 	#endif
 
-	rho = density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],1,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+	rho = density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],gal->comp_jeans_mass_cut[gal->selected_comp[tid]],gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 
 	return rho*v2a_z_func(gal,w[tid],gal->selected_comp[tid]);
 }
@@ -268,7 +268,8 @@ double toomre(galaxy *gal, double radius, double v2a_z, int component) {
     r_sph = sqrt(pow(gal->z[gal->index[tid]],2)+pow(radius,2));
 	// Set the derivative step
 	h 				= 1.5*gal->dx;
-	if(r_sph<gal->boxsize_zoom/2.&&gal->level_grid_zoom>gal->level_grid) h = 1.5*gal->dx_zoom;	
+	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
+	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
 	// Calculate force and force derivative
 	force 			= potential_deriv_wrapper_func(radius,gal);
 	dforcedr 		= deriv_central(gal,radius,h,potential_deriv_wrapper_func);
@@ -302,7 +303,8 @@ double sigma2_theta_disk_func(galaxy *gal, double radius, double v2a_z) {
     r_sph = sqrt(pow(gal->z[gal->index[tid]],2)+pow(radius,2));    
 	// Set the derivative step
 	h = 1.5*gal->dx;
-	if(r_sph<gal->boxsize_zoom/2.&&gal->level_grid_zoom>gal->level_grid) h = 1.5*gal->dx_zoom;	
+	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
+	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
 	// Calculate force and force derivative
 	force 		= potential_deriv_wrapper_func(radius,gal);
 	dforcedr 	= deriv_central(gal,radius,h,potential_deriv_wrapper_func);
@@ -337,7 +339,7 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 	radius 					= fabs(radius);
 	gal->selected_comp[tid] = component;
 	// Set the derivative step
-	h 						= 1.0*gal->dx_dens;
+	h 						= 1.5*gal->dx_dens;
 	// Save z coordinate
 	save 					= gal->z[gal->index[tid]];
 	// Integrations done in the z=0 plane	
@@ -413,6 +415,7 @@ double galaxy_rforce_func(galaxy *gal, double radius) {
 	int tid;
 	double force, h, abserr;
 	double x,y,r_sph;
+	double sigma,transition_factor1,transition_factor2;
 	
 	#if USE_THREADS == 1
 		tid = omp_get_thread_num();
@@ -426,7 +429,8 @@ double galaxy_rforce_func(galaxy *gal, double radius) {
 	r_sph = sqrt(pow(x,2)+pow(y,2)+pow(gal->z[gal->index[tid]],2));
 	
 	h = 1.5*gal->dx;
-	if(r_sph<gal->boxsize_zoom/2.&&gal->level_grid_zoom>gal->level_grid) h = 1.5*gal->dx_zoom;
+	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
+	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
 	
 	force = deriv_central(gal,radius,h,galaxyr_potential_wrapper_func);
 	
@@ -456,7 +460,8 @@ double galaxy_zforce_func(galaxy *gal, double z) {
 	r_sph = sqrt(pow(gal->x[gal->index[tid]],2)+pow(gal->y[gal->index[tid]],2)+pow(z,2));
 	
 	h = 1.5*gal->dx;
-	if(r_sph<gal->boxsize_zoom/2.&&gal->level_grid_zoom>gal->level_grid) h = 1.5*gal->dx_zoom;	
+	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
+	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
 
 	force = deriv_central(gal,z,h,galaxyz_potential_wrapper_func);
 	
@@ -476,7 +481,8 @@ double galaxy_rsphforce_func(galaxy *gal, double r_sph) {
 	double force, h, abserr;
 	
 	h = 1.5*gal->dx;
-	if(r_sph<gal->boxsize_zoom/2.&&gal->level_grid_zoom>gal->level_grid) h = 1.5*gal->dx_zoom;	
+	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
+	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
 	
 	force = deriv_central(gal,r_sph,h,galaxyrsph_potential_wrapper_func);
 	

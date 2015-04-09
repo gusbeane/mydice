@@ -61,7 +61,7 @@ int set_galaxy_potential(galaxy *gal, double ***potential, double dx, int ngrid[
 	fftw_plan fft_green, fft_rho, fftinv_potential;
 	fftw_complex *green,*rho;
 	
-	if (verbose) printf("/////\tComputing potential [%d FFT threads][dx=%.1lf pc]\n",AllVars.Nthreads,dx*1e3);
+	if (verbose) printf("/////\tComputing potential [%d FFT threads][dx=%.1lf pc][box=%.1lf kpc]\n",AllVars.Nthreads,dx*1e3,dx*ngrid[0]);
 	fflush(stdout);
 	// Setup fftw threads
 	#if USE_THREADS == 1
@@ -137,7 +137,7 @@ int set_galaxy_potential(galaxy *gal, double ***potential, double dx, int ngrid[
 	// Calculate the density using the CIC routine. The positions are shifted
 	// such that the particles are in the +x,+y,+z octant. space_* is added
 	// to take care of the vacuum boundary conditions. The density values are
-	// stored in the potential structure for now.
+	// stored in the potential structure for now.	
 	#pragma omp parallel for private(x, y, z, node_x, node_y, node_z, d_x, d_y, d_z, t_x, t_y, t_z, ii) shared(gal) 
 	for (ii = 0; ii < gal->ntot_part_pot; ++ii) {
 		x = gal->x[ii]/dx+((double)(ngrid_padded[0]/2)-0.5);
@@ -380,16 +380,23 @@ double galaxyr_potential_wrapper_func(double radius, void *params) {
 	
 	r_sph = sqrt(pow(x,2)+pow(y,2)+pow(gal->z[gal->index[tid]],2));
 
-	if(gal->level_grid_zoom>gal->level_grid) {
-		sigma = 2*gal->dx;
-		transition_factor1 = 0.5*(1+erf((r_sph-(gal->boxsize_zoom/2.-gal->dx_zoom))/(sigma*sqrt(2))));
+	pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,gal->z[gal->index[tid]],1);
+	if(gal->level_grid_zoom1>gal->level_grid) {
+		sigma = 8.0*gal->dx;
+		transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize_zoom1-0.5*sigma))/(sigma*sqrt(2))));
 		transition_factor2 = 1-transition_factor1;	
-		pot = transition_factor1*galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,gal->z[gal->index[tid]],1)
-			+ (galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,x,y,gal->z[gal->index[tid]],0)
-			+ gal->potential_shift_zoom)*transition_factor2;
-	} else {
-		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,gal->z[gal->index[tid]],1);
+		
+		pot = transition_factor1*pot
+			+ (galaxy_potential_func(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,x,y,gal->z[gal->index[tid]],0))*transition_factor2;
 
+		if(gal->level_grid_zoom2>gal->level_grid_zoom1) {
+			sigma = 8.0*gal->dx_zoom1;
+			transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize_zoom2-0.5*sigma))/(sigma*sqrt(2))));
+			transition_factor2 = 1-transition_factor1;	
+		
+			pot = transition_factor1*pot
+				+ (galaxy_potential_func(gal,gal->potential_zoom2,gal->dx_zoom2,gal->ngrid_zoom2,x,y,gal->z[gal->index[tid]],0))*transition_factor2;
+		}
 	}
 	return pot;
 }
@@ -415,16 +422,23 @@ double galaxyrsph_potential_wrapper_func(double r_sph, void *params) {
 	x = r_cyl*cos(gal->theta_cyl[gal->index[tid]]);
 	y = r_cyl*sin(gal->theta_cyl[gal->index[tid]]);
 	
-	if(gal->level_grid_zoom>gal->level_grid) {
-		sigma = 2*gal->dx;
-		transition_factor1 = 0.5*(1+erf((r_sph-(gal->boxsize_zoom/2.-gal->dx_zoom))/(sigma*sqrt(2))));
+	pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,z,1);	
+	if(gal->level_grid_zoom1>gal->level_grid) {
+		sigma = 8*gal->dx;
+		transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize_zoom1-0.5*sigma))/(sigma*sqrt(2))));
 		transition_factor2 = 1-transition_factor1;	
 		
-		pot = transition_factor1*galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,z,1)
-			+ (galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,x,y,z,0)
-			+ gal->potential_shift_zoom)*transition_factor2;
-	} else {
-		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,z,1);
+		pot = transition_factor1*pot
+			+ (galaxy_potential_func(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,x,y,z,0))*transition_factor2;
+			
+		if(gal->level_grid_zoom2>gal->level_grid_zoom1) {
+			sigma = 8*gal->dx_zoom1;
+			transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize_zoom2-0.5*sigma))/(sigma*sqrt(2))));
+			transition_factor2 = 1-transition_factor1;	
+		
+			pot = transition_factor1*pot
+				+ (galaxy_potential_func(gal,gal->potential_zoom2,gal->dx_zoom2,gal->ngrid_zoom2,x,y,z,0))*transition_factor2;
+		}
 	}
 	return pot;
 }
@@ -446,18 +460,24 @@ double galaxyz_potential_wrapper_func(double z, void *params) {
 	
 	r_sph = sqrt(pow(gal->x[gal->index[tid]],2)+pow(gal->y[gal->index[tid]],2)+pow(z,2));
 	
-	if(gal->level_grid_zoom>gal->level_grid) {
-		sigma = 2*gal->dx;
-		transition_factor1 = 0.5*(1+erf((r_sph-(gal->boxsize_zoom/2.-gal->dx_zoom))/(sigma*sqrt(2))));
+	pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,1);
+	if(gal->level_grid_zoom1>gal->level_grid) {
+		sigma = 8*gal->dx;
+		transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize_zoom1-0.5*sigma))/(sigma*sqrt(2))));
 		transition_factor2 = 1-transition_factor1;	
 	
-		pot = transition_factor1*galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,1)
-			+ (galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0)
-			+ gal->potential_shift_zoom)*transition_factor2;
-	} else {
-		pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,1);
-
+		pot = transition_factor1*pot
+			+ (galaxy_potential_func(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0))*transition_factor2;
+		if(gal->level_grid_zoom2>gal->level_grid_zoom1) {
+			sigma = 8*gal->dx_zoom1;
+			transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize_zoom2-0.5*sigma))/(sigma*sqrt(2))));
+			transition_factor2 = 1-transition_factor1;	
+	
+			pot = transition_factor1*pot
+				+ (galaxy_potential_func(gal,gal->potential_zoom2,gal->dx_zoom2,gal->ngrid_zoom2,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0))*transition_factor2;
+		}
 	}
+
 	return pot;
 }
 
@@ -490,4 +510,31 @@ void copy_potential(galaxy *gal_1, galaxy *gal_2, int info) {
 	gal_2->potential_defined = 1;
 	if(info == 1) printf("/////\tPotential grid copied \n");
 	return;
+}
+
+// Function that computes the shift between a potential grid and a zoomed potential grid
+void compute_potential_shift(galaxy *gal, double ***potential, double ***potential_zoom, double dx, double dx_zoom, int ngrid[3], int ngrid_zoom[3]) {
+	double x,y,potential_shift,boxlen_zoom;
+	int i,j,k,neval1,neval2;
+
+	neval1 		= 100;
+	neval2 		= 10000;
+	boxlen_zoom = ngrid_zoom[0]*dx_zoom;
+	for(i=0; i<neval1; i++){
+		for(j=0; j<neval2; j++){
+			x = (0.40+(0.1*i)/neval1)*boxlen_zoom*cos(2.0*pi*j/((double)neval2));
+			y = (0.40+(0.1*i)/neval1)*boxlen_zoom*sin(2.0*pi*j/((double)neval2));
+			potential_shift += (galaxy_potential_func(gal,potential,dx,ngrid,x,y,0.,1)-galaxy_potential_func(gal,potential_zoom,dx_zoom,ngrid_zoom,x,y,0.,0));
+		}
+	}
+	potential_shift /= (double)(neval1*neval2);
+
+	for (i = 0; i < 2*ngrid_zoom[0]; ++i) {
+		for (j = 0; j < 2*ngrid_zoom[1]; ++j) {
+			for (k = 0; k < 2*ngrid_zoom[2]; ++k) {
+				potential_zoom[i][j][k] += potential_shift;
+			}
+		}
+	}
+	return;	
 }

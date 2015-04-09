@@ -210,7 +210,9 @@ typedef struct {
 	// Particle Mesh potential grid
 	double ***potential;
 	// Particle Mesh potential grid
-	double ***potential_zoom;
+	double ***potential_zoom1;
+	// Particle Mesh potential grid
+	double ***potential_zoom2;
 	// Particle Mesh gaussian field grid
 	double ***gaussian_field;
 	// Gas midplane density grid
@@ -218,7 +220,8 @@ typedef struct {
 	// Potential grid cell size vector [kpc]
 	double dx;
 	// Potential zoom grid cell size vector [kpc]
-	double dx_zoom;
+	double dx_zoom1;
+	double dx_zoom2;
 	// Gas midplane density grid cell size vector [kpc]
 	double dx_dens;
 	// Gaussian field grid cell size vector [kpc]
@@ -229,13 +232,15 @@ typedef struct {
 	// Total potential grid size [kpc]
 	double boxsize;
 	// Total potential zoom grid size [kpc]
-	double boxsize_zoom;
+	double boxsize_zoom1;
+	double boxsize_zoom2;
 	// Total gas midplane density grid size [kpc]
 	double boxsize_dens;
 	// Level of refinement of the potential grid
 	int level_grid;
 	// Level of refinement of the potential zoom grid
-	int level_grid_zoom;
+	int level_grid_zoom1;
+	int level_grid_zoom2;
 	// Level of refinement of the gas density grid
 	int level_grid_dens;
 	// Level of refinement of the gas turbulence grid
@@ -245,7 +250,8 @@ typedef struct {
 	// Number of cells in the potential grid
 	int ngrid[3];
 	// Number of cells in the zoomed potential grid
-	int ngrid_zoom[3];
+	int ngrid_zoom1[3];
+	int ngrid_zoom2[3];
 	// Number of cells in the midplane density grid
 	int ngrid_dens[2];
 	// Number of cells in the turbulence grid
@@ -268,7 +274,8 @@ typedef struct {
 	// Pseudo density boolean
 	int *pseudo;
 	// Shift term for the gravitational potential in the zoom region
-	double potential_shift_zoom;
+	double potential_shift_zoom1;
+	double potential_shift_zoom2;
 } galaxy;
 
 // This is a type definition of a stream. The thought here is to create streams
@@ -515,6 +522,7 @@ double galaxyrsph_potential_wrapper_func(double, void *);
 double galaxyz_potential_wrapper_func(double, void *);
 double potential_deriv_wrapper_func(double, void *);
 void copy_potential(galaxy *, galaxy *, int);
+void compute_potential_shift(galaxy *, double ***, double ***, double, double, int [3], int [3]);
 
 // Input, output, and manipulation functions
 void write_dice_version();
@@ -539,6 +547,7 @@ double min(double, double);
 double max(double, double);
 typedef double (*function_to_derivate)(double, void *);
 double deriv_central(galaxy *, double, double, function_to_derivate);
+double deriv_central2(galaxy *, double, double, function_to_derivate);
 double deriv_forward(galaxy *, double, double, function_to_derivate);
 int set_galaxy_gaussian_field_grid(galaxy *, double);
 int set_stream_gaussian_field_grid(stream *, double);

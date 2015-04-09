@@ -360,23 +360,47 @@ int allocate_variable_arrays(galaxy *gal) {
 		}
 	}
 	
-	if(gal->level_grid_zoom>gal->level_grid){
+	if(gal->level_grid_zoom1>gal->level_grid){
 		// Turn on and allocate the potential grid, starting with x-axis
 		gal->potential_defined = 1;
-		if (!(gal->potential_zoom=calloc(2*gal->ngrid_zoom[0],sizeof(double *)))) {
+		if (!(gal->potential_zoom1=calloc(2*gal->ngrid_zoom1[0],sizeof(double *)))) {
 			fprintf(stderr,"[Error] Unable to create potential x axis.\n");
 			return -1;
 		}
     
-		for (i = 0; i < 2*gal->ngrid_zoom[1]; ++i) {
+		for (i = 0; i < 2*gal->ngrid_zoom1[1]; ++i) {
 			// y-axis
-			if (!(gal->potential_zoom[i] = calloc(2*gal->ngrid_zoom[1],sizeof(double *)))) {
+			if (!(gal->potential_zoom1[i] = calloc(2*gal->ngrid_zoom1[1],sizeof(double *)))) {
 				fprintf(stderr,"[Error] Unable to create potential y axis.\n");
 				return -1;
 			}
 			// z-axis
-			for (j = 0; j < 2*gal->ngrid_zoom[2]; ++j) {
-				if (!(gal->potential_zoom[i][j] = calloc(2*gal->ngrid_zoom[2],sizeof(double)))) {
+			for (j = 0; j < 2*gal->ngrid_zoom1[2]; ++j) {
+				if (!(gal->potential_zoom1[i][j] = calloc(2*gal->ngrid_zoom1[2],sizeof(double)))) {
+					fprintf(stderr,"[Error] Unable to create potential z axis.\n");
+					return -1;
+				}
+			}
+		}
+	}
+	
+	if(gal->level_grid_zoom2>gal->level_grid_zoom1){
+		// Turn on and allocate the potential grid, starting with x-axis
+		gal->potential_defined = 1;
+		if (!(gal->potential_zoom2=calloc(2*gal->ngrid_zoom2[0],sizeof(double *)))) {
+			fprintf(stderr,"[Error] Unable to create potential x axis.\n");
+			return -1;
+		}
+    
+		for (i = 0; i < 2*gal->ngrid_zoom2[1]; ++i) {
+			// y-axis
+			if (!(gal->potential_zoom2[i] = calloc(2*gal->ngrid_zoom2[1],sizeof(double *)))) {
+				fprintf(stderr,"[Error] Unable to create potential y axis.\n");
+				return -1;
+			}
+			// z-axis
+			for (j = 0; j < 2*gal->ngrid_zoom2[2]; ++j) {
+				if (!(gal->potential_zoom2[i][j] = calloc(2*gal->ngrid_zoom2[2],sizeof(double)))) {
 					fprintf(stderr,"[Error] Unable to create potential z axis.\n");
 					return -1;
 				}
@@ -686,12 +710,19 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         
 	// Set the size of the cell for the Potential-Mesh (PM) computation
 	gal->dx 		= gal->boxsize/((double)gal->ngrid[0]);
-	if(gal->level_grid_zoom>gal->level_grid) {
-		gal->dx_zoom 			= gal->boxsize/pow(2.0,gal->level_grid_zoom);
-		gal->boxsize_zoom		= ceil(gal->boxsize_zoom/gal->dx_zoom)*gal->dx_zoom;
-		gal->ngrid_zoom[0] 		= (int)(gal->boxsize_zoom/gal->dx_zoom);
-		gal->ngrid_zoom[1] 		= (int)(gal->boxsize_zoom/gal->dx_zoom);
-		gal->ngrid_zoom[2] 		= (int)(gal->boxsize_zoom/gal->dx_zoom);
+	if(gal->level_grid_zoom1>gal->level_grid) {
+		gal->dx_zoom1 			= gal->boxsize/pow(2.0,gal->level_grid_zoom1);
+		gal->boxsize_zoom1		= ceil(gal->boxsize_zoom1/gal->dx_zoom1)*gal->dx_zoom1;
+		gal->ngrid_zoom1[0]		= (int)(gal->boxsize_zoom1/gal->dx_zoom1);
+		gal->ngrid_zoom1[1]		= (int)(gal->boxsize_zoom1/gal->dx_zoom1);
+		gal->ngrid_zoom1[2]		= (int)(gal->boxsize_zoom1/gal->dx_zoom1);
+	}
+	if(gal->level_grid_zoom2>gal->level_grid_zoom1) {
+		gal->dx_zoom2 			= gal->boxsize/pow(2.0,gal->level_grid_zoom2);
+		gal->boxsize_zoom2		= ceil(gal->boxsize_zoom2/gal->dx_zoom2)*gal->dx_zoom2;
+		gal->ngrid_zoom2[0]		= (int)(gal->boxsize_zoom2/gal->dx_zoom2);
+		gal->ngrid_zoom2[1]		= (int)(gal->boxsize_zoom2/gal->dx_zoom2);
+		gal->ngrid_zoom2[2]		= (int)(gal->boxsize_zoom2/gal->dx_zoom2);
 	}
 	
 	gal->boxsize_dens 	= 0.;
@@ -733,7 +764,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		// Checking for gaussian fluctuations bool 
 		dens_gauss += gal->comp_dens_gauss[i];
 		// Rescale the mass fractions
-		effective_mass_factor += gal->comp_mass_frac[i];
+		if(gal->comp_npart[i]>0) effective_mass_factor += gal->comp_mass_frac[i];
 		if(gal->comp_type[i]!=1) gal->m_d += gal->comp_mass_frac[i];
 		// Find the main halo
 		if(gal->comp_type[i]==1 && gal->comp_mass_frac[index_halo]>gal->comp_mass_frac[i]) index_halo = i;
@@ -850,7 +881,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			}
 					
 			if(gal->comp_radius_nfw[i]==-1.0) {
-				gal->comp_scale_dens[i] 	= gal->comp_mass[i]/cumulative_mass_func(gal,2*gal->comp_cut[i],i);
+				gal->comp_scale_dens[i] 	= gal->comp_mass[i]/cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
 			} else {
 				// Case where the final cutted mass is defined by a scaling with respect to a NFW halo density
 				m_scale_nfw 				= sqrt(pow(gal->comp_radius_nfw[i]/gal->comp_scale_length[i],2.0));
@@ -863,7 +894,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			}
 		
 			gal->comp_cut_dens[i] 		= density_functions_pool(gal,gal->comp_cut[i],theta_max_dens,0.,0,gal->comp_model[i],i);
-			gal->comp_cutted_mass[i] 	= cumulative_mass_func(gal,gal->comp_cut[i],i);
+			gal->comp_cutted_mass[i] 	= cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
 			gal->total_mass				+= gal->comp_cutted_mass[i];
 		}
 
@@ -927,23 +958,26 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t\t- Bulge Disk fraction\t%10.3lf\n",BD_fraction);
 		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t\t- Bulge Total fraction\t%10.3lf\n",BT_fraction);
 		printf("/////\tPM grids dimensions\n");
-		printf("/////\t\t- Gravitational potential \t[%4d,%4d,%4d]\n",gal->ngrid[0],gal->ngrid[1],gal->ngrid[2]);
-		if(gal->level_grid_zoom>gal->level_grid) {
-			printf("/////\t\t- Gravitational potential zoom \t[%4d,%4d,%4d]\n",gal->ngrid_zoom[0],gal->ngrid_zoom[1],gal->ngrid_zoom[2]);
+		printf("/////\t\t- Gravitational potential \t\t[%4d,%4d,%4d]\n",gal->ngrid[0],gal->ngrid[1],gal->ngrid[2]);
+		if(gal->level_grid_zoom1>gal->level_grid) {
+			printf("/////\t\t- Gravitational potential zoom 1 \t[%4d,%4d,%4d]\n",gal->ngrid_zoom1[0],gal->ngrid_zoom1[1],gal->ngrid_zoom1[2]);
+		}
+		if(gal->level_grid_zoom2>gal->level_grid_zoom1) {
+			printf("/////\t\t- Gravitational potential zoom 2 \t[%4d,%4d,%4d]\n",gal->ngrid_zoom2[0],gal->ngrid_zoom2[1],gal->ngrid_zoom2[2]);
 		}
 		for(i=0;i<AllVars.MaxCompNumber;i++) {
 			if(gal->comp_hydro_eq[i]) {
-				printf("/////\t\t- Midplane gas density \t\t[%4d,%4d]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens));
+				printf("/////\t\t- Midplane gas density \t\t\t[%4d,%4d]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens));
 				break;
 			}
 		}
 		if(gal->dens_gauss_sigma>0. && gal->dens_gauss_scale>0. && dens_gauss>0) {
-			printf("/////\t\t- Gaussian field density \t[%4d,%4d,%4d]\n",
+			printf("/////\t\t- Gaussian field density \t\t[%4d,%4d,%4d]\n",
 			(int)pow(2,gal->level_grid_dens_gauss),(int)pow(2,gal->level_grid_dens_gauss),(int)pow(2,gal->level_grid_dens_gauss));
 		}
 		for(i=0;i<AllVars.MaxCompNumber;i++) {
 			if(gal->comp_type[i]==0 && gal->comp_turb_sigma[i]>0.) {
-				printf("/////\t\t- Velocity turbulence \t\t[%4d,%4d,%4d]\n",
+				printf("/////\t\t- Velocity turbulence \t\t\t[%4d,%4d,%4d]\n",
 				(int)pow(2,gal->level_grid_turb),(int)pow(2,gal->level_grid_turb),(int)pow(2,gal->level_grid_turb));
 				break;
 			}
@@ -1224,6 +1258,8 @@ int set_galaxy_velocity(galaxy *gal) {
 	double v2a_r, v2a_theta, v2_theta, v2a_z, va_theta, sigma_theta, vel_x, vel_y, vel_z;
 	double vesc[4*gal->ngrid[0]], mass_in_shell;
     double t_min, u_min;
+	int nrejected_vr,nrejected_vtheta,nrejected_vz;
+
     
 	// Warning init
 	warning1 = 0;
@@ -1249,6 +1285,9 @@ int set_galaxy_velocity(galaxy *gal) {
 
     // Loop over components
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
+		nrejected_vr		= 0;
+		nrejected_vtheta	= 0;
+		nrejected_vz		= 0;
 		// Particle velocities.
 		if(gal->comp_npart[j]>0&&gal->comp_compute_vel[j]==1) {
 			printf("/////\t\t- Component %2d -> setting velocities ",j+1);
@@ -1333,6 +1372,7 @@ int set_galaxy_velocity(galaxy *gal) {
 							break;
 						}
 						v_r = gsl_ran_gaussian(r[tid],sqrt(v2a_r));
+						if(ct==0) nrejected_vr+=1;
 						ct++;
 					}
 					ct = 0;
@@ -1342,6 +1382,7 @@ int set_galaxy_velocity(galaxy *gal) {
 							break;
 						}
 						v_theta = gsl_ran_gaussian(r[tid],sigma_theta)+va_theta;
+						if(ct==0) nrejected_vtheta+=1;
 						ct++;
 					}
 					ct = 0;
@@ -1351,6 +1392,7 @@ int set_galaxy_velocity(galaxy *gal) {
 							break;
 						}
 						v_z = gsl_ran_gaussian(r[tid],sqrt(v2a_z));
+						if(ct==0) nrejected_vz+=1;
 						ct++;
 					}
 					
@@ -1364,8 +1406,12 @@ int set_galaxy_velocity(galaxy *gal) {
 				}
 			}
 			#pragma omp barrier
-			if(gal->comp_Q_lim[j]>0.) printf("[Q_min=%.2lf]\n",gal->comp_Q_min[j]);
-			else printf("\n");
+			if(gal->comp_Q_lim[j]>0.) printf("[Q_min=%.2lf]",gal->comp_Q_min[j]);
+			if(nrejected_vr>1e-3||nrejected_vtheta>1e-3||nrejected_vz>1e-3) printf("[reject_vr=%.1lf%%][reject_vtheta=%.1lf%%][reject_vz=%.1lf%%]",
+				100.*nrejected_vr/(double)gal->comp_npart[j],
+				100.*nrejected_vtheta/(double)gal->comp_npart[j],
+				100.*nrejected_vz/(double)gal->comp_npart[j]);
+			printf("\n");
 		}
 		if(warning2) printf("/////\t\t[Warning] Gaseous halo unstable -> Lower streaming_fraction%d\n",j+1);
 		warning2 = 0;
@@ -1386,44 +1432,44 @@ int set_galaxy_velocity(galaxy *gal) {
     // Writing rotation curve to ascii file
     if(AllVars.OutputRc==1){
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting rotation curve \t\t[%s.rc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting rotation curve \t\t\t[%s.rc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_rotation_curve(gal,maxrad,strcat(buffer,".rc"),0.01);
 	}
     // Writing gas rotation curve to ascii file
     if(AllVars.OutputGasRc==1){
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting gas rotation curve \t[%s.gasrc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting gas rotation curve \t\t[%s.gasrc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_gas_rotation_curve(gal,maxrad_gas,strcat(buffer,".gasrc"),0.01);
 	}
 	// Writing potential curve to ascii file
     if(AllVars.OutputPot==1){
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting potential curve \t[%s.pot]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting potential curve \t\t[%s.pot]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_potential_curve(gal,maxrad,strcat(buffer,".pot"),0.01);
 	}
 	// Writing gas density curve to ascii file
     if(AllVars.OutputRho>0){
     	gal->selected_comp[0] = AllVars.OutputRho-1;
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting density curve \t\t[%s.rho]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting density curve \t\t\t[%s.rho]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_density_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".rho"),0.01);
 	}
 	// Writing gas density curve to ascii file
     if(AllVars.OutputToomre>0){
     	gal->selected_comp[0] = AllVars.OutputToomre-1;
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting Toomre criterion curve \t[%s.toomre]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting Toomre criterion curve \t\t[%s.toomre]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_toomre_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".toomre"),0.01);
 	}
 	// Writing dispersion curves to ascii file
     if(AllVars.OutputSigma>0){
     	gal->selected_comp[0] = AllVars.OutputSigma-1;
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting vz dispersion curve \t[%s.sigma_z]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting vz dispersion curve \t\t[%s.sigma_z]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_sigma_z_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".sigma_z"),0.01);
 		
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-		printf("/////\tWriting vz dispersion curve \t[%s.sigma_theta]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting vtheta dispersion curve \t[%s.sigma_theta]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_sigma_theta_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".sigma_theta"),0.01);
 	}
 	// Be nice to memory
@@ -1479,7 +1525,6 @@ int set_galaxy_velocity(galaxy *gal) {
 					}
 				}
 			}
-    	
 
     		gal->dx_gauss = 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss[0]);
 

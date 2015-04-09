@@ -69,6 +69,20 @@ double deriv_central(galaxy *gal, double x, double h, function_to_derivate F){
 	return derivative;
 }
 
+// Derivate a function using a 4-point central scheme
+double deriv_central2(galaxy *gal, double x, double h, function_to_derivate F){
+	double new_x,f1,f2,f3,f4,derivative;
+
+    new_x = x+h;
+    f1 = F(new_x,gal);
+    new_x = x-h;
+    f2 = F(new_x,gal);
+
+    derivative = (f1-f2)/(2.0*h*kpc);
+
+	return derivative;
+}
+
 // Derivate a function using a 2-point forward scheme
 double deriv_forward(galaxy *gal, double x, double h, function_to_derivate F){
 	double f1,f2,f3,f4,derivative;
