@@ -42,26 +42,30 @@
 
 
 double density_functions_pool(galaxy *gal, double radius, double theta, double z, int cut, int model, int component) {
-	double h, z0, density, zpz0, m, n, alpha, smooth_factor, sigma, r_sph;
-	double x,y,m_min;
+	double h, hx, hy, hz, h_cut, hx_cut, hy_cut, hz_cut, density, w, k, l, m, n, o, alpha, smooth_factor, sigma, r_sph;
+	double x,y;
 	// We consider only positive values
     if(sqrt(radius*radius+z*z) < 0.) return 0.;
 
-    z0 			= gal->comp_scale_height[component];
     h 			= gal->comp_scale_length[component];
+    hx			= gal->comp_scale_length[component]*gal->comp_flatx[component];
+    hy			= gal->comp_scale_length[component]*gal->comp_flaty[component];
+	hz 			= gal->comp_scale_length[component]*gal->comp_flat[component];
+	h_cut 		= gal->comp_cut[component];
+	hx_cut 		= gal->comp_cut[component]*gal->comp_flatx[component];
+	hy_cut 		= gal->comp_cut[component]*gal->comp_flaty[component];
+	hz_cut 		= gal->comp_cut[component]*gal->comp_flat[component];
     alpha		= gal->comp_alpha[component];
-	//l			= sqrt(pow(x/h,2.0)+pow(y/h,2.0)+pow(z/z0,2.0));
-	m 			= sqrt(pow(radius/h,2.0)+pow(z/z0,2.0));
-	n 			= sqrt(pow(radius/gal->comp_cut[component],2.0)+pow(z/(gal->comp_cut[component]*gal->comp_flat[component]),2.0));
 	
-	x 		= radius*cos(theta);
-	y 		= radius*sin(theta);
-	r_sph 	= sqrt(x*x+y*y+z*z);
+	x 			= radius*cos(theta);
+	y 			= radius*sin(theta);
+	r_sph 		= sqrt(x*x+y*y+z*z);
 
-	/*if(cut==2) {
-		m_min 			= 0.25;
-		m 				= sqrt(pow(m_min,2)+pow(m,2));
-	}*/
+	k			= sqrt(pow(z/hz,2.0));
+	l			= sqrt(pow(x/hx,2.0)+pow(y/hy,2.0));
+	m 			= sqrt(pow(x/hx,2.0)+pow(y/hy,2.0)+pow(z/hz,2.0));
+	n 			= sqrt(pow(x/hx_cut,2.0)+pow(y/hy_cut,2.0)+pow(z/hz_cut,2.0));
+	o 			= sqrt(pow(x/hx_cut,2.0)+pow(y/hy_cut,2.0));
 	
 	// Select a disk model
     switch(model) {
@@ -69,21 +73,21 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 			// Exponential disk + sech z-profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
 			strcpy(gal->comp_profile_name[component],"Exponential disk / sech z");
-			density = gal->comp_scale_dens[component]*exp(-radius/h)/(cosh(z/z0)*cosh(z/z0));
+			density = gal->comp_scale_dens[component]*exp(-l)/(pow(cosh(z/hz),2));
 			break;
 		case 2:
 			// Myamoto-Nagai profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
 			strcpy(gal->comp_profile_name[component],"      Myamoto-Nagai      ");
-			zpz0 = sqrt(z*z+z0*z0);
-			density = gal->comp_scale_dens[component]*(h*radius*radius+(h+3.0*zpz0)*pow(h+zpz0,2.0))
-			/(pow(radius*radius+pow((h+zpz0),2.0),2.5)*pow(zpz0,3.0));
+			w = sqrt(z*z+hz*hz);
+			density = gal->comp_scale_dens[component]*(h*radius*radius+(h+3.0*w)*pow(h+w,2.0))
+			/(pow(radius*radius+pow((h+w),2.0),2.5)*pow(w,3.0));
 			break;
 		case 3:
 			// Exponential disk + exponential z-profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
 			strcpy(gal->comp_profile_name[component],"Exponential disk / exp z ");
-			density = gal->comp_scale_dens[component]*exp(-radius/h)*exp(-fabs(z)/z0);
+			density = gal->comp_scale_dens[component]*exp(-l)*exp(-fabs(z)/hz);
 			break;
 		case 4:
 			// Hernquist profile
@@ -127,6 +131,20 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 			strcpy(gal->comp_profile_name[component],"         Einasto         ");
 			density = gal->comp_scale_dens[component]*exp(-pow(m,alpha));
             break;
+        case 11:
+            // Mestel profile
+			if(strcmp(gal->comp_profile_name[component],"")==0)
+			strcpy(gal->comp_profile_name[component],"         Mestel          ");
+			density = gal->comp_scale_dens[component]*(1.0/radius)*acos(o)*exp(-fabs(z)/hz);
+			if(o>1) density = 0.;
+            break;
+        case 12:
+            // Kalnajs profile
+			if(strcmp(gal->comp_profile_name[component],"")==0)
+			strcpy(gal->comp_profile_name[component],"         Kalnajs         ");
+			density = gal->comp_scale_dens[component]*pow(1-o*o,0.5)*exp(-fabs(z)/hz);
+			if(o>1) density = 0.;
+            break;
 		default:
 			fprintf(stderr,"[Error] model%d=%d is not a valid value\n",component+1,model);
 			exit(0);
@@ -145,6 +163,7 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 	}
 	// Cutting the density
     if(cut==1) 	density *= smooth_factor;
+    // Old cutting method
     //if(cut==1 && density<gal->comp_cut_dens[component]) 	density = 0.;
 	//if(cut==1 && radius<gal->comp_cut_in[component]) 		density = 0.;
 	// Unit is 10e10 solar mass / kpc^3

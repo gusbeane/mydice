@@ -15,7 +15,7 @@ lambda		 	0.04
 # Refinement level of the potential grid 
 level_grid		8
 # Refinement level of the zoomed potential grid 
-level_grid_zoom		10
+level_grid_zoom1	10
 # Refinement level of the plane plane density grid 
 level_grid_dens		7
 # Refinement level of the turbulence grid 
@@ -25,7 +25,7 @@ level_grid_dens_gauss 	7
 # Size of the potential grid [kpc]
 boxsize		 	100.0
 # Size of the zoomed potential grid [kpc]
-boxsize_zoom	 	14.0
+boxsize_zoom1	 	14.0
 # Dispersion for the Gaussian field fluctuations
 dens_gauss_sigma        0.50
 # Physical scale of the gaussian field fluctuations [kpc]
