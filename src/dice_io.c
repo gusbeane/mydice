@@ -366,7 +366,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	36*AllVars.MaxCompNumber+21
+	#define MAXTAGS	38*AllVars.MaxCompNumber+21
 	
 	FILE *fd;
 	int i,j,n;
@@ -602,6 +602,22 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		if(j==0) mandatory[nt] = 1;
 		else mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"flatx%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		gal->comp_flatx[j] = 1.0;
+		addr[nt] = &gal->comp_flatx[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"flaty%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		gal->comp_flaty[j] = 1.0;
+		addr[nt] = &gal->comp_flaty[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
 	
 		n = sprintf(temp_tag,"mcmc_step%d",j+1);

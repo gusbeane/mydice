@@ -231,6 +231,14 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"[Error] Unable to allocate comp_epicycle array\n");
 		return -1;
 	}
+	if (!(gal->comp_flatx=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_flatx array\n");
+		return -1;
+	}
+	if (!(gal->comp_flaty=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_flaty array\n");
+		return -1;
+	}
 	return 0;
 }
 

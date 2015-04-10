@@ -137,6 +137,8 @@ typedef struct {
 	double 				*comp_scale_height;
 	double 				*comp_cut;
 	double 				*comp_flat;
+	double 				*comp_flatx;
+	double 				*comp_flaty;
 	double 				*comp_mcmc_step;
 	double 				*comp_mcmc_step_hydro;
 	double 				*comp_vmax;
