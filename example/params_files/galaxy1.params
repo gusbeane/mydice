@@ -15,7 +15,8 @@ lambda		 	0.04
 # Refinement level of the potential grid 
 level_grid		8
 # Refinement level of the zoomed potential grid 
-level_grid_zoom		10
+level_grid_zoom1	10
+level_grid_zoom2	0
 # Refinement level of the plane plane density grid 
 level_grid_dens		7
 # Refinement level of the turbulence grid 
@@ -25,7 +26,8 @@ level_grid_dens_gauss 	7
 # Size of the potential grid [kpc]
 boxsize		 	100.0
 # Size of the zoomed potential grid [kpc]
-boxsize_zoom	 	14.0
+boxsize_zoom1	 	14.0
+boxsize_zoom2	 	5.0
 # Dispersion for the Gaussian field fluctuations
 dens_gauss_sigma        0.50
 # Physical scale of the gaussian field fluctuations [kpc]
@@ -80,8 +82,10 @@ scale_length1		1.
 concentration1		13.0
 # Component 1 radial density cut [kpc] 
 cut1			50.
-# Component 1 thickness parameter
+# Component 1 thickness parameters
 flat1			1.00
+flatx1			1.00
+flaty1			1.00
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
 # expressed in units of the component scale length. Default value is 0.5.
 mcmc_step1		0.50
