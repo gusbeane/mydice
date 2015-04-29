@@ -63,9 +63,9 @@ double v2a_z_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 	infinity = 10.*gal->comp_scale_height[gal->selected_comp[tid]];
 	gsl_integration_qag(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
 
-    rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],2,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 	res 		= integral*kpc/rho;
-	
+
 	if(AllVars.AcceptImaginary==1) {
 		return fabs(res);
     } else {
@@ -121,7 +121,7 @@ double v2a_1D_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 	infinity = 10.*gal->comp_scale_length[gal->selected_comp[tid]];
 	gsl_integration_qag(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
     
-    rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],2,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 	res 		= integral*kpc/rho;
 	        
 	if(AllVars.AcceptImaginary==1) {
@@ -186,7 +186,7 @@ double v2a_theta_func(galaxy *gal, double radius, int component) {
     gal->selected_comp[tid] = component;
 	derivative 				= deriv_forward(gal,radius,h,rho_v2a_r_func);
 		
-	rho 					= density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],z,2,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+	rho 					= density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],z,0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
 	res 					= derivative*radius*kpc/rho;
 	
 	return res;

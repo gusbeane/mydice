@@ -382,7 +382,7 @@ double galaxyr_potential_wrapper_func(double radius, void *params) {
 
 	pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,x,y,gal->z[gal->index[tid]],1);
 	if(gal->level_grid_zoom1>gal->level_grid) {
-		sigma = 8.0*gal->dx;
+		sigma = 0.5*gal->dx_zoom1;
 		transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize_zoom1-0.5*sigma))/(sigma*sqrt(2))));
 		transition_factor2 = 1-transition_factor1;	
 		
@@ -390,7 +390,7 @@ double galaxyr_potential_wrapper_func(double radius, void *params) {
 			+ (galaxy_potential_func(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,x,y,gal->z[gal->index[tid]],0))*transition_factor2;
 
 		if(gal->level_grid_zoom2>gal->level_grid_zoom1) {
-			sigma = 8.0*gal->dx_zoom1;
+			sigma = 0.5*gal->dx_zoom1;
 			transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize_zoom2-0.5*sigma))/(sigma*sqrt(2))));
 			transition_factor2 = 1-transition_factor1;	
 		
