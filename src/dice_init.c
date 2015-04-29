@@ -1216,7 +1216,6 @@ int set_galaxy_coords(galaxy *gal) {
 			printf("/////\t\t- Component %2d [%s]",i+1,gal->comp_profile_name[i]);
 			fflush(stdout);
 			mcmc_metropolis_hasting(gal,i,gal->comp_model[i]);
-			rotate_component(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i],i);
 		}
 	}
 	
@@ -1262,11 +1261,12 @@ int set_galaxy_velocity(galaxy *gal) {
     
 	unsigned long int i,j;
 	int status,warning1,warning2,k;
-	double v_c, v_r, v_theta, v_z;
+	double v_c, v_r, v_theta, v_z, v_cmax;
 	double v2a_r, v2a_theta, v2_theta, v2a_z, va_theta, sigma_theta, vel_x, vel_y, vel_z;
 	double vesc[4*gal->ngrid[0]], mass_in_shell;
     double t_min, u_min;
 	int nrejected_vr,nrejected_vtheta,nrejected_vz;
+	double radius, rmax, interval, save1, save2;
 
     
 	// Warning init
@@ -1285,6 +1285,31 @@ int set_galaxy_velocity(galaxy *gal) {
 		for (j=0;j<gal->ntot_part;++j) if(gal->r_sph[j]<(i+1)*gal->dx/4.) mass_in_shell+=gal->mass[j];
 		vesc[i] = sqrt(2.0*G*mass_in_shell/((i+1)*gal->dx/4.*kpc));
 	}
+
+	#if USE_THREADS == 1
+	    int tid = omp_get_thread_num();
+	#else
+	    int tid = 0;
+	#endif
+	
+	v_cmax 							= 0.;
+	gal->index[tid] 				= 0;
+	save1 							= gal->z[gal->index[tid]];
+	save2 							= gal->theta_cyl[gal->index[tid]];
+	gal->z[gal->index[tid]] 		= 0.;
+	gal->theta_cyl[gal->index[tid]] = 0.;
+	
+	rmax 							= gal->boxsize/2.0;
+	interval 						= 0.1;
+	for (i = 0; i < (int)(rmax/interval); ++i) {
+		radius = i*interval;
+		v_c = v_c_func(gal,radius);
+		if(v_c>v_cmax) v_cmax = v_c;
+	}
+	printf("/////\tMaximum circular velocity -> %.1lf km/s\n",v_cmax/unit_velocity);
+	gal->z[gal->index[tid]] 		= save1;
+	gal->theta_cyl[gal->index[tid]] = save2;
+	
 	// Setting a minimum thermal energy
 	t_min = 100.;
 	u_min = (boltzmann / protonmass) * t_min;
@@ -1338,12 +1363,12 @@ int set_galaxy_velocity(galaxy *gal) {
 				} else {					
 					v_c 		= v_c_func(gal,fabs(gal->r_cyl[i]));
 					v2a_z 		= v2a_z_func(gal,w[tid],j);
+					v2a_r = v2a_z;
 					// Enforce Q>Q_min
 					if(gal->comp_Q_lim[j]>0) {
 						double v2a_z_new = v2a_z_toomre(gal,fabs(gal->r_cyl[i]),v2a_z,j);
 						v2a_z = v2a_z_new;
 					}
-					v2a_r = v2a_z;
 					// The angular velocity dispersion is attenuated radially
 					// Because there is a singularity at r=0
 					// Using the function: new_disp(scalelength) = disp_softening*disp at the disk scalelength
@@ -1374,9 +1399,9 @@ int set_galaxy_velocity(galaxy *gal) {
 					// Let's ensure that the particle velocity is lower than gal->disk_vmax times the escape velocity
 					int ct = 0;
 					
-					while(fabs(v_r) > gal->comp_vmax[j]*v_c) {
+					while(fabs(v_r) > gal->comp_vmax[j]*v_cmax) {
 						if(ct >= AllVars.GaussianRejectIter) {
-							v_r = 2.0*gal->comp_vmax[j]*v_c*(gsl_rng_uniform_pos(r[tid])-0.5);
+							v_r = 2.0*gal->comp_vmax[j]*v_cmax*(gsl_rng_uniform_pos(r[tid])-0.5);
 							break;
 						}
 						v_r = gsl_ran_gaussian(r[tid],sqrt(v2a_r));
@@ -1384,9 +1409,9 @@ int set_galaxy_velocity(galaxy *gal) {
 						ct++;
 					}
 					ct = 0;
-					while(fabs(v_theta-va_theta) > gal->comp_vmax[j]*v_c) {
+					while(fabs(v_theta-va_theta) > gal->comp_vmax[j]*v_cmax) {
 						if(ct >= AllVars.GaussianRejectIter) {
-							v_theta = 2.0*gal->comp_vmax[j]*v_c*(gsl_rng_uniform_pos(r[tid])-0.5)+va_theta;
+							v_theta = 2.0*gal->comp_vmax[j]*v_cmax*(gsl_rng_uniform_pos(r[tid])-0.5)+va_theta;
 							break;
 						}
 						v_theta = gsl_ran_gaussian(r[tid],sigma_theta)+va_theta;
@@ -1394,9 +1419,9 @@ int set_galaxy_velocity(galaxy *gal) {
 						ct++;
 					}
 					ct = 0;
-					while(fabs(v_z) > gal->comp_vmax[j]*v_c) {
+					while(fabs(v_z) > gal->comp_vmax[j]*v_cmax) {
 						if(ct >= AllVars.GaussianRejectIter) {
-							v_z = 2.0*gal->comp_vmax[j]*v_c*(gsl_rng_uniform_pos(r[tid])-0.5);
+							v_z = 2.0*gal->comp_vmax[j]*v_cmax*(gsl_rng_uniform_pos(r[tid])-0.5);
 							break;
 						}
 						v_z = gsl_ran_gaussian(r[tid],sqrt(v2a_z));
@@ -1559,6 +1584,11 @@ int set_galaxy_velocity(galaxy *gal) {
 			free(gal->gaussian_field);
 		}
     }
+    // Loop over components
+	for(k=0; k<AllVars.MaxCompNumber; k++) {
+    	rotate_component(gal,gal->comp_theta_sph[k],gal->comp_phi_sph[k],k);
+	}
+    
 	return 0;
 }
 

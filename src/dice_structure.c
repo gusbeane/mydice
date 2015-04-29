@@ -135,7 +135,7 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
             // Mestel profile
 			if(strcmp(gal->comp_profile_name[component],"")==0)
 			strcpy(gal->comp_profile_name[component],"         Mestel          ");
-			density = gal->comp_scale_dens[component]*(1.0/radius)*acos(o)*exp(-fabs(z)/hz);
+			density = gal->comp_scale_dens[component]*(acos(o)/radius)*exp(-fabs(z)/hz);
 			if(o>1) density = 0.;
             break;
         case 12:
