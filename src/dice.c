@@ -240,6 +240,7 @@ int main (int argc, char **argv) {
 				fprintf(stderr,"[Error] Unable to build the galaxy system\n");
 				exit(0);
 			}
+			rotate_galaxy(stack2,AllVars.OrbitPlanePhi,AllVars.OrbitPlaneTheta);
 			if(copy_galaxy(stack2,stack1,0) != 0) {
 				fprintf(stderr,"[Error] Unable to copy galaxy\n");
 				exit(0);
