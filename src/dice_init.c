@@ -1561,7 +1561,7 @@ int set_galaxy_velocity(galaxy *gal) {
 
     		gal->dx_gauss = 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss[0]);
 
-   			printf("/////\t\t- Component %d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc]\n",k+1,gal->comp_turb_sigma[k],gal->comp_turb_scale[k],gal->dx_gauss);
+   			printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc]\n",k+1,gal->comp_turb_sigma[k],gal->comp_turb_scale[k],gal->dx_gauss);
     		set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k]);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
 				gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
@@ -2262,32 +2262,6 @@ void set_orbit_keplerian(galaxy *gal_1, galaxy *gal_2, double sep, double per, d
 	vzt_1 = vz_1;
 	vxt_2 = vx_2*cos(theta_diago)-vy_2*sin(theta_diago);
 	vyt_2 = vx_2*sin(theta_diago)+vy_2*cos(theta_diago);
-	vzt_2 = vz_2;
-	// Inclining the orbital plane with repsect to Y-axis
-	x_1 = xt_1*cos(phi*degtorad);
-	y_1 = yt_1;
-	z_1 = -xt_1*sin(phi*degtorad);
-	x_2 = xt_2*cos(phi*degtorad);
-	y_2 = yt_2;
-	z_2 = -xt_2*sin(phi*degtorad);
-	vx_1 = vxt_1*cos(phi*degtorad);
-	vy_1 = vyt_1;
-	vz_1 = -vxt_1*sin(phi*degtorad);
-	vx_2 = vxt_2*cos(phi*degtorad);
-	vy_2 = vyt_2;
-	vz_2 = -vxt_2*sin(phi*degtorad);
-	// Rotating around Z-axis
-	xt_1 = x_1*cos(theta*degtorad)-y_1*sin(theta*degtorad);
-	yt_1 = x_1*sin(theta*degtorad)+y_1*cos(theta*degtorad);
-	zt_1 = z_1;
-	xt_2 = x_2*cos(theta*degtorad)-y_2*sin(theta*degtorad);
-	yt_2 = x_2*sin(theta*degtorad)+y_2*cos(theta*degtorad);
-	zt_2 = z_2;
-	vxt_1 = vx_1*cos(theta*degtorad)-vy_1*sin(theta*degtorad);
-	vyt_1 = vx_1*sin(theta*degtorad)+vy_1*cos(theta*degtorad);
-	vzt_1 = vz_1;
-	vxt_2 = vx_2*cos(theta*degtorad)-vy_2*sin(theta*degtorad);
-	vyt_2 = vx_2*sin(theta*degtorad)+vy_2*cos(theta*degtorad);
 	vzt_2 = vz_2;
 	// Put back the new coordinates in the orginal variables
 	x_1 = xt_1;
