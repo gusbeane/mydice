@@ -191,7 +191,7 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 		}
 	}
 	if(gauss_scale<gal->dx_gauss){
-		printf("/////\t\t-Gaussian field scale < grid size -> no convolution\n");
+		printf("/////\t\t- Gaussian field scale < grid size -> no convolution\n");
 		return 0;
 	}	
 	

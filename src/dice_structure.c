@@ -436,15 +436,14 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 					gal->r_cyl[i] 		= prop_r;
 					gal->theta_cyl[i] 	= prop_theta;
 					gal->z[i] 			= prop_z;
-					gal->rho[i]			= pi_y/fabs(gal->r_cyl[i]);
+					gal->rho[i]			= pi_y/fabs(prop_r);
 					acceptance+=1.0;
 				// Proposal rejected, the particle keeps the same postion
 				} else {
-					// To avoid tree codes to break, add a slight displacement for the particle
 					gal->r_cyl[i] 		= gal->r_cyl[i-1];
 					gal->theta_cyl[i] 	= gal->theta_cyl[i-1];
 					gal->z[i] 			= gal->z[i-1];
-					gal->rho[i]			= pi_x/fabs(gal->r_cyl[i]);
+					gal->rho[i]			= gal->rho[i-1];
 				}
 				// Updating the coordinate values
 				gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
@@ -833,6 +832,7 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
 	rho_0 							= get_midplane_density(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
 	gal->x[gal->index[tid]] 		= save1;
 	gal->y[gal->index[tid]] 		= save2;
+
 	// Hydrostatic equilibrium requires following density
 	density 						= rho_0*exp(-delta_pot/(pow(gal->comp_cs_init[component],2.0)));
 	
@@ -939,8 +939,8 @@ double get_midplane_density(galaxy *gal, double x, double y) {
 	double xtemp,ytemp,dens1,dens2,dens3,dens4,dens_interp;
 	double dx,dy,tx,ty;
     
-	xtemp = x/gal->dx_dens + ((double)(gal->ngrid_dens[0]/2)-0.5-0.5);
-	ytemp = y/gal->dx_dens + ((double)(gal->ngrid_dens[1]/2)-0.5-0.5);
+	xtemp = x/gal->dx_dens + ((double)(gal->ngrid_dens[0]/2)-0.5);
+	ytemp = y/gal->dx_dens + ((double)(gal->ngrid_dens[1]/2)-0.5);
 	// Determine the parent node.
 	node_x = floor(xtemp);
 	node_y = floor(ytemp);
