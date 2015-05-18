@@ -765,10 +765,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
 		
-		n = sprintf(temp_tag,"turb_sigma%d",j+1);
+		n = sprintf(temp_tag,"turb_frac%d",j+1);
 		strcpy(tag[nt], temp_tag);
-		gal->comp_turb_sigma[j] = 0.;
-		addr[nt] = &gal->comp_turb_sigma[j];
+		gal->comp_turb_frac[j] = 0.;
+		addr[nt] = &gal->comp_turb_frac[j];
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;

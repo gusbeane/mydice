@@ -153,6 +153,7 @@ typedef struct {
 	double 				*comp_u_init;
 	double 				*comp_cs_init;
 	double 				*comp_turb_sigma;
+	double 				*comp_turb_frac;
 	double 				*comp_turb_scale;
 	double 				*comp_mean_age;
 	double 				*comp_min_age;

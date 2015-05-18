@@ -195,6 +195,10 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"[Error] Unable to allocate comp_turb_scale array\n");
 		return -1;
 	}
+	if (!(gal->comp_turb_frac=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_turb_frac array\n");
+		return -1;
+	}
 	if (!(gal->comp_compute_vel=calloc(AllVars.MaxCompNumber,sizeof(int)))) {
 		fprintf(stderr,"[Error] Unable to allocate comp_compute_vel array\n");
 		return -1;
@@ -733,15 +737,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		gal->ngrid_zoom2[2]		= (int)(gal->boxsize_zoom2/gal->dx_zoom2);
 	}
 	
-	gal->boxsize_dens 	= 0.;
-	for(i=0; i<AllVars.MaxCompNumber; i++){
-		if(gal->comp_type[i]==0 && 2.0*gal->comp_cut[i]>gal->boxsize_dens){
-			gal->boxsize_dens = 2.1*gal->comp_cut[i];
-		}
-	}
-	
-	gal->dx_dens 	= gal->boxsize_dens/((double)gal->ngrid_dens[0]);
-	
 	allocate_galaxy_storage_variable(gal,10);
 
 	// Initialisations
@@ -869,7 +864,11 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			gal->comp_u_init[i] *= (1.0 / gamma_minus1);
 			gal->comp_u_init[i] /= mu_mol;
 			// Computing isothermal sound speed
-			gal->comp_cs_init[i] = sqrt(gamma_minus1*gal->comp_u_init[i]*unit_energy/unit_mass);
+			gal->comp_cs_init[i] 	= sqrt(gamma_minus1*gal->comp_u_init[i]*unit_energy/unit_mass);
+			// Removing the turbulent energy support
+			gal->comp_u_init[i] 	*= (1.0-gal->comp_turb_frac[i]);
+			// Computing the velocity dispersion of the turbulence
+			gal->comp_turb_sigma[i] = gal->comp_cs_init[i]*sqrt(gal->comp_turb_frac[i]/(1.0-gal->comp_turb_frac[i]));
 		}
 
 		// Computing the mass of the component after cuts
@@ -1002,7 +1001,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     	if(gal->comp_npart[j]>0) {
     		printf("/////\t\t- Component %2d -> %9ld particles / m=%.2e Msol / scale=%6.2lf kpc",j+1,gal->comp_npart[j],(gal->comp_cutted_mass[j]*1.0E10)/(gal->comp_npart_pot[j]),gal->comp_scale_length[j]);
 			if(gal->comp_type[j]==1 && gal->lambda>=0) printf(" / lambda=%5.3lf -> f_stream=%5.3lf",gal->lambda,gal->comp_streaming_fraction[j]);
-			if(gal->comp_type[j]==0 && gal->comp_hydro_eq[j]==1) printf(" / T_init=%6.2le K",gal->comp_t_init[j]);
+			if(gal->comp_type[j]==0 && gal->comp_hydro_eq[j]==1) printf(" / T_init=%6.2le K / cs=%6.2lf km/s",gal->comp_t_init[j],gal->comp_cs_init[j]/unit_velocity);
 			printf("\n");
 		}			
 		// Filling the arrays of the &galaxy structure
@@ -1010,7 +1009,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			gal->mass[i] 		= gal->comp_cutted_mass[j]/gal->comp_npart_pot[j];
 			gal->id[i] 			= i;
 			gal->u[i] 			= gal->comp_u_init[j];
-			gal->rho[i]			= 0.;
 			gal->metal[i]		= gal->comp_metal[j];
 			// Age is actually stored as time of formation
 			// ICs are generated for t=0 therefore formation time is negative
@@ -1220,11 +1218,14 @@ int set_galaxy_coords(galaxy *gal) {
 	}
 	
 	for(i=0; i<AllVars.MaxCompNumber; i++) {
-		if((gal->comp_hydro_eq[i]==1)&&(gal->comp_npart[i]>0)) {
+		if((gal->comp_hydro_eq[i]==1)&&(gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)) {
+			gal->boxsize_dens 	= 2.1*gal->comp_cut[i];
+			gal->dx_dens 		= gal->boxsize_dens/((double)gal->ngrid_dens[0]);
 			if(set_hydro_equilibrium(gal,i,gal->comp_hydro_eq_niter[i]) != 0) {
 				fprintf(stderr,"[Error] Unable to compute azimuthal profile to reach hydro equilibrium\n");
 				exit(0);
 			}
+			gal->comp_cs_init[i] *= (1.0-gal->comp_turb_frac[i]);
 		}
 	}
 	// Be nice to the memory
@@ -1277,7 +1278,7 @@ int set_galaxy_velocity(galaxy *gal) {
 	// assuming a Gaussian shaped velocity distribution function.
 	// This method is much more realistic, and ensures disk stability
 	// against axisymetric perturbations.
-	printf("/////\tComputing velocities\n");
+	printf("/////\tComputing velocities ");
 	fflush(stdout);
 	// We fill an array with the value of the escape velocity sampled at radii up to boxsize    
 	for(i=0;i<4*gal->ngrid[0];i++) {
@@ -1306,7 +1307,7 @@ int set_galaxy_velocity(galaxy *gal) {
 		v_c = v_c_func(gal,radius);
 		if(v_c>v_cmax) v_cmax = v_c;
 	}
-	printf("/////\tMaximum circular velocity -> %.1lf km/s\n",v_cmax/unit_velocity);
+	printf("[vc_max=%.1lf km/s]\n",v_cmax/unit_velocity);
 	gal->z[gal->index[tid]] 		= save1;
 	gal->theta_cyl[gal->index[tid]] = save2;
 	
@@ -1508,8 +1509,9 @@ int set_galaxy_velocity(galaxy *gal) {
 	// Be nice to memory
 	free(gal->storage);
     // Loop over components
+    printf("/////\t Computing turbulence\n");
 	for(k=0; k<AllVars.MaxCompNumber; k++) {
-    	if(gal->comp_type[k]==0 && gal->comp_turb_sigma[k]>0.) {
+    	if(gal->comp_type[k]==0 && gal->comp_turb_sigma[k]>0. && gal->comp_npart[k]>0) {
     	
     		// Deallocate potential grid to save some memory for the next computation
     		if(gal->potential_defined) {
@@ -1561,18 +1563,18 @@ int set_galaxy_velocity(galaxy *gal) {
 
     		gal->dx_gauss = 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss[0]);
 
-   			printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc]\n",k+1,gal->comp_turb_sigma[k],gal->comp_turb_scale[k],gal->dx_gauss);
+   			printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc]\n",k+1,gal->comp_turb_sigma[k]/unit_velocity,gal->comp_turb_scale[k],gal->dx_gauss);
     		set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k]);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-				gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
+				gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k]/unit_velocity;
 			}
     		set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k]);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-				gal->vel_y[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
+				gal->vel_y[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k]/unit_velocity;
 			}
     		set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k]);
 			for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-				gal->vel_z[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
+				gal->vel_z[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k]/unit_velocity;
 			}
 			// Deallocate the turbulence grid to be really nice to the memory.
 			for (i = 0; i < 2*gal->ngrid_gauss[1]; i++){
