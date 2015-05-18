@@ -349,7 +349,7 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 	pressure_force 			= radius*kpc*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);
 	v2_theta_gas 			= v_c2 + pressure_force;
 	if(v2_theta_gas<0) v2_theta_gas = 0.;
-	// Restore z cordinate
+	// Restore z coordinate
 	gal->z[gal->index[tid]] = save;
 	
 	return v2_theta_gas;

@@ -736,7 +736,16 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		gal->ngrid_zoom2[1]		= (int)(gal->boxsize_zoom2/gal->dx_zoom2);
 		gal->ngrid_zoom2[2]		= (int)(gal->boxsize_zoom2/gal->dx_zoom2);
 	}
+
+	gal->boxsize_dens 	= 0.;
+	for(i=0; i<AllVars.MaxCompNumber; i++){
+		if(gal->comp_type[i]==0 && 2.0*gal->comp_cut[i]>gal->boxsize_dens){
+			gal->boxsize_dens = 2.1*gal->comp_cut[i];
+		}
+	}
 	
+	gal->dx_dens 	= gal->boxsize_dens/((double)gal->ngrid_dens[0]);
+
 	allocate_galaxy_storage_variable(gal,10);
 
 	// Initialisations
@@ -1219,8 +1228,6 @@ int set_galaxy_coords(galaxy *gal) {
 	
 	for(i=0; i<AllVars.MaxCompNumber; i++) {
 		if((gal->comp_hydro_eq[i]==1)&&(gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)) {
-			gal->boxsize_dens 	= 2.1*gal->comp_cut[i];
-			gal->dx_dens 		= gal->boxsize_dens/((double)gal->ngrid_dens[0]);
 			if(set_hydro_equilibrium(gal,i,gal->comp_hydro_eq_niter[i]) != 0) {
 				fprintf(stderr,"[Error] Unable to compute azimuthal profile to reach hydro equilibrium\n");
 				exit(0);
