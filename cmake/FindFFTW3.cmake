@@ -29,14 +29,14 @@ endif()
 if(ENABLE_THREADS MATCHES "ON")
 	SET(FFTW3_THREADS_FOUND FALSE)
         if(FFTW3_THREADS_PATH) # user configure cmake with variable -DFFTW3_PATH="/fftw3/path"
-                find_library(FFTW3_THREADS_LIB NAMES fftw3_threads PATHS ${FFTW3_THREADS_PATH}/lib)
+                find_library(FFTW3_THREADS_LIB NAMES fftw3_omp PATHS ${FFTW3_THREADS_PATH}/lib)
                 if (FFTW3_THREADS_LIB)
                         MESSAGE(STATUS "Found FFTW3_THREADS_LIB: " ${FFTW3_THREADS_LIB})
                         SET(FFTW3_THREADS_FOUND TRUE)
                 endif()
         endif()
         if(NOT FFTW3_THREADS_FOUND) # try $HOME/local
-                find_library(FFTW3_THREADS_LIB NAMES fftw3_threads PATHS $ENV{HOME}/local/lib)
+                find_library(FFTW3_THREADS_LIB NAMES fftw3_omp PATHS $ENV{HOME}/local/lib)
 		
                 if (FFTW3_THREADS_LIB)
                         MESSAGE(STATUS "Found FFTW3_THREADS_LIB: " ${FFTW3_THREADS_LIB})

@@ -125,7 +125,7 @@ add_executable(${BIN} src/dice.c)
 
 # Link libraries
 if(${ENABLE_THREADS} MATCHES "ON")
-	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 fftw3_threads m)
+	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 fftw3_omp m )
 else()
 	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 m)
 endif()
