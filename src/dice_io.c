@@ -303,7 +303,7 @@ int parse_config_file(char *fname) {
 	AllVars.GslWorkspaceSize = 100000;
 	read[nt] = 0;
 	mandatory[nt] = 0;
-	id[nt++] = INT;    
+	id[nt++] = INT;  
     
 	printf("/////\tReading configuration file [%s]\n",fname);
 	if((fd = fopen(fname, "r"))) {
@@ -366,7 +366,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
 	#define INT	3
-	#define MAXTAGS	38*AllVars.MaxCompNumber+21
+	#define MAXTAGS	42*AllVars.MaxCompNumber+22
 	
 	FILE *fd;
 	int i,j,n;
@@ -562,6 +562,20 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	mandatory[nt] = 0;
 	id[nt++] = DOUBLE;
 	
+	strcpy(tag[nt], "softening");
+	addr[nt] = &gal->softening;
+	gal->softening = 0.0;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "mcmc_ntry");
+	addr[nt] = &gal->mcmc_ntry;
+	gal->mcmc_ntry = 1;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
 	
 		n = sprintf(temp_tag,"mass_frac%d",j+1);
@@ -595,14 +609,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		if(j==0) mandatory[nt] = 1;
 		else mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
-	
-		n = sprintf(temp_tag,"flat%d",j+1);
-		strcpy(tag[nt], temp_tag);	
-		addr[nt] = &gal->comp_flat[j];
-		read[nt] = 0;
-		if(j==0) mandatory[nt] = 1;
-		else mandatory[nt] = 0;
-		id[nt++] = DOUBLE;
 
 		n = sprintf(temp_tag,"flatx%d",j+1);
 		strcpy(tag[nt], temp_tag);	
@@ -616,6 +622,38 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		strcpy(tag[nt], temp_tag);	
 		gal->comp_flaty[j] = 1.0;
 		addr[nt] = &gal->comp_flaty[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"flatz%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &gal->comp_flatz[j];
+		read[nt] = 0;
+		if(j==0) mandatory[nt] = 1;
+		else mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"flatx_cut%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		gal->comp_flatx_cut[j] = -1.0;
+		addr[nt] = &gal->comp_flatx_cut[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"flaty_cut%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		gal->comp_flaty_cut[j] = -1.0;
+		addr[nt] = &gal->comp_flaty_cut[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"flatz_cut%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_flatz_cut[j] = -1.0;
+		addr[nt] = &gal->comp_flatz_cut[j];
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
@@ -740,6 +778,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"beta%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		gal->comp_beta[j] = 1.0;
+		addr[nt] = &gal->comp_beta[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
 
 		n = sprintf(temp_tag,"disp_ext%d",j+1);
 		strcpy(tag[nt], temp_tag);
@@ -769,6 +815,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		strcpy(tag[nt], temp_tag);
 		gal->comp_turb_frac[j] = 0.;
 		addr[nt] = &gal->comp_turb_frac[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"turb_sigma%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_turb_sigma[j] = 0.;
+		addr[nt] = &gal->comp_turb_sigma[j];
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
@@ -1823,6 +1877,60 @@ void write_galaxy_sigma_z_curve(galaxy *gal, double rmax, char *fname, double in
 	return;
 }
 
+void write_galaxy_sigma_r_curve(galaxy *gal, double rmax, char *fname, double interval) {
+	int i,tid;
+	double radius, theta, v2ar, sigma_r, save1, save2, save3;
+	char filename[200];
+	FILE *fp1;
+    
+	// Total rotation curve
+	sprintf(filename,fname);
+	fp1 = fopen(filename, "w");
+	if (fp1 == NULL) {
+		printf("[Warning] Cannot open %s\n",fname);
+		return;
+	}
+	#if USE_THREADS == 1
+	    tid = omp_get_thread_num();
+	#else
+	    tid = 0;
+	#endif
+	gal->index[tid] 				= 0;
+	save1 							= gal->z[gal->index[tid]];
+	save2 							= gal->theta_cyl[gal->index[tid]];
+	save3 							= gal->r_cyl[gal->index[tid]];
+	gal->z[gal->index[tid]] 		= 0.;
+	gal->theta_cyl[gal->index[tid]] = 0.;	
+	
+	for (i = 0; i < (int)(rmax/interval); ++i) {
+		radius = i*interval;
+		gal->r_cyl[gal->index[tid]] = radius;
+		v2ar 						= v2a_z_func(gal,w[tid],gal->selected_comp[0]);
+		
+		// Enforce Q>Q_min
+		if(gal->comp_Q_lim[gal->selected_comp[0]]>0) {
+			v2ar = v2a_z_toomre(gal,radius,v2ar,gal->selected_comp[0]);
+		}
+		if(AllVars.AcceptImaginary==1) {
+			sigma_r = sqrt(fabs(v2ar));
+		} else {
+			sigma_r = (v2ar>0.?sqrt(v2ar):0.);
+		}
+		if(gal->comp_disp_ext[gal->selected_comp[0]]>0. && gal->comp_disp_ext[gal->selected_comp[0]]<1.0) {
+			double disp_softening = (1.0-exp(-fabs(radius)/(-(1.0/log(1.0-gal->comp_disp_ext[gal->selected_comp[0]]))*gal->comp_scale_length[gal->selected_comp[0]])));
+			sigma_r *= disp_softening;
+		}
+		// Write the radius and sigma z to file in kpc and km2/s2 respectively.
+		fprintf(fp1,"%lf %lf\n",radius,sigma_r/unit_velocity);
+	}
+	gal->z[gal->index[tid]] 		= save1;
+	gal->theta_cyl[gal->index[tid]] = save2;
+	gal->r_cyl[gal->index[tid]] 	= save3;
+	fclose(fp1);
+	
+	return;
+}
+
 void write_galaxy_sigma_theta_curve(galaxy *gal, double rmax, char *fname, double interval) {
 	int i,tid;
 	double radius, theta, v2az, v2at, sigma_theta, save1, save2, save3;
@@ -1921,7 +2029,7 @@ void write_galaxy_toomre_curve(galaxy *gal, double rmax, char *fname, double int
 
 void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double interval) {
 	int i,tid;
-	double radius, theta, pot, save1, save2, save3;
+	double radius, theta, pot, save1, save2, save3, save4;
 	char filename[200];
 	FILE *fp1;
     
@@ -1941,16 +2049,14 @@ void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double 
 	save1 							= gal->x[gal->index[tid]];
 	save2 							= gal->y[gal->index[tid]];
 	save3 							= gal->z[gal->index[tid]];
+	save4 							= gal->theta_cyl[gal->index[tid]];
 	gal->x[gal->index[tid]] 		= 0.;
 	gal->y[gal->index[tid]] 		= 0.;
 	gal->z[gal->index[tid]] 		= 0.;
+	gal->theta_cyl[gal->index[tid]]	= 0.;
 	
 	for (i = 0; i < (int)(rmax/interval); ++i) {
 		radius = i*interval;
-		/*pot = galaxy_potential_func(gal,gal->potential,gal->dx,gal->ngrid,3.,0.,radius,1);
-		if(gal->level_grid_zoom>gal->level_grid&&radius<gal->boxsize_zoom/2.) {
-			pot = galaxy_potential_func(gal,gal->potential_zoom,gal->dx_zoom,gal->ngrid_zoom,3.,0.,radius,0)+gal->potential_shift_zoom;
-		}*/
 		pot = galaxyr_potential_wrapper_func(radius,gal);
 		// Write the radius and circular velocity to file in kpc and g*cm^2/s^2 respectively.
 		fprintf(fp1,"%lf %le\n",radius,pot);
@@ -1958,6 +2064,7 @@ void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double 
 	gal->x[gal->index[tid]] 		= save1;
 	gal->y[gal->index[tid]] 		= save2;
 	gal->z[gal->index[tid]] 		= save3;
+	gal->theta_cyl[gal->index[tid]]	= save4;
 	fclose(fp1);
 	
 	return;

@@ -4,7 +4,7 @@ project (DICE)
 
 # Set the version number
 set (DICE_VERSION_MAJOR 3)
-set (DICE_VERSION_MINOR 7)
+set (DICE_VERSION_MINOR 8)
 set (DICE_VERSION "${DICE_VERSION_MAJOR}.${DICE_VERSION_MINOR}")
 
 # Say hello
@@ -125,7 +125,7 @@ add_executable(${BIN} src/dice.c)
 
 # Link libraries
 if(${ENABLE_THREADS} MATCHES "ON")
-	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 fftw3_omp m)
+	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 fftw3_threads m)
 else()
 	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 m)
 endif()

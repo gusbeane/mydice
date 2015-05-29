@@ -161,24 +161,33 @@ int main (int argc, char **argv) {
 				        fprintf(stderr,"[Error] Unable to set coordinates\n");
 				        exit(0);
 				}
-				if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,1) != 0) {
+				if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,1,0.) != 0) {
 					printf("[Error] Unable to set the potential\n");
 					exit(0);
 				}
 				// Zoom 1
 				if(gal->level_grid_zoom1>gal->level_grid){
-					if(set_galaxy_potential(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,1) != 0) {
+					// External potential
+					if(set_galaxy_potential(gal,gal->potential_ext_zoom1,gal->dx,gal->ngrid,1,gal->boxsize_zoom1/2.) != 0) {
 						printf("[Error] Unable to set the zoomed potential\n");
 						exit(0);
 					}
-					compute_potential_shift(gal,gal->potential,gal->potential_zoom1,gal->dx,gal->dx_zoom1,gal->ngrid,gal->ngrid_zoom1);
+					if(set_galaxy_potential(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,1,0.) != 0) {
+						printf("[Error] Unable to set the zoomed potential\n");
+						exit(0);
+					}
+
 					// Zoom 2
 					if(gal->level_grid_zoom2>gal->level_grid_zoom1){
-						if(set_galaxy_potential(gal,gal->potential_zoom2,gal->dx_zoom2,gal->ngrid_zoom2,1) != 0) {
+						// External potential
+						if(set_galaxy_potential(gal,gal->potential_ext_zoom2,gal->dx_zoom1,gal->ngrid_zoom1,1,gal->boxsize_zoom2/2.) != 0) {
 							printf("[Error] Unable to set the zoomed potential\n");
 							exit(0);
 						}
-						compute_potential_shift(gal,gal->potential_zoom1,gal->potential_zoom2,gal->dx_zoom1,gal->dx_zoom2,gal->ngrid_zoom1,gal->ngrid_zoom2);
+						if(set_galaxy_potential(gal,gal->potential_zoom2,gal->dx_zoom2,gal->ngrid_zoom2,1,0.) != 0) {
+							printf("[Error] Unable to set the zoomed potential\n");
+							exit(0);
+						}
 					}
 				}
 				if(set_galaxy_velocity(gal) != 0) {
@@ -194,24 +203,32 @@ int main (int argc, char **argv) {
 			        fprintf(stderr,"[Error] Unable to set coordinates\n");
 			        exit(0);
 			}
-			if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,1) != 0) {
+			if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,1,0.) != 0) {
 				fprintf(stderr,"[Error] Unable to set the potential\n");
 				exit(0);
 			}
 			// Zoom 1
 			if(gal->level_grid_zoom1>gal->level_grid){
-				if(set_galaxy_potential(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,1) != 0) {
+				// External potential
+				if(set_galaxy_potential(gal,gal->potential_ext_zoom1,gal->dx,gal->ngrid,1,gal->boxsize_zoom1/2.) != 0) {
 					printf("[Error] Unable to set the zoomed potential\n");
 					exit(0);
 				}
-				compute_potential_shift(gal,gal->potential,gal->potential_zoom1,gal->dx,gal->dx_zoom1,gal->ngrid,gal->ngrid_zoom1);
+				if(set_galaxy_potential(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,1,0.) != 0) {
+					printf("[Error] Unable to set the zoomed potential\n");
+					exit(0);
+				}
 				// Zoom 2
 				if(gal->level_grid_zoom2>gal->level_grid_zoom1){
-					if(set_galaxy_potential(gal,gal->potential_zoom2,gal->dx_zoom2,gal->ngrid_zoom2,1) != 0) {
+					// External potential
+					if(set_galaxy_potential(gal,gal->potential_ext_zoom2,gal->dx_zoom1,gal->ngrid_zoom1,1,gal->boxsize_zoom2/2.) != 0) {
 						printf("[Error] Unable to set the zoomed potential\n");
 						exit(0);
 					}
-					compute_potential_shift(gal,gal->potential_zoom1,gal->potential_zoom2,gal->dx_zoom1,gal->dx_zoom2,gal->ngrid_zoom1,gal->ngrid_zoom2);
+					if(set_galaxy_potential(gal,gal->potential_zoom2,gal->dx_zoom2,gal->ngrid_zoom2,1,0.) != 0) {
+						printf("[Error] Unable to set the zoomed potential\n");
+						exit(0);
+					}
 				}
 			}
 

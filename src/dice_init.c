@@ -91,8 +91,8 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"[Error] Unable to allocate comp_cut array\n");
 		return -1;
 	}
-	if (!(gal->comp_flat=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-		fprintf(stderr,"[Error] Unable to allocate comp_flat array\n");
+	if (!(gal->comp_flatz=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_flatz array\n");
 		return -1;
 	}
 	if (!(gal->comp_mcmc_step=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -165,6 +165,10 @@ int allocate_component_arrays(galaxy *gal) {
 	}
 	if (!(gal->comp_alpha=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
 		fprintf(stderr,"[Error] Unable to allocate comp_alpha array\n");
+		return -1;
+	}
+	if (!(gal->comp_beta=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_beta array\n");
 		return -1;
 	}
 	if (!(gal->comp_disp_ext=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -241,6 +245,18 @@ int allocate_component_arrays(galaxy *gal) {
 	}
 	if (!(gal->comp_flaty=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
 		fprintf(stderr,"[Error] Unable to allocate comp_flaty array\n");
+		return -1;
+	}
+	if (!(gal->comp_flatz_cut=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_flat_cut array\n");
+		return -1;
+	}
+	if (!(gal->comp_flatx_cut=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_flatx_cut array\n");
+		return -1;
+	}
+	if (!(gal->comp_flaty_cut=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_flaty_cut array\n");
 		return -1;
 	}
 	return 0;
@@ -394,6 +410,26 @@ int allocate_variable_arrays(galaxy *gal) {
 				}
 			}
 		}
+		
+		// External forces grid
+		if (!(gal->potential_ext_zoom1=calloc(2*gal->ngrid[0],sizeof(double *)))) {
+			fprintf(stderr,"[Error] Unable to create potential x axis.\n");
+			return -1;
+		}
+		for (i = 0; i < 2*gal->ngrid[1]; ++i) {
+		// y-axis
+		if (!(gal->potential_ext_zoom1[i] = calloc(2*gal->ngrid[1],sizeof(double *)))) {
+			fprintf(stderr,"[Error] Unable to create potential y axis.\n");
+			return -1;
+		}
+		// z-axis
+		for (j = 0; j < 2*gal->ngrid[2]; ++j) {
+			if (!(gal->potential_ext_zoom1[i][j] = calloc(2*gal->ngrid[2],sizeof(double)))) {
+				fprintf(stderr,"[Error] Unable to create potential z axis.\n");
+				return -1;
+			}
+		}
+	}
 	}
 	
 	if(gal->level_grid_zoom2>gal->level_grid_zoom1){
@@ -413,6 +449,25 @@ int allocate_variable_arrays(galaxy *gal) {
 			// z-axis
 			for (j = 0; j < 2*gal->ngrid_zoom2[2]; ++j) {
 				if (!(gal->potential_zoom2[i][j] = calloc(2*gal->ngrid_zoom2[2],sizeof(double)))) {
+					fprintf(stderr,"[Error] Unable to create potential z axis.\n");
+					return -1;
+				}
+			}
+		}
+		// External forces grid
+		if (!(gal->potential_ext_zoom2=calloc(2*gal->ngrid_zoom1[0],sizeof(double *)))) {
+			fprintf(stderr,"[Error] Unable to create potential x axis.\n");
+			return -1;
+		}
+		for (i = 0; i < 2*gal->ngrid_zoom1[1]; ++i) {
+			// y-axis
+			if (!(gal->potential_ext_zoom2[i] = calloc(2*gal->ngrid_zoom1[1],sizeof(double *)))) {
+				fprintf(stderr,"[Error] Unable to create potential y axis.\n");
+				return -1;
+			}
+			// z-axis
+			for (j = 0; j < 2*gal->ngrid_zoom1[2]; ++j) {
+				if (!(gal->potential_ext_zoom2[i][j] = calloc(2*gal->ngrid_zoom1[2],sizeof(double)))) {
 					fprintf(stderr,"[Error] Unable to create potential z axis.\n");
 					return -1;
 				}
@@ -722,12 +777,15 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         
 	// Set the size of the cell for the Potential-Mesh (PM) computation
 	gal->dx 		= gal->boxsize/((double)gal->ngrid[0]);
+	if(gal->softening==0.0) gal->softening=-gal->dx;
 	if(gal->level_grid_zoom1>gal->level_grid) {
 		gal->dx_zoom1 			= gal->boxsize/pow(2.0,gal->level_grid_zoom1);
 		gal->boxsize_zoom1		= ceil(gal->boxsize_zoom1/gal->dx_zoom1)*gal->dx_zoom1;
 		gal->ngrid_zoom1[0]		= (int)(gal->boxsize_zoom1/gal->dx_zoom1);
 		gal->ngrid_zoom1[1]		= (int)(gal->boxsize_zoom1/gal->dx_zoom1);
 		gal->ngrid_zoom1[2]		= (int)(gal->boxsize_zoom1/gal->dx_zoom1);
+		if(gal->softening<0.0) gal->softening=-gal->dx_zoom1;
+
 	}
 	if(gal->level_grid_zoom2>gal->level_grid_zoom1) {
 		gal->dx_zoom2 			= gal->boxsize/pow(2.0,gal->level_grid_zoom2);
@@ -735,11 +793,13 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		gal->ngrid_zoom2[0]		= (int)(gal->boxsize_zoom2/gal->dx_zoom2);
 		gal->ngrid_zoom2[1]		= (int)(gal->boxsize_zoom2/gal->dx_zoom2);
 		gal->ngrid_zoom2[2]		= (int)(gal->boxsize_zoom2/gal->dx_zoom2);
+		if(gal->softening<0.0) gal->softening=-gal->dx_zoom2;
 	}
+	gal->softening = fabs(gal->softening);
 
 	gal->boxsize_dens 	= 0.;
 	for(i=0; i<AllVars.MaxCompNumber; i++){
-		if(gal->comp_type[i]==0 && 2.0*gal->comp_cut[i]>gal->boxsize_dens){
+		if(gal->comp_type[i]==0 && 2.0*gal->comp_cut[i]>gal->boxsize_dens && gal->comp_npart[i]>0 && gal->comp_hydro_eq[i]){
 			gal->boxsize_dens = 2.1*gal->comp_cut[i];
 		}
 	}
@@ -850,8 +910,11 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			fprintf(stderr,"[Error] Component %d scale not properly defined\n",i+1);
 			exit(0);
 		}
+		if(gal->comp_flatx_cut[i]==-1.0) gal->comp_flatx_cut[i] = gal->comp_flatx[i];
+		if(gal->comp_flaty_cut[i]==-1.0) gal->comp_flaty_cut[i] = gal->comp_flaty[i];
+		if(gal->comp_flatz_cut[i]==-1.0) gal->comp_flatz_cut[i] = gal->comp_flatz[i];
 		// Set the component scale height
-		gal->comp_scale_height[i] 	= gal->comp_flat[i]*gal->comp_scale_length[i];
+		gal->comp_scale_height[i] 	= gal->comp_flatz[i]*gal->comp_scale_length[i];
 		
 		// Reset Q_min to some arbitrary value so it can be calculated later.
 		gal->comp_Q_min[i] = 1000.0;
@@ -874,10 +937,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			gal->comp_u_init[i] /= mu_mol;
 			// Computing isothermal sound speed
 			gal->comp_cs_init[i] 	= sqrt(gamma_minus1*gal->comp_u_init[i]*unit_energy/unit_mass);
-			// Removing the turbulent energy support
-			gal->comp_u_init[i] 	*= (1.0-gal->comp_turb_frac[i]);
-			// Computing the velocity dispersion of the turbulence
-			gal->comp_turb_sigma[i] = gal->comp_cs_init[i]*sqrt(gal->comp_turb_frac[i]/(1.0-gal->comp_turb_frac[i]));
 		}
 
 		// Computing the mass of the component after cuts
@@ -974,16 +1033,18 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t\t- Bulge Disk fraction\t%10.3lf\n",BD_fraction);
 		if(gal->num_part[2]>0&&gal->num_part[3]>0)printf("/////\t\t- Bulge Total fraction\t%10.3lf\n",BT_fraction);
 		printf("/////\tPM grids dimensions\n");
-		printf("/////\t\t- Gravitational potential \t\t[%4d,%4d,%4d]\n",gal->ngrid[0],gal->ngrid[1],gal->ngrid[2]);
+		printf("/////\t\t- Gravitational potential \t\t[%4d,%4d,%4d][box=%4.1lf kpc]\n",gal->ngrid[0],gal->ngrid[1],gal->ngrid[2],gal->boxsize);
 		if(gal->level_grid_zoom1>gal->level_grid) {
-			printf("/////\t\t- Gravitational potential zoom 1 \t[%4d,%4d,%4d]\n",gal->ngrid_zoom1[0],gal->ngrid_zoom1[1],gal->ngrid_zoom1[2]);
+			printf("/////\t\t- Gravitational potential ext zoom 1 \t[%4d,%4d,%4d][box=%4.1lf kpc]\n",gal->ngrid[0],gal->ngrid[1],gal->ngrid[2],gal->boxsize_zoom1);
+			printf("/////\t\t- Gravitational potential zoom 1 \t[%4d,%4d,%4d][box=%4.1lf kpc]\n",gal->ngrid_zoom1[0],gal->ngrid_zoom1[1],gal->ngrid_zoom1[2],gal->boxsize_zoom1);
 		}
 		if(gal->level_grid_zoom2>gal->level_grid_zoom1) {
-			printf("/////\t\t- Gravitational potential zoom 2 \t[%4d,%4d,%4d]\n",gal->ngrid_zoom2[0],gal->ngrid_zoom2[1],gal->ngrid_zoom2[2]);
+			printf("/////\t\t- Gravitational potential ext zoom 2 \t[%4d,%4d,%4d][box=%4.1lf kpc]\n",gal->ngrid_zoom1[0],gal->ngrid_zoom1[1],gal->ngrid_zoom1[2],gal->boxsize_zoom2);
+			printf("/////\t\t- Gravitational potential zoom 2 \t[%4d,%4d,%4d][box=%4.1lf kpc]\n",gal->ngrid_zoom2[0],gal->ngrid_zoom2[1],gal->ngrid_zoom2[2],gal->boxsize_zoom2);
 		}
 		for(i=0;i<AllVars.MaxCompNumber;i++) {
 			if(gal->comp_hydro_eq[i]) {
-				printf("/////\t\t- Midplane gas density \t\t\t[%4d,%4d]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens));
+				printf("/////\t\t- Midplane gas density \t\t\t[%4d,%4d][box=%4.1lf kpc]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens),gal->boxsize_dens);
 				break;
 			}
 		}
@@ -999,6 +1060,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			}
 		}
 	}
+	printf("/////\t\t- Gravitational softening -> %8.3lf kpc\n",gal->softening);
 	fflush(stdout);
 	
 	if(allocate_variable_arrays(gal)!=0) {
@@ -1217,12 +1279,17 @@ int set_galaxy_coords(galaxy *gal) {
 	
 	printf("/////\tComputing coordinates\n");
 	fflush(stdout);
+	if(gal->mcmc_ntry>1) printf("/////\t\tUsing multiple try MCMC\n");
 
 	for(i=0; i<AllVars.MaxCompNumber; i++) {
 		if(gal->comp_npart[i]>0) {
 			printf("/////\t\t- Component %2d [%s]",i+1,gal->comp_profile_name[i]);
 			fflush(stdout);
-			mcmc_metropolis_hasting(gal,i,gal->comp_model[i]);
+			if(gal->mcmc_ntry>1) {
+				mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]);
+			} else {
+				mcmc_metropolis_hasting(gal,i,gal->comp_model[i]);
+			}
 		}
 	}
 	
@@ -1232,7 +1299,14 @@ int set_galaxy_coords(galaxy *gal) {
 				fprintf(stderr,"[Error] Unable to compute azimuthal profile to reach hydro equilibrium\n");
 				exit(0);
 			}
-			gal->comp_cs_init[i] *= (1.0-gal->comp_turb_frac[i]);
+			// Removing the turbulent energy support
+			gal->comp_cs_init[i] 	*= (1.0-gal->comp_turb_frac[i]);
+			gal->comp_u_init[i] 	*= (1.0-gal->comp_turb_frac[i]);
+			// Computing the velocity dispersion of the turbulence
+			if(gal->comp_turb_sigma[i]==0. && gal->comp_turb_frac[i]>0.) {
+				gal->comp_turb_sigma[i] = gal->comp_cs_init[i]*sqrt(gal->comp_turb_frac[i]/(1.0-gal->comp_turb_frac[i]))/unit_velocity;
+			}
+			gal->comp_turb_sigma[i]*unit_velocity;
 		}
 	}
 	// Be nice to the memory
@@ -1512,11 +1586,15 @@ int set_galaxy_velocity(galaxy *gal) {
 		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		printf("/////\tWriting vtheta dispersion curve \t[%s.sigma_theta]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
 		write_galaxy_sigma_theta_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".sigma_theta"),0.01);
+		
+		strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		printf("/////\tWriting vtheta dispersion curve \t[%s.sigma_r]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
+		write_galaxy_sigma_r_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".sigma_r"),0.01);
 	}
 	// Be nice to memory
 	free(gal->storage);
     // Loop over components
-    printf("/////\t Computing turbulence\n");
+    printf("/////\tComputing turbulence\n");
 	for(k=0; k<AllVars.MaxCompNumber; k++) {
     	if(gal->comp_type[k]==0 && gal->comp_turb_sigma[k]>0. && gal->comp_npart[k]>0) {
     	

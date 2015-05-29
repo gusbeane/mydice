@@ -60,7 +60,7 @@ double v2a_z_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 	F.params 	= gal;
 	
 	gal->selected_comp[tid] = component;
-	infinity = 10.*gal->comp_scale_height[gal->selected_comp[tid]];
+	infinity 	= 10.*gal->comp_scale_height[gal->selected_comp[tid]];
 	gsl_integration_qag(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
 
     rho 		= density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
@@ -170,7 +170,7 @@ static double dv2a_1D_func(double r_sph, void *params) {
 double v2a_theta_func(galaxy *gal, double radius, int component) {
     
 	double z, theta, h, v2a_theta, res, rho, abserr;
-    double derivative;
+    double derivative, x, y;
 	int tid;
 	
 	#if USE_THREADS == 1
@@ -179,8 +179,10 @@ double v2a_theta_func(galaxy *gal, double radius, int component) {
    		tid = 0;
 	#endif
 	
+    x 						= radius*cos(gal->theta_cyl[gal->index[tid]]);
+	y 						= radius*sin(gal->theta_cyl[gal->index[tid]]); 
 	// Set the derivative stepsize.
-    h 						= 1.5*gal->dx;
+	h 						= get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
 	theta 					= gal->theta_cyl[gal->index[tid]];
     z 						= gal->z[gal->index[tid]];
     gal->selected_comp[tid] = component;
@@ -218,7 +220,7 @@ double rho_v2a_r_func(double radius, void *params) {
 double v2a_z_toomre(galaxy *gal, double radius, double v2a_z, int component) {
     
 	double gamma_sqrd, kappa_sqrd, h, force, dforcedr, Q, surface_density;
-	double abserr;
+	double abserr, x, y;
 	int tid;
     
 	#if USE_THREADS == 1
@@ -226,9 +228,11 @@ double v2a_z_toomre(galaxy *gal, double radius, double v2a_z, int component) {
 	#else
 	    tid = 0;
 	#endif
-    
+
+    x 				= radius*cos(gal->theta_cyl[gal->index[tid]]);
+	y 				= radius*sin(gal->theta_cyl[gal->index[tid]]);    
 	// Set the derivative step
-	h 				= 1.5*gal->dx;
+	h 				= get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
 	// Calculate force and force derivative
 	force 			= potential_deriv_wrapper_func(radius,gal);
 	dforcedr 		= deriv_central(gal,radius,h,potential_deriv_wrapper_func);
@@ -256,7 +260,7 @@ double v2a_z_toomre(galaxy *gal, double radius, double v2a_z, int component) {
 double toomre(galaxy *gal, double radius, double v2a_z, int component) {
     
 	double kappa_sqrd, h, force, dforcedr, Q, surface_density;
-	double r_sph;
+	double x, y;
 	int tid;
     
 	#if USE_THREADS == 1
@@ -265,11 +269,10 @@ double toomre(galaxy *gal, double radius, double v2a_z, int component) {
 	    tid = 0;
 	#endif
     
-    r_sph = sqrt(pow(gal->z[gal->index[tid]],2)+pow(radius,2));
+    x 				= radius*cos(gal->theta_cyl[gal->index[tid]]);
+	y 				= radius*sin(gal->theta_cyl[gal->index[tid]]);
 	// Set the derivative step
-	h 				= 1.5*gal->dx;
-	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
-	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
+	h 				= get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
 	// Calculate force and force derivative
 	force 			= potential_deriv_wrapper_func(radius,gal);
 	dforcedr 		= deriv_central(gal,radius,h,potential_deriv_wrapper_func);
@@ -291,7 +294,7 @@ double toomre(galaxy *gal, double radius, double v2a_z, int component) {
 double sigma2_theta_disk_func(galaxy *gal, double radius, double v2a_z) {
     
 	double gamma_sqrd, kappa_sqrd, h, force, dforcedr, surface_density;
-	double res, r_sph;
+	double res, x, y;
 	int tid;
     
 	#if USE_THREADS == 1
@@ -300,11 +303,10 @@ double sigma2_theta_disk_func(galaxy *gal, double radius, double v2a_z) {
 	    tid = 0;
 	#endif
 
-    r_sph = sqrt(pow(gal->z[gal->index[tid]],2)+pow(radius,2));    
+    x 			= radius*cos(gal->theta_cyl[gal->index[tid]]);
+	y 			= radius*sin(gal->theta_cyl[gal->index[tid]]);
 	// Set the derivative step
-	h = 1.5*gal->dx;
-	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
-	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
+	h 			= get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
 	// Calculate force and force derivative
 	force 		= potential_deriv_wrapper_func(radius,gal);
 	dforcedr 	= deriv_central(gal,radius,h,potential_deriv_wrapper_func);
@@ -327,7 +329,7 @@ double sigma2_theta_disk_func(galaxy *gal, double radius, double v2a_z) {
 double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 
 	double v2_theta_gas, v_c2, pressure_force, save;
-	double h, abserr, density_derivative;
+	double h, abserr, density_derivative, x, y;
 	int tid;
     
     #if USE_THREADS == 1
@@ -337,9 +339,11 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 	#endif
     
 	radius 					= fabs(radius);
+	x 						= radius*cos(gal->theta_cyl[gal->index[tid]]);
+	y 						= radius*sin(gal->theta_cyl[gal->index[tid]]);
 	gal->selected_comp[tid] = component;
 	// Set the derivative step
-	h 						= 1.5*gal->dx_dens;
+	h 						= get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
 	// Save z coordinate
 	save 					= gal->z[gal->index[tid]];
 	// Integrations done in the z=0 plane	
@@ -368,9 +372,9 @@ double gas_density_wrapper_func(double radius, void *params) {
     	tid = 0;
 	#endif
 	
-	component = gal->selected_comp[tid];
-	x = radius*cos(gal->theta_cyl[gal->index[tid]]);
-	y = radius*sin(gal->theta_cyl[gal->index[tid]]);
+	component 	= gal->selected_comp[tid];
+	x 			= radius*cos(gal->theta_cyl[gal->index[tid]]);
+	y 			= radius*sin(gal->theta_cyl[gal->index[tid]]);
     
 	if(gal->pseudo[tid]) {
 		rho = pseudo_density_gas_func(gal,fabs(radius),gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
@@ -425,14 +429,10 @@ double galaxy_rforce_func(galaxy *gal, double radius) {
 	
 	x = radius*cos(gal->theta_cyl[gal->index[tid]]);
 	y = radius*sin(gal->theta_cyl[gal->index[tid]]);
+		
+	h = get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
 	
-	r_sph = sqrt(pow(x,2)+pow(y,2)+pow(gal->z[gal->index[tid]],2));
-	
-	h = 1.5*gal->dx;
-	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
-	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
-	
-	force = deriv_central(gal,radius,h,galaxyr_potential_wrapper_func);
+	force = deriv_central2(gal,radius,h,galaxyr_potential_wrapper_func);
 	
 	return force;
 }
@@ -449,7 +449,6 @@ double galaxy_zforce_func(galaxy *gal, double z) {
 	
 	int tid;
 	double force, h, abserr;
-	double r_sph;
 	
 	#if USE_THREADS == 1
 		tid = omp_get_thread_num();
@@ -457,13 +456,9 @@ double galaxy_zforce_func(galaxy *gal, double z) {
 		tid = 0;
 	#endif
 	
-	r_sph = sqrt(pow(gal->x[gal->index[tid]],2)+pow(gal->y[gal->index[tid]],2)+pow(z,2));
-	
-	h = 1.5*gal->dx;
-	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
-	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
+	h = get_h_value(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0,0);
 
-	force = deriv_central(gal,z,h,galaxyz_potential_wrapper_func);
+	force = deriv_central2(gal,z,h,galaxyz_potential_wrapper_func);
 	
 	return force;
 }
@@ -478,11 +473,16 @@ double galaxy_zforce_func(galaxy *gal, double z) {
 // routines.
 double galaxy_rsphforce_func(galaxy *gal, double r_sph) {
 	
+	int tid;
 	double force, h, abserr;
 	
-	h = 1.5*gal->dx;
-	//if(r_sph<gal->boxsize_zoom1/2.&&gal->level_grid_zoom1>gal->level_grid) h = 1.5*gal->dx_zoom1;
-	//if(r_sph<gal->boxsize_zoom2/2.&&gal->level_grid_zoom2>gal->level_grid) h = 1.5*gal->dx_zoom2;
+	#if USE_THREADS == 1
+		tid = omp_get_thread_num();
+	#else
+		tid = 0;
+	#endif
+	
+	h = get_h_value(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],gal->z[gal->index[tid]],0,0);
 	
 	force = deriv_central(gal,r_sph,h,galaxyrsph_potential_wrapper_func);
 	
