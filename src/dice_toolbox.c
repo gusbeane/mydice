@@ -52,6 +52,18 @@ double max(double a, double b) {
 	else    return b;
 }
 
+// Sum a 1D array
+double sum_dbl(double *tab, int length) {
+	int i;
+	double sum;
+	
+	sum = 0.;
+	for (i=0; i<length; i++) {
+		sum += tab[i];
+	}
+	return sum;
+}
+
 // Derivate a function using a 4-point central scheme
 double deriv_central(galaxy *gal, double x, double h, function_to_derivate F){
 	double new_x,f1,f2,f3,f4,derivative;

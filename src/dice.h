@@ -136,9 +136,12 @@ typedef struct {
 	double 				*comp_concentration;
 	double 				*comp_scale_height;
 	double 				*comp_cut;
-	double 				*comp_flat;
+	double 				*comp_flatz;
 	double 				*comp_flatx;
 	double 				*comp_flaty;
+	double 				*comp_flatz_cut;
+	double 				*comp_flatx_cut;
+	double 				*comp_flaty_cut;
 	double 				*comp_mcmc_step;
 	double 				*comp_mcmc_step_hydro;
 	double 				*comp_vmax;
@@ -158,6 +161,7 @@ typedef struct {
 	double 				*comp_mean_age;
 	double 				*comp_min_age;
 	double 				*comp_alpha;
+	double 				*comp_beta;
 	double 				*comp_disp_ext;
 	double				*comp_scale_dens;
 	double				*comp_radius_nfw;
@@ -214,8 +218,10 @@ typedef struct {
 	double ***potential;
 	// Particle Mesh potential grid
 	double ***potential_zoom1;
+	double ***potential_ext_zoom1;
 	// Particle Mesh potential grid
 	double ***potential_zoom2;
+	double ***potential_ext_zoom2;
 	// Particle Mesh gaussian field grid
 	double ***gaussian_field;
 	// Gas midplane density grid
@@ -279,6 +285,10 @@ typedef struct {
 	// Shift term for the gravitational potential in the zoom region
 	double potential_shift_zoom1;
 	double potential_shift_zoom2;
+	// Gravitational softening
+	double softening;
+	// MCMC multiple try parameter
+	int mcmc_ntry;
 } galaxy;
 
 // This is a type definition of a stream. The thought here is to create streams
@@ -467,6 +477,7 @@ int position_stream(stream *, double, double, double, int);
 // Structure functions
 double density_functions_pool(galaxy *, double, double, double, int, int, int);
 void mcmc_metropolis_hasting(galaxy *, int, int);
+void mcmc_metropolis_hasting_ntry(galaxy *, int, int);
 void mcmc_metropolis_hasting_stream(stream *, int , int); 
 int set_hydro_equilibrium(galaxy *, int, int);
 double density_functions_stream_pool(stream *, double, double, double, int, int);
@@ -515,7 +526,7 @@ int set_turbulent_grid(galaxy *, int);
 double galaxy_turbulence_func(galaxy *, double, double, double, int);
 
 // Potential and force functions
-int set_galaxy_potential(galaxy *, double ***, double, int [3], int);
+int set_galaxy_potential(galaxy *, double ***, double, int [3], int, double);
 double galaxy_potential_func(galaxy *, double ***, double, int [3], double, double, double, int);
 double galaxy_zforce_func(galaxy *, double);
 double galaxy_rforce_func(galaxy *, double);
@@ -525,7 +536,9 @@ double galaxyrsph_potential_wrapper_func(double, void *);
 double galaxyz_potential_wrapper_func(double, void *);
 double potential_deriv_wrapper_func(double, void *);
 void copy_potential(galaxy *, galaxy *, int);
-void compute_potential_shift(galaxy *, double ***, double ***, double, double, int [3], int [3]);
+double galaxy_total_potential(galaxy *, double, double, double, int, int);
+double get_h_value(galaxy *, double, double, double, int, int);
+
 
 // Input, output, and manipulation functions
 void write_dice_version();
@@ -534,6 +547,7 @@ int parse_galaxy_file(galaxy *, char *);
 void write_galaxy_rotation_curve(galaxy *, double, char *, double);
 void write_galaxy_potential_curve(galaxy *, double, char *, double);
 void write_galaxy_sigma_z_curve(galaxy *, double , char *, double);
+void write_galaxy_sigma_r_curve(galaxy *, double , char *, double);
 void write_galaxy_sigma_theta_curve(galaxy *, double , char *, double);
 void write_galaxy_potential_curve(galaxy *, double , char *, double);
 void write_galaxy_density_curve(galaxy *, double , char *, double);
@@ -548,6 +562,7 @@ int unload_snapshot();
 // Toolbox functions and definitions
 double min(double, double);
 double max(double, double);
+double sum_dbl(double *, int);
 typedef double (*function_to_derivate)(double, void *);
 double deriv_central(galaxy *, double, double, function_to_derivate);
 double deriv_central2(galaxy *, double, double, function_to_derivate);

@@ -81,7 +81,7 @@ concentration1		13.0
 # Component 1 radial density cut [kpc] 
 cut1			50.
 # Component 1 thickness parameter
-flat1			1.00
+flatz1			1.00
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
 # expressed in units of the component scale length. Default value is 0.5.
 mcmc_step1		0.50
@@ -112,7 +112,7 @@ model2			2
 # (Fitting formula from Mo, Mao & White 1998)
 scale_length2		0.0
 cut2			9.0
-flat2			0.15
+flatz2			0.15
 mcmc_step2		0.3
 vmax2			2.0
 type2			2
@@ -148,7 +148,7 @@ npart_pot3              2000000
 model3			1
 scale_length3		0.
 cut3			9.0
-flat3			0.05
+flatz3			0.05
 mcmc_step3		0.15
 vmax3			10.5
 type3			0
@@ -177,7 +177,7 @@ npart_pot4              1000000
 model4			10
 scale_length4		2.0
 cut4			4.0
-flat4			0.80
+flatz4			0.80
 mcmc_step4		0.3
 vmax4			4.0
 type4			3
@@ -198,7 +198,7 @@ npart_pot5              10000000
 model5			4
 scale_length5		4.0
 cut5			12.0
-flat5			0.40
+flatz5			0.40
 mcmc_step5		0.3
 vmax5			2.0
 type5			2
@@ -217,7 +217,7 @@ npart_pot6              2000000
 model6			8
 concentration1		13.0
 cut6			50.0
-flat6			1.00
+flatz6			1.00
 mcmc_step6		0.50
 vmax6			10.5
 type6			0
