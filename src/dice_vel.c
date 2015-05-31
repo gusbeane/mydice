@@ -458,7 +458,7 @@ double galaxy_zforce_func(galaxy *gal, double z) {
 	
 	h = get_h_value(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0,0);
 
-	force = deriv_central2(gal,z,h,galaxyz_potential_wrapper_func);
+	force = deriv_central(gal,z,h,galaxyz_potential_wrapper_func);
 	
 	return force;
 }
