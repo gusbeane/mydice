@@ -345,6 +345,104 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 	return;
 }
 
+void mcmc_metropolis_hasting_axisym(galaxy *gal, int component, int density_model) {
+	unsigned long int i,j,start_part,npart;
+	double pi_x, pi_y, q_x, q_y, prob, *radius;
+	double theta, phi, randval, proposal, prop_r, prop_theta, prop_z, step_r, step_z, new_step_r, new_step_z;
+	double acceptance;
+	
+	if(gal->comp_npart[component]>0) {
+		// Use the Metropolis algorithm to place the disk particles.
+		// We start the Monte Carlo Markov Chain with a realistic particle position
+		step_r 				= gal->comp_mcmc_step[component]*gal->comp_scale_length[component];
+		step_z 				= gal->comp_mcmc_step[component]*gal->comp_scale_height[component];
+        theta 				= 2.0*pi*gsl_rng_uniform_pos(r[0]);
+		i 					= gal->comp_start_part[component];
+        gal->x[i] 			= max(gal->comp_cut_in[component],step_r)*cos(theta);
+        gal->y[i] 			= max(gal->comp_cut_in[component],step_r)*sin(theta);
+		gal->z[i] 			= 0.;
+		gal->r_cyl[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]);
+		gal->theta_cyl[i]	= atan2(gal->y[i],gal->x[i]);
+		gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
+		gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
+		gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+
+		acceptance 			= 0.;
+		// Burning period
+        for (j = 1; j<(int)(0.1*gal->comp_npart_pot[component]); ++j) {
+			// Generating a proposal
+			prop_r 		= gal->r_cyl[i] + gsl_ran_gaussian(r[0],step_r);
+			prop_theta 	= 2.0*pi*gsl_rng_uniform_pos(r[0]);
+			prop_z 		= gal->z[i] + gsl_ran_gaussian(r[0],step_z);
+			// Distribution function of the considered component
+			// Density of the component times the integrand of spherical volume element
+			pi_x = fabs(gal->r_cyl[i])*density_functions_pool(gal,fabs(gal->r_cyl[i]),gal->theta_cyl[i],gal->z[i],1,density_model,component);
+			pi_y = fabs(prop_r)*density_functions_pool(gal,fabs(prop_r),prop_theta,prop_z,1,density_model,component);
+			q_x  = gsl_ran_gaussian_pdf(prop_r-gal->r_cyl[i],step_r)*gsl_ran_gaussian_pdf(prop_z-gal->z[i],step_z);
+			q_y  = gsl_ran_gaussian_pdf(gal->r_cyl[i]-prop_r,step_r)*gsl_ran_gaussian_pdf(gal->z[i]-prop_z,step_z);
+			prob = min(1.0,(pi_y/pi_x));//*(q_x/q_y));
+			randval = gsl_rng_uniform_pos(r[0]);
+			if (randval <= prob) {
+				gal->r_cyl[i] 		= prop_r;
+				gal->theta_cyl[i] 	= prop_theta;
+				gal->z[i] 			= prop_z;
+			}
+		}
+		// Updating the coordinate values
+		gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
+		gal->y[i] = gal->r_cyl[i]*sin(gal->theta_cyl[i]);
+		// Updating the coordinate values
+        gal->theta_cyl[i]	= atan2(gal->y[i],gal->x[i]);
+        gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
+        gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
+        gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+		// Filling the Markov Chain
+        for (i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++i) {
+			// Generating a proposal
+			prop_r 		= gal->r_cyl[i-1] + gsl_ran_gaussian(r[0],step_r);
+			prop_theta 	= 2.0*pi*gsl_rng_uniform_pos(r[0]);
+			prop_z 		= gal->z[i-1] + gsl_ran_gaussian(r[0],step_z);
+			// Distribution function of the considered component
+			// Density of the component times the integrand of spherical volume element
+			pi_x = fabs(gal->r_cyl[i-1])*density_functions_pool(gal,fabs(gal->r_cyl[i-1]),gal->theta_cyl[i-1],gal->z[i-1],1,density_model,component);
+			pi_y = fabs(prop_r)*density_functions_pool(gal,fabs(prop_r),prop_theta,prop_z,1,density_model,component);
+			q_x  = gsl_ran_gaussian_pdf(prop_r-gal->r_cyl[i-1],step_r)*gsl_ran_gaussian_pdf(prop_z-gal->z[i-1],step_z);
+			q_y  = gsl_ran_gaussian_pdf(gal->r_cyl[i-1]-prop_r,step_r)*gsl_ran_gaussian_pdf(gal->z[i-1]-prop_z,step_z);
+			prob = min(1.0,(pi_y/pi_x));//*(q_x/q_y));
+			randval = gsl_rng_uniform_pos(r[0]);
+			// Proposal accepted
+			if (randval <= prob) {
+				gal->r_cyl[i] 		= prop_r;
+				gal->theta_cyl[i] 	= prop_theta;
+				gal->z[i] 			= prop_z;
+				gal->rho[i]			= pi_y/fabs(gal->r_cyl[i]);
+				acceptance+=1.0;
+			// Proposal rejected, the particle keeps the same postion
+			} else {
+				// To avoid tree codes to break, add a slight displacement for the particle
+				gal->r_cyl[i] 		= gal->r_cyl[i-1];
+				gal->theta_cyl[i] 	= gal->theta_cyl[i-1];
+				gal->z[i] 			= gal->z[i-1];
+            	gal->rho[i]			= pi_x/fabs(gal->r_cyl[i]);
+			}
+			// Updating the coordinate values
+			gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
+			gal->y[i] = gal->r_cyl[i]*sin(gal->theta_cyl[i]);
+			// Updating the coordinate values
+            gal->theta_cyl[i]	= atan2(gal->y[i],gal->x[i]);
+            gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
+            gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
+            gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+		}
+		acceptance /= gal->comp_npart_pot[component];
+		printf("[acceptance=%.2lf]\n",acceptance);
+		if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component+1);
+		if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component+1);
+		if (AllVars.MeanPartDist) printf("/////\t\t\tMean inter-particle distance -> %lf [kpc]\n",mean_interparticle_distance(gal,component));
+	}
+	return;
+}
+
 void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model) {
 	unsigned long int i,j,k,start_part,npart;
 	int selected;
@@ -734,6 +832,177 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 					gal->theta_cyl[i] 	= gal->theta_cyl[i-1];
 					gal->z[i] 			= gal->z[i-1];
 					gal->rho[i]			= gal->rho[i-1];
+				}
+				// Updating the coordinate values
+				gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
+				gal->y[i] = gal->r_cyl[i]*sin(gal->theta_cyl[i]);
+				// Updating the coordinate values
+				gal->theta_cyl[i]	= atan2(gal->y[i],gal->x[i]);
+				gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
+				gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
+				gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+			}
+			acceptance /= gal->comp_npart_pot[component];
+			printf("[acceptance=%.2lf]\n",acceptance);
+			if(acceptance<0.80) {
+				gal->comp_mcmc_step_hydro[component]/=2.0;
+				printf("/////\t\t\t[Warning] MCMC acceptance is low -> Decreasing mcmc_step_hydro%d to %.3lf\n",component+1,gal->comp_mcmc_step_hydro[component]);
+			}
+			if(acceptance>0.95) {
+				gal->comp_mcmc_step_hydro[component]*=2.0;
+				printf("/////\t\t\t[Warning] MCMC acceptance is high -> Increasing mcmc_step_hydro%d to %.3lf\n",component+1,gal->comp_mcmc_step_hydro[component]);
+			}
+			if((acceptance<0.10)&&((j+1)==n_iter)) {
+				printf("[Error] MCMC failed to converge\n");
+				exit(0);
+			}
+		}
+	}
+	return 0;
+}
+
+// This function modify the z component of the gaseous particles according to an iterative
+// algorithm to reach the hydrostatic equilibrium of the disk. This function was inspired by
+// Springel, Di Matteo er al. 2005 method.
+int set_hydro_equilibrium_axisym(galaxy *gal, int component, int n_iter) {
+	
+	unsigned long int i,j,k;
+	int density_model, neval;
+	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius;
+	double theta, phi, randval, x, y, z, step, previous_step, prop_r, prop_theta, prop_z, acceptance;
+	double step_r, step_z, prev_step_z;
+    double cut_dens,theta_max_dens;
+    double xtemp,ytemp,rtemp;
+    
+	printf("/////\tTargeting gas azimuthal hydrostatic equilibrium\n");
+
+	fflush(stdout);
+	// Allow to use pseudo density functions
+	for(i=0;i<AllVars.Nthreads;i++) gal->pseudo[i] = 1;
+	density_model = gal->comp_model[component];
+	// Looking for gas particles
+	if(gal->comp_type[component]==0 && gal->comp_npart_pot[component]>0) {
+		printf("/////\t\t- Component %d -> recomputing gas particles position\n",component+1);
+		// Starting equilibrium iterations
+		for(j = 0; j < n_iter; ++j) {
+			printf("/////\t\t\tIteration %d -> evaluating potential [%d threads]",j+1,AllVars.Nthreads);
+			fflush(stdout);
+			// Now that we've got gas particles positions, we can compute the full potential.
+			if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,0,0.) != 0) {
+				fprintf(stderr,"\n[Error] Unable to set the potential\n");
+				exit(0);
+			}
+			// Zoom 1
+			if(gal->level_grid_zoom1>gal->level_grid){
+				if(set_galaxy_potential(gal,gal->potential_zoom1,gal->dx_zoom1,gal->ngrid_zoom1,0,0.) != 0) {
+					printf("[Error] Unable to set the zoomed potential\n");
+					exit(0);
+				}
+				// External potential
+				if(set_galaxy_potential(gal,gal->potential_ext_zoom1,gal->dx,gal->ngrid,0,gal->boxsize_zoom1/2.) != 0) {
+					printf("[Error] Unable to set the zoomed potential\n");
+					exit(0);
+				}
+				// Zoom 2
+				if(gal->level_grid_zoom2>gal->level_grid_zoom1){
+					if(set_galaxy_potential(gal,gal->potential_zoom2,gal->dx_zoom2,gal->ngrid_zoom2,0,0.) != 0) {
+						printf("[Error] Unable to set the zoomed potential\n");
+						exit(0);
+					}
+					// External potential
+					if(set_galaxy_potential(gal,gal->potential_ext_zoom2,gal->dx_zoom1,gal->ngrid_zoom1,0,gal->boxsize_zoom2/2.) != 0) {
+						printf("[Error] Unable to set the zoomed potential\n");
+						exit(0);
+					}
+				}
+			}
+			
+			fflush(stdout);
+			printf(" / Computing midplane dens");
+			fflush(stdout);
+			fill_midplane_dens_grid(gal,component);
+			// Use the Metropolis algorithm to place the disk particles.
+			// We start the Monte Carlo Markov Chain with a realistic particle position
+			step_r 				= gal->comp_mcmc_step[component]*gal->comp_scale_length[component];
+			step_z 				= gal->comp_mcmc_step[component]*gal->comp_scale_height[component];
+			theta 				= 2.0*pi*gsl_rng_uniform_pos(r[0]);
+			i 					= gal->comp_start_part[component];
+			gal->x[i] 			= max(gal->comp_cut_in[component],step_r)*cos(theta);
+			gal->y[i] 			= max(gal->comp_cut_in[component],step_r)*sin(theta);
+			gal->z[i] 			= 0.;
+			gal->r_cyl[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]);
+			gal->theta_cyl[i]	= atan2(gal->y[i],gal->x[i]);
+			gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
+			gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
+			gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+
+			acceptance 			= 0.;
+			// Burning period
+			for (k = 1; k<(int)(0.1*gal->comp_npart_pot[component]); ++k) {
+				prev_step_z = step_z;
+				step_z 		= gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,fabs(gal->r_cyl[i-1]),gal->theta_cyl[i-1],gal->z[i-1],0,density_model,component)*unit_dens))/kpc;
+				// Generating a proposal
+				prop_r 		= gal->r_cyl[i] + gsl_ran_gaussian(r[0],step_r);
+				prop_theta 	= 2.0*pi*gsl_rng_uniform_pos(r[0]);
+				prop_z 		= gal->z[i] + gsl_ran_gaussian(r[0],step_z);
+				// Distribution function of the considered component
+				// Density of the component times the integrand of spherical volume element
+				pi_x = fabs(gal->r_cyl[i])*pseudo_density_gas_func(gal,fabs(gal->r_cyl[i]),gal->theta_cyl[i],gal->z[i],1,density_model,component);
+				pi_y = fabs(prop_r)*pseudo_density_gas_func(gal,fabs(prop_r),prop_theta,prop_z,1,density_model,component);
+				q_x  = gsl_ran_gaussian_pdf(prop_r-gal->r_cyl[i],step_r)*gsl_ran_gaussian_pdf(prop_z-gal->z[i],prev_step_z);
+				q_y  = gsl_ran_gaussian_pdf(gal->r_cyl[i]-prop_r,step_r)*gsl_ran_gaussian_pdf(gal->z[i]-prop_z,step_z);
+				prob = min(1.0,(pi_y/pi_x)*(q_x/q_y));
+				randval = gsl_rng_uniform_pos(r[0]);
+				if (randval <= prob) {
+					gal->r_cyl[i] 		= prop_r;
+					gal->theta_cyl[i] 	= prop_theta;
+					gal->z[i] 			= prop_z;
+				}
+			}
+			// Updating the coordinate values
+			gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
+			gal->y[i] = gal->r_cyl[i]*sin(gal->theta_cyl[i]);
+			// Updating the coordinate values
+			gal->theta_cyl[i]	= atan2(gal->y[i],gal->x[i]);
+			gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
+			gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
+			gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+	
+			printf(" / Computing coords ");
+			fflush(stdout);
+			// Filling the Markov Chain
+			for(i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++i) {
+				prev_step_z = step_z;
+				step_z 		= gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,fabs(gal->r_cyl[i-1]),gal->theta_cyl[i-1],gal->z[i-1],0,density_model,component)*unit_dens))/kpc;
+				// Security against NaN values
+				if(step_z != step_z) step_z = prev_step_z;
+				// Generating a proposal
+				prop_r 		= gal->r_cyl[i-1] + gsl_ran_gaussian(r[0],step_r);
+				prop_theta 	= 2.0*pi*gsl_rng_uniform_pos(r[0]);
+				prop_z 		= gal->z[i-1] + gsl_ran_gaussian(r[0],step_z);
+				// Distribution function of the considered component
+				// Density of the component times the integrand of spherical volume element
+				pi_x = fabs(gal->r_cyl[i-1])*pseudo_density_gas_func(gal,fabs(gal->r_cyl[i-1]),gal->theta_cyl[i-1],gal->z[i-1],1,density_model,component);
+				pi_y = fabs(prop_r)*pseudo_density_gas_func(gal,fabs(prop_r),prop_theta,prop_z,1,density_model,component);
+				q_x  = gsl_ran_gaussian_pdf(prop_r-gal->r_cyl[i-1],step_r)*gsl_ran_gaussian_pdf(prop_z-gal->z[i-1],prev_step_z);
+				q_y  = gsl_ran_gaussian_pdf(gal->r_cyl[i-1]-prop_r,step_r)*gsl_ran_gaussian_pdf(gal->z[i-1]-prop_z,step_z);
+				if((j==n_iter-1)&&(fabs(prop_z)>gal->comp_scale_height[component])) pi_y = 0.;
+				prob = min(1.0,(pi_y/pi_x)*(q_x/q_y));
+				randval = gsl_rng_uniform_pos(r[0]);
+				// Proposal accepted
+				if (randval <= prob) {
+					gal->r_cyl[i] 		= prop_r;
+					gal->theta_cyl[i] 	= prop_theta;
+					gal->z[i] 			= prop_z;
+					gal->rho[i]			= pi_y/fabs(gal->r_cyl[i]);
+					acceptance+=1.0;
+				// Proposal rejected, the particle keeps the same postion
+				} else {
+					// To avoid tree codes to break, add a slight displacement for the particle
+					gal->r_cyl[i] 		= gal->r_cyl[i-1];
+					gal->theta_cyl[i] 	= gal->theta_cyl[i-1];
+					gal->z[i] 			= gal->z[i-1];
+					gal->rho[i]			= pi_x/fabs(gal->r_cyl[i]);
 				}
 				// Updating the coordinate values
 				gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);

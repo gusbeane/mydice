@@ -476,10 +476,12 @@ int position_stream(stream *, double, double, double, int);
 
 // Structure functions
 double density_functions_pool(galaxy *, double, double, double, int, int, int);
+void mcmc_metropolis_hasting_axisym(galaxy *, int, int);
 void mcmc_metropolis_hasting(galaxy *, int, int);
 void mcmc_metropolis_hasting_ntry(galaxy *, int, int);
 void mcmc_metropolis_hasting_stream(stream *, int , int); 
 int set_hydro_equilibrium(galaxy *, int, int);
+int set_hydro_equilibrium_axisym(galaxy *, int, int);
 double density_functions_stream_pool(stream *, double, double, double, int, int);
 
 double surface_density_func(galaxy *, double, double, int, int);
