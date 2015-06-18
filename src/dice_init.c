@@ -1288,16 +1288,29 @@ int set_galaxy_coords(galaxy *gal) {
 			if(gal->mcmc_ntry>1) {
 				mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]);
 			} else {
-				mcmc_metropolis_hasting(gal,i,gal->comp_model[i]);
+				// Axisymmetric case
+				if(gal->comp_flatx[i]==gal->comp_flatx[i]) {
+					mcmc_metropolis_hasting_axisym(gal,i,gal->comp_model[i]);
+				// Non axisymmetric case
+				} else {
+					mcmc_metropolis_hasting(gal,i,gal->comp_model[i]);
+				}
 			}
 		}
 	}
 	
 	for(i=0; i<AllVars.MaxCompNumber; i++) {
 		if((gal->comp_hydro_eq[i]==1)&&(gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)) {
-			if(set_hydro_equilibrium(gal,i,gal->comp_hydro_eq_niter[i]) != 0) {
-				fprintf(stderr,"[Error] Unable to compute azimuthal profile to reach hydro equilibrium\n");
-				exit(0);
+			if(gal->comp_flatx[i]==gal->comp_flatx[i]) {
+				if(set_hydro_equilibrium_axisym(gal,i,gal->comp_hydro_eq_niter[i]) != 0) {
+					fprintf(stderr,"[Error] Unable to compute azimuthal profile to reach hydro equilibrium\n");
+					exit(0);
+				}
+			} else {
+				if(set_hydro_equilibrium(gal,i,gal->comp_hydro_eq_niter[i]) != 0) {
+					fprintf(stderr,"[Error] Unable to compute azimuthal profile to reach hydro equilibrium\n");
+					exit(0);
+				}
 			}
 			// Removing the turbulent energy support
 			gal->comp_cs_init[i] 	*= (1.0-gal->comp_turb_frac[i]);
@@ -1306,7 +1319,7 @@ int set_galaxy_coords(galaxy *gal) {
 			if(gal->comp_turb_sigma[i]==0. && gal->comp_turb_frac[i]>0.) {
 				gal->comp_turb_sigma[i] = gal->comp_cs_init[i]*sqrt(gal->comp_turb_frac[i]/(1.0-gal->comp_turb_frac[i]))/unit_velocity;
 			}
-			gal->comp_turb_sigma[i]*unit_velocity;
+			gal->comp_turb_sigma[i] *= unit_velocity;
 		}
 	}
 	// Be nice to the memory
