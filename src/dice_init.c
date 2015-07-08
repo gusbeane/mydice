@@ -95,6 +95,10 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"[Error] Unable to allocate comp_sigma_cut array\n");
 		return -1;
 	}
+	if (!(gal->comp_sigma_cut_in=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_sigma_cut_in array\n");
+		return -1;
+	}
 	if (!(gal->comp_flatz=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
 		fprintf(stderr,"[Error] Unable to allocate comp_flatz array\n");
 		return -1;

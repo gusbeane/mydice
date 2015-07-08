@@ -170,8 +170,8 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 			exit(0);
 	}
 	
-	sigma1 			= 0.05;
-	sigma2 			= 0.05;
+	sigma1 			= gal->comp_sigma_cut[component];
+	sigma2 			= gal->comp_sigma_cut_in[component];
 	smooth_factor1 	= 1-0.5*(1+erf((n-1.0)/(sigma1*sqrt(2))));
 	smooth_factor2 	= 0.5*(1+erf((s-1.0)/(sigma2*sqrt(2))));
 	
