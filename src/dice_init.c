@@ -91,6 +91,14 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"[Error] Unable to allocate comp_cut array\n");
 		return -1;
 	}
+	if (!(gal->comp_sigma_cut=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_sigma_cut array\n");
+		return -1;
+	}
+	if (!(gal->comp_sigma_cut_in=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_sigma_cut_in array\n");
+		return -1;
+	}
 	if (!(gal->comp_flatz=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
 		fprintf(stderr,"[Error] Unable to allocate comp_flatz array\n");
 		return -1;
@@ -1070,7 +1078,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     printf("/////\tComponent informations\n");
     for (j=0; j<AllVars.MaxCompNumber; j++) {
     	if(gal->comp_npart[j]>0) {
-    		printf("/////\t\t- Component %2d -> %9ld particles / m=%.2e Msol / scale=%6.2lf kpc",j+1,gal->comp_npart[j],(gal->comp_cutted_mass[j]*1.0E10)/(gal->comp_npart_pot[j]),gal->comp_scale_length[j]);
+    		printf("/////\t\t- Component %2d -> %9ld particles / m_pot=%.2e Msol / m=%.2e Msol / scale=%6.2lf kpc",j+1,gal->comp_npart[j],(gal->comp_cutted_mass[j]*unit_mass/solarmass)/(gal->comp_npart_pot[j]),(gal->comp_cutted_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]),gal->comp_scale_length[j]);
 			if(gal->comp_type[j]==1 && gal->lambda>=0) printf(" / lambda=%5.3lf -> f_stream=%5.3lf",gal->lambda,gal->comp_streaming_fraction[j]);
 			if(gal->comp_type[j]==0 && gal->comp_hydro_eq[j]==1) printf(" / T_init=%6.2le K / cs=%6.2lf km/s",gal->comp_t_init[j],gal->comp_cs_init[j]/unit_velocity);
 			printf("\n");
