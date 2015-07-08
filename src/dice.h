@@ -136,6 +136,7 @@ typedef struct {
 	double 				*comp_concentration;
 	double 				*comp_scale_height;
 	double 				*comp_cut;
+	double 				*comp_sigma_cut;
 	double 				*comp_flatz;
 	double 				*comp_flatx;
 	double 				*comp_flaty;
