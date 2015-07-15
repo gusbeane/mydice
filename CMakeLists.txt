@@ -103,6 +103,42 @@ set (BIN dice)
 set (LIBRARY_OUTPUT_PATH lib)
 set (EXECUTABLE_OUTPUT_PATH bin)
 
+# ----------------------------------------------------------
+# Install SETUP
+# ----------------------------------------------------------
+
+mark_as_advanced(CMAKE_INSTALL_PREFIX)
+
+IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)  # no -DCMAKE_INSTALL_PREFIX=INSTALL_PATH from the command line
+  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/local" CACHE PATH "" FORCE) # default location /home/${USER}/local
+ENDIF()
+
+MESSAGE( STATUS "CMAKE_INSTALL_PREFIX =" ${CMAKE_INSTALL_PREFIX})
+
+# Set the default installation directories
+set (LIB_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/lib)
+set (INCLUDE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/include)
+set (BIN_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/bin)
+
+# use, i.e. don't skip the full RPATH for the build tree
+SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+# when building, don't use the install RPATH already
+# (but later on when installing)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+# the RPATH to be used when installing, but only if it's not a system directory
+LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+IF("${isSystemDir}" STREQUAL "-1")
+   SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+ENDIF("${isSystemDir}" STREQUAL "-1")
+
+if (OSX)
+set(CMAKE_MACOSX_RPATH ON) 
+endif()
+# ----------------------------------------------------------
+#
 # Set the C files for the library
 FILE(GLOB LIB_C_SRC ${PROJECT_SOURCE_DIR}/src/[a-z]*.c)
 
@@ -130,13 +166,12 @@ else()
 	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 m)
 endif()
 
-# Set the default installation directories
-set (LIB_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/lib)
-set (INCLUDE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/include)
-set (BIN_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/bin)
 
-# Set the install targets
-set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/local" CACHE PATH "" FORCE)
+#install (PROGRAMS ${PROJECT_BINARY_DIR}/bin/${BIN} DESTINATION bin)
+get_filename_component(exe ${BIN} NAME_WE)
+if (OSX)
+  set_target_properties(${exe} PROPERTIES INSTALL_RPATH "@loader_path/../lib") 
+endif()
+install (TARGETS ${exe} RUNTIME DESTINATION bin)
 
-install (PROGRAMS ${PROJECT_BINARY_DIR}/bin/${BIN} DESTINATION bin)
 install (FILES ${PROJECT_BINARY_DIR}/lib/lib${LIB}.${LIBEXT} DESTINATION lib)
