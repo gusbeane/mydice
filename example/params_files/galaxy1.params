@@ -32,18 +32,7 @@ boxsize_zoom2	 	5.0
 dens_gauss_sigma        0.50
 # Physical scale of the gaussian field fluctuations [kpc]
 dens_gauss_scale        0.25
-# Position of the galactic center on XYZ-axis [kpc]
-xc			0.
-yc			0.
-zc			0.
-# XYZ-axis velocity component of the galaxy [km/s] 
-vel_xc			0.
-vel_yc			0.
-vel_zc			0.
-# Spin angle of the disk in the XY plane [degree]
-spin			0.
-# Inclination of the disk compare to XY plane [degree]
-incl 			0.
+dens_gauss_seed		1212
 # Seed for the random number generator
 seed			1246
 # Switch to MCMC ntry algorithm to position particles for a value > 1
@@ -65,7 +54,7 @@ mass_frac1		0.95
 # Number of particles for the component 1
 npart1			1000000
 # Number of particles for the potential computation
-npart_pot1              3000000
+npart_pot1              2000000
 # Component 1 density model
 # Available models:
 # 1  = Exponential disk + sech-z profile
@@ -108,13 +97,15 @@ radius_nfw1		1.0
 part_mass1		0.0
 # Cut the density function in the Jeans equation integration
 jeans_mass_cut1		0
+# Compute component velocity (debug option)
+compute_vel1		1
 
 ################################
 # Component 2: Thin stellar disk
 ################################
 mass_frac2		0.02
 npart2			500000
-npart_pot2              4000000
+npart_pot2              1000000
 model2			2
 # If the value is zero and the particle type is not 1 the size is determined using the spin conservation
 # and the spin fraction initially present in the disk j_d 
@@ -137,8 +128,9 @@ epicycle2		1
 disp_ext2            	1.0
 # Minimal value for the Toomre parameter
 Q_lim2			1.25
-# Mean age of the stars [Myr]
-mean_age2               100.
+# Past constant Star Formation Rate [Msol/yr]
+# Negative value recomptes the SFR according to Bouché et al. 2010
+SFR2               	-1.
 # Minimum age of the stars [Myr]
 min_age2                0.
 # Metallicity of the stars [Zsolar]
@@ -146,42 +138,46 @@ metal2                  0.01
 # Gaussian fluctuations in the density field
 dens_gauss2		0
 jeans_mass_cut2		1
+compute_vel2		1
 
 ###########################
 # Component 3: Gaseous disk
 ###########################
 mass_frac3		0.01
 npart3			3000000
-npart_pot3              3000000
+npart_pot3              6000000
 model3			1
 scale_length3		0.
 cut3			9.0
-flatz3			0.15
+flatz3			0.25
 mcmc_step3		0.15
 vmax3			10.5
 type3			0
 streaming_fraction3	1.00
 metal3                  0.01
+# Metallicity follows density gradient
+metal_gradient3		1
 # Temperature of the gas particles [K]
 t_init3                 1e5
 # Turbulent velocity dispersion [km/s]
 turb_sigma3		0.0
 # Turbulence smoothing scale [kpc]
 turb_scale3		1.0
-# Compute vertical hydrostatic equilibrium for gas components
-hydro_eq3 		1
-# Number of iterations to reach hydrostatic equilibrium
+# Seed for the turbulent gaussian field
+turb_seed3		1234
+# Number of iterations to reach hydrostatic equilibrium (zero to deactivate)
 hydro_eq_niter3 	6
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm
 # within the hydro equilibrium algorithm
 mcmc_step_hydro3	0.3
+compute_vel3		1
 
 ############################
 # Component 4: Stellar bulge
 ############################
 mass_frac4		0.005
 npart4			50000
-npart_pot4              1000000
+npart_pot4              100000
 model4			10
 scale_length4		2.0
 cut4			4.0
@@ -190,19 +186,19 @@ mcmc_step4		0.3
 vmax4			4.0
 type4			3
 streaming_fraction4	0.5
-mean_age4               1000.
 min_age4                50.
 metal4                  0.001
 # Structural parameter specific to the Einasto density profile
 alpha5			0.80
 Q_lim4			1.5
+compute_vel4		1
 
 ###############################
 # Component 5: Stellar spheroid
 ###############################
 mass_frac5		0.010
 npart5			500000
-npart_pot5              10000000
+npart_pot5              1000000
 model5			4
 scale_length5		4.0
 cut5			12.0
@@ -211,7 +207,7 @@ mcmc_step5		0.3
 vmax5			2.0
 type5			2
 streaming_fraction5	0.50
-mean_age5               1000.
 min_age5                50.
 metal5                  0.001
 Q_lim5			1.5
+compute_vel5		1

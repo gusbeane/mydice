@@ -34,7 +34,7 @@
 /
 /		http://www.gnu.org/copyleft/gpl.html .
 /
-/ Date: October 2014
+/ Date: September 2015
 /
 *///---------------------------------------------------------------------------
 
@@ -64,6 +64,7 @@ int set_galaxy_potential(galaxy *gal, double ***potential, double dx, int ngrid[
 	
 	if (verbose) printf("/////\tComputing potential [%d FFT threads][dx=%.1lf pc][box=%.1lf kpc]\n",AllVars.Nthreads,dx*1e3,dx*ngrid[0]);
 	fflush(stdout);
+
 	// Setup fftw threads
 	#if USE_THREADS == 1
 		fflush(stdout);
@@ -262,14 +263,19 @@ int set_galaxy_potential(galaxy *gal, double ***potential, double dx, int ngrid[
 	// Free fftw plan.
 	// Kill the storage arrays since they are no longer needed.
 	fftw_free(green);
+	green = NULL;
 	fftw_free(rho);
+	rho = NULL;
 	for (i = 0; i < ngrid_padded[1]; ++i) {
 	        for (j = 0; j < ngrid_padded[2]; ++j) {
 			free(green_grid[i][j]);
+			green_grid[i][j] = NULL;
 		}
 		free(green_grid[i]);
+		green_grid[i] = NULL;
 	}
 	free(green_grid);
+	green_grid = NULL;
 	
 	#if USE_THREADS == 1
 		fftw_cleanup_threads();
@@ -286,7 +292,7 @@ int set_galaxy_potential(galaxy *gal, double ***potential, double dx, int ngrid[
 //
 // If the point lies off of the particle mesh, it approximates the potential
 // as a function of 1/r.
-double galaxy_potential_func(galaxy *gal, double ***potential, double dx, int ngrid[3], double x, double y, double z, int interp) {
+double galaxy_potential_func(galaxy *gal, double ***potential, double dx, int ngrid[3], double x, double y, double z, int extrapol) {
 	
 	int node_x, node_y, node_z, offset;
 	double pot1, pot2, pot3, pot4, pot5, pot6, pot7, pot8;
@@ -315,7 +321,7 @@ double galaxy_potential_func(galaxy *gal, double ***potential, double dx, int ng
 	// Consider points off the grid or continue
 	// The real information lies in the original grid size
 	// between 0 and Ng/2 for all the dimensions!
-	if (r_p > r_max && interp==1) {
+	if (r_p > r_max && extrapol==1) {
 		
 		theta = atan2(y,x);
 		phi = acos(z/r_p);

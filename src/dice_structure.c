@@ -34,7 +34,7 @@
  /
  /		http://www.gnu.org/copyleft/gpl.html .
  /
- / Date: October 2014
+/ Date: September 2015
  /
  *///---------------------------------------------------------------------------
 
@@ -183,6 +183,10 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 			if(density<0.) density = 0.0;
 		}
 	}
+	if(gal->comp_excavate[component]>0) {
+		density -= density_functions_pool(gal,r,theta,z,1,gal->comp_model[gal->comp_excavate[component]-1],gal->comp_excavate[component]-1);
+		if(density<0.) density = 0.;
+	}
 	// Cutting the density
     if(cut==1) 										density *= smooth_factor1;
 	if(cut==1 && gal->comp_cut_in[component]>0.) 	density *= smooth_factor2;
@@ -237,7 +241,7 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 	unsigned long int i,j,start_part,npart;
 	double pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, proposal, prop_r, prop_theta, prop_x, prop_y, prop_z, step_r, step_x, step_y, step_z, new_step_x, new_step_y, new_step_z;
-	double acceptance, ratio, rho_ref;
+	double acceptance, ratio, mean_metal;
 	
 	if(gal->comp_npart[component]>0) {
 		// Use the Metropolis algorithm to place the disk particles.
@@ -256,9 +260,9 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 		gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
 		gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
 		gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
-		rho_ref 			= density_functions_pool(gal,gal->r_cyl[i],gal->theta_cyl[i],gal->z[i],1,density_model,component);
 
 		acceptance 			= 0.;
+		mean_metal			= 0.;
 		// Burning period
         for (j = 1; j<(int)(0.1*gal->comp_npart_pot[component]); ++j) {
 			// Generating a proposal
@@ -327,6 +331,11 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
 				gal->z[i] 			= gal->z[i-1];
             	gal->rho[i]			= pi_x;
 			}
+			// Temporary assign metallicity to local density value
+            if(gal->comp_metal_gradient[component]) {
+            	gal->metal[i] = gal->rho[i];
+            	mean_metal = mean_metal+gal->metal[i];
+            }
 			// Updating the coordinate values
 			gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
 			gal->y[i] = gal->r_cyl[i]*sin(gal->theta_cyl[i]);
@@ -335,6 +344,13 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
             gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
             gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
             gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+		}
+		// Rescale metallicity to user specified mean value
+		if(gal->comp_metal_gradient[component]) {
+			mean_metal = mean_metal/gal->comp_npart_pot[component];
+			for (i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++i) {
+				gal->metal[i] = gal->metal[i]*gal->comp_metal[component]/mean_metal;
+			}
 		}
 		acceptance /= gal->comp_npart_pot[component];
 		printf("[acceptance=%.2lf]\n",acceptance);
@@ -349,7 +365,7 @@ void mcmc_metropolis_hasting_axisym(galaxy *gal, int component, int density_mode
 	unsigned long int i,j,start_part,npart;
 	double pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, proposal, prop_r, prop_theta, prop_z, step_r, step_z, new_step_r, new_step_z;
-	double acceptance;
+	double acceptance, mean_metal;
 	
 	if(gal->comp_npart[component]>0) {
 		// Use the Metropolis algorithm to place the disk particles.
@@ -368,6 +384,7 @@ void mcmc_metropolis_hasting_axisym(galaxy *gal, int component, int density_mode
 		gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
 
 		acceptance 			= 0.;
+		mean_metal			= 0.;
 		// Burning period
         for (j = 1; j<(int)(0.1*gal->comp_npart_pot[component]); ++j) {
 			// Generating a proposal
@@ -425,6 +442,11 @@ void mcmc_metropolis_hasting_axisym(galaxy *gal, int component, int density_mode
 				gal->z[i] 			= gal->z[i-1];
             	gal->rho[i]			= pi_x/fabs(gal->r_cyl[i]);
 			}
+			// Temporary assign metallicity to local density value
+            if(gal->comp_metal_gradient[component]) {
+            	gal->metal[i] = gal->rho[i];
+            	mean_metal = mean_metal+gal->metal[i];
+            }
 			// Updating the coordinate values
 			gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
 			gal->y[i] = gal->r_cyl[i]*sin(gal->theta_cyl[i]);
@@ -433,6 +455,13 @@ void mcmc_metropolis_hasting_axisym(galaxy *gal, int component, int density_mode
             gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
             gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
             gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+		}
+		// Rescale metallicity to user specified mean value
+		if(gal->comp_metal_gradient[component]) {
+			mean_metal = mean_metal/gal->comp_npart_pot[component];
+			for (i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++i) {
+				gal->metal[i] = gal->metal[i]*gal->comp_metal[component]/mean_metal;
+			}
 		}
 		acceptance /= gal->comp_npart_pot[component];
 		printf("[acceptance=%.2lf]\n",acceptance);
@@ -448,7 +477,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 	int selected;
 	double prob, *radius;
 	double theta, phi, randval, step_r, step_x, step_y, step_z, new_step_x, new_step_y, new_step_z;
-	double acceptance, norm, ratio, rho_ref;
+	double acceptance, norm, ratio, rho_ref, mean_metal;
 	double *prop_x, *prop_y, *prop_z, *prop_r, *prop_theta, *pi_x, *pi_y, *q_x, *q_y, *w, *w_x, *w_y;
 	double *ref_x, *ref_y, *ref_z, *ref_r, *ref_theta, *lambda_x, *lambda_y;
 	
@@ -549,8 +578,8 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 		gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
 		rho_ref 			= density_functions_pool(gal,gal->r_cyl[i],gal->theta_cyl[i],gal->z[i],1,density_model,component);
 
-
 		acceptance 			= 0.;
+		mean_metal			= 0.;
 		// Burning period
         for (j = 1; j<(int)(0.1*gal->comp_npart_pot[component]); ++j) {
 			// Generating a proposal
@@ -616,10 +645,10 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 			}
 
 			//ratio = pow(log10(rho_ref)/log10(density_functions_pool(gal,prop_r[selected],prop_theta[selected],prop_z[selected],1,density_model,component)),1.0);
-			ratio = 1.0;
-			new_step_x = step_x*ratio;
-			new_step_y = step_y*ratio;
-			new_step_z = step_z*ratio;
+			ratio 		= 1.0;
+			new_step_x 	= step_x*ratio;
+			new_step_y 	= step_y*ratio;
+			new_step_z 	= step_z*ratio;
 			// Produce a reference set
 			for (k=0; k<gal->mcmc_ntry; k++) {
 				if(k == gal->mcmc_ntry-1) {
@@ -661,6 +690,11 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 				gal->z[i] 			= gal->z[i-1];
             	gal->rho[i]			= pi_x[gal->mcmc_ntry-1];
 			}
+			// Temporary assign metallicity to local density value
+            if(gal->comp_metal_gradient[component]) {
+            	gal->metal[i] = gal->rho[i];
+            	mean_metal = mean_metal+gal->metal[i];
+            }
 			// Updating the coordinate values
 			gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
 			gal->y[i] = gal->r_cyl[i]*sin(gal->theta_cyl[i]);
@@ -669,6 +703,13 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
             gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
             gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
             gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+		}
+		// Rescale metallicity to user specified mean value
+		if(gal->comp_metal_gradient[component]) {
+			mean_metal = mean_metal/gal->comp_npart_pot[component];
+			for (i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++i) {
+				gal->metal[i] = gal->metal[i]*gal->comp_metal[component]/mean_metal;
+			}
 		}
 		acceptance /= gal->comp_npart_pot[component];
 		printf("[acceptance=%.2lf]\n",acceptance);
@@ -689,7 +730,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, x, y, z, step, previous_step, prop_r, prop_theta, prop_x, prop_y, prop_z, acceptance;
 	double step_r, step_x, step_y, step_z, prev_step_x, prev_step_y, prev_step_z;
-    double cut_dens,theta_max_dens;
+    double cut_dens,theta_max_dens,smooth_factor,mean_metal;
     double xtemp,ytemp,rtemp;
     
 	printf("/////\tTargeting gas azimuthal hydrostatic equilibrium\n");
@@ -700,10 +741,10 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	density_model = gal->comp_model[component];
 	// Looking for gas particles
 	if(gal->comp_type[component]==0 && gal->comp_npart_pot[component]>0) {
-		printf("/////\t\t- Component %d -> recomputing gas particles position\n",component+1);
+		printf("/////\t\t- Component %2d -> recomputing gas particles position\n",component+1);
 		// Starting equilibrium iterations
 		for(j = 0; j < n_iter; ++j) {
-			printf("/////\t\t\tIteration %d -> evaluating potential [%d threads]",j+1,AllVars.Nthreads);
+			printf("/////\t\t\tIteration %2d/%2d -> evaluating potential [%d threads]",j+1,n_iter,AllVars.Nthreads);
 			fflush(stdout);
 			// Now that we've got gas particles positions, we can compute the full potential.
 			if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,0,0.) != 0) {
@@ -757,6 +798,7 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 			gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
 
 			acceptance 			= 0.;
+			mean_metal			= 0.;
 			// Burning period
 			for (k = 1; k<(int)(0.1*gal->comp_npart_pot[component]); ++k) {
 				prev_step_z = step_z;
@@ -816,7 +858,10 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				q_y *= gsl_ran_gaussian_pdf(-gal->y[i-1]+prop_y,prev_step_y);
 				q_y *= gsl_ran_gaussian_pdf(-gal->z[i-1]+prop_z,prev_step_z);
 				// Security to prevent the MCMC chain to go to far away in the Z direction
-				if((fabs(prop_z)>gal->comp_scale_height[component])) pi_y = 0.;
+				if(j==n_iter-1) {
+					smooth_factor = 1-0.5*(1+erf((fabs(prop_z)/(gal->comp_cut[component]*gal->comp_flatz_cut[component])-1.0)/(gal->comp_sigma_cut[component]*sqrt(2))));
+					pi_y *= smooth_factor;
+				}
 				prob = min(1.0,(pi_y/pi_x)*(q_x/q_y));
 				randval = gsl_rng_uniform_pos(r[0]);
 				// Proposal accepted
@@ -833,6 +878,11 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 					gal->z[i] 			= gal->z[i-1];
 					gal->rho[i]			= gal->rho[i-1];
 				}
+				// Temporary assign metallicity to local density value
+            	if(gal->comp_metal_gradient[component]) {
+            		gal->metal[i] = gal->rho[i];
+            		mean_metal = mean_metal+gal->metal[i];
+            	}
 				// Updating the coordinate values
 				gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
 				gal->y[i] = gal->r_cyl[i]*sin(gal->theta_cyl[i]);
@@ -841,6 +891,13 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 				gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
 				gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
 				gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+			}
+			// Rescale metallicity to user specified mean value
+			if(gal->comp_metal_gradient[component]) {
+				mean_metal = mean_metal/gal->comp_npart_pot[component];
+				for (i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++i) {
+					gal->metal[i] = gal->metal[i]*gal->comp_metal[component]/mean_metal;
+				}
 			}
 			acceptance /= gal->comp_npart_pot[component];
 			printf("[acceptance=%.2lf]\n",acceptance);
@@ -871,7 +928,7 @@ int set_hydro_equilibrium_axisym(galaxy *gal, int component, int n_iter) {
 	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, x, y, z, step, previous_step, prop_r, prop_theta, prop_z, acceptance;
 	double step_r, step_z, prev_step_z;
-    double cut_dens,theta_max_dens;
+    double cut_dens,theta_max_dens,smooth_factor,mean_metal;
     double xtemp,ytemp,rtemp;
     
 	printf("/////\tTargeting gas azimuthal hydrostatic equilibrium\n");
@@ -885,7 +942,7 @@ int set_hydro_equilibrium_axisym(galaxy *gal, int component, int n_iter) {
 		printf("/////\t\t- Component %d -> recomputing gas particles position\n",component+1);
 		// Starting equilibrium iterations
 		for(j = 0; j < n_iter; ++j) {
-			printf("/////\t\t\tIteration %d -> evaluating potential [%d threads]",j+1,AllVars.Nthreads);
+			printf("/////\t\t\tIteration %2d /%2d -> evaluating potential [%d threads]",j+1,n_iter,AllVars.Nthreads);
 			fflush(stdout);
 			// Now that we've got gas particles positions, we can compute the full potential.
 			if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,0,0.) != 0) {
@@ -937,6 +994,7 @@ int set_hydro_equilibrium_axisym(galaxy *gal, int component, int n_iter) {
 			gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
 
 			acceptance 			= 0.;
+			mean_metal			= 0.;
 			// Burning period
 			for (k = 1; k<(int)(0.1*gal->comp_npart_pot[component]); ++k) {
 				prev_step_z = step_z;
@@ -986,7 +1044,10 @@ int set_hydro_equilibrium_axisym(galaxy *gal, int component, int n_iter) {
 				pi_y = fabs(prop_r)*pseudo_density_gas_func(gal,fabs(prop_r),prop_theta,prop_z,1,density_model,component);
 				q_x  = gsl_ran_gaussian_pdf(prop_r-gal->r_cyl[i-1],step_r)*gsl_ran_gaussian_pdf(prop_z-gal->z[i-1],prev_step_z);
 				q_y  = gsl_ran_gaussian_pdf(gal->r_cyl[i-1]-prop_r,step_r)*gsl_ran_gaussian_pdf(gal->z[i-1]-prop_z,step_z);
-				if((j==n_iter-1)&&(fabs(prop_z)>gal->comp_scale_height[component])) pi_y = 0.;
+				if(j==n_iter-1) {
+					smooth_factor = 1-0.5*(1+erf((fabs(prop_z)/(gal->comp_cut[component]*gal->comp_flatz_cut[component])-1.0)/(gal->comp_sigma_cut[component]*sqrt(2))));
+					pi_y *= smooth_factor;
+				}
 				prob = min(1.0,(pi_y/pi_x)*(q_x/q_y));
 				randval = gsl_rng_uniform_pos(r[0]);
 				// Proposal accepted
@@ -1004,6 +1065,11 @@ int set_hydro_equilibrium_axisym(galaxy *gal, int component, int n_iter) {
 					gal->z[i] 			= gal->z[i-1];
 					gal->rho[i]			= pi_x/fabs(gal->r_cyl[i]);
 				}
+				// Temporary assign metallicity to local density value
+            	if(gal->comp_metal_gradient[component]) {
+            		gal->metal[i] = gal->rho[i];
+            		mean_metal = mean_metal+gal->metal[i];
+            	}
 				// Updating the coordinate values
 				gal->x[i] = gal->r_cyl[i]*cos(gal->theta_cyl[i]);
 				gal->y[i] = gal->r_cyl[i]*sin(gal->theta_cyl[i]);
@@ -1012,6 +1078,13 @@ int set_hydro_equilibrium_axisym(galaxy *gal, int component, int n_iter) {
 				gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
 				gal->theta_sph[i]	= atan2(gal->y[i],gal->x[i]);
 				gal->phi_sph[i]		= acos(gal->z[i]/gal->r_sph[i]);
+			}
+			// Rescale metallicity to user specified mean value
+			if(gal->comp_metal_gradient[component]) {
+				mean_metal = mean_metal/gal->comp_npart_pot[component];
+				for (i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++i) {
+					gal->metal[i] = gal->metal[i]*gal->comp_metal[component]/mean_metal;
+				}
 			}
 			acceptance /= gal->comp_npart_pot[component];
 			printf("[acceptance=%.2lf]\n",acceptance);
@@ -1037,7 +1110,7 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
 	double pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, proposal, prop_r, prop_theta, prop_x, prop_y, prop_z;
 	double step_r, step_x, step_y, step_z, prev_step_x, prev_step_y, prev_step_z;
-	double acceptance;
+	double acceptance, mean_metal;
 
 	if(st->comp_npart[component]>0) {
 		// Use the Metropolis algorithm to place the disk particles.
@@ -1058,6 +1131,7 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
 		step_z 				= st->comp_mcmc_step[component]*st->comp_length[component];
 
 		acceptance 			= 0.;
+		mean_metal 			= 0.;
 		// Burning period
         for (j = 1; j<(int)(0.1*st->comp_npart[component]); ++j) {
 			// Generating a proposal
@@ -1120,6 +1194,11 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
 				st->z[i] 			= st->z[i-1];
 				st->rho[i]			= pi_x/fabs(st->r_cyl[i]);
 			}
+			// Temporary assign metallicity to local density value
+            if(st->comp_metal_gradient[component]) {
+            	st->metal[i] = st->rho[i];
+            	mean_metal = mean_metal+st->metal[i];
+            }
 			// Updating the coordinate values
 			st->x[i] = st->r_cyl[i]*cos(st->theta_cyl[i]);
 			st->y[i] = st->r_cyl[i]*sin(st->theta_cyl[i]);
@@ -1128,6 +1207,13 @@ void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model
             st->r_sph[i]		= sqrt(st->x[i]*st->x[i]+st->y[i]*st->y[i]+st->z[i]*st->z[i]);
             st->theta_sph[i]	= atan2(st->y[i],st->x[i]);
             st->phi_sph[i]		= acos(st->z[i]/st->r_sph[i]);
+		}
+		// Rescale metallicity to user specified mean value
+		if(st->comp_metal_gradient[component]) {
+			mean_metal = mean_metal/st->comp_npart[component];
+			for (i = st->comp_start_part[component]+1; i<st->comp_start_part[component]+st->comp_npart[component]; ++i) {
+				st->metal[i] = st->metal[i]*st->comp_metal[component]/mean_metal;
+			}
 		}
 		acceptance /= st->comp_npart[component];
 		printf("[acceptance=%.2lf]\n",acceptance);
@@ -1217,6 +1303,7 @@ double cumulative_mass_func(galaxy *gal, double radius, int component) {
 	gal->selected_comp[tid] = component; 
 	
 	gsl_integration_qng(&F,0.0,radius,epsabs,epsrel,&integral,&error,&neval);
+	//gsl_integration_qag(&F,0.0,radius,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w[0],&integral,&error);
 	
 	result = integral;
 
@@ -1247,6 +1334,8 @@ static double d_cumulative_mass_func1(double r, void *params) {
 	gal->storage[6][tid] = r;
 	
 	gsl_integration_qng(&F,0.0,2.0*pi,epsabs,epsrel,&integrand,&error,&neval);
+	//gsl_integration_qag(&F,0.0,2.0*pi,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w[0],&integrand,&error);
+
 
 	return integrand;
 }
@@ -1383,6 +1472,7 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
 	
 	int tid;
 	double density, delta_pot, rho_0, save1, save2;
+	double sigma1, sigma2, smooth_factor1, smooth_factor2, hx, hy, n;
 
 	#if USE_THREADS == 1
 		tid = omp_get_thread_num();
@@ -1399,14 +1489,22 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
 	delta_pot 						= galaxyz_potential_wrapper_func(z,gal)-galaxyz_potential_wrapper_func(0.,gal);
 	// Density in the xy-plane in 1e10 solar mass / kpc^3
 	rho_0 							= get_midplane_density(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
+    hx								= gal->comp_scale_length[component]*gal->comp_flatx[component];
+    hy								= gal->comp_scale_length[component]*gal->comp_flaty[component];
+	n 								= sqrt(pow(gal->x[gal->index[tid]]/hx,2.0)+pow(gal->y[gal->index[tid]]/hy,2.0));
 	gal->x[gal->index[tid]] 		= save1;
 	gal->y[gal->index[tid]] 		= save2;
 
 	// Hydrostatic equilibrium requires following density
 	density 						= rho_0*exp(-delta_pot/(pow(gal->comp_cs_init[component],2.0)));
 	
-	if(cut && r>gal->comp_cut[component]) 		density = 0.;
-	if(cut && r<gal->comp_cut_in[component]) 	density = 0.;
+	sigma1 			= gal->comp_sigma_cut[component];
+	sigma2 			= gal->comp_sigma_cut_in[component];
+	smooth_factor1 	= 1-0.5*(1+erf((n-1.0)/(sigma1*sqrt(2))));
+	smooth_factor2 	= 0.5*(1+erf((n-1.0)/(sigma2*sqrt(2))));
+	
+	if(cut && r>gal->comp_cut[component]) 		density *= smooth_factor1;
+	if(cut && r<gal->comp_cut_in[component]) 	density *= smooth_factor2;
 	
 	// Return a pseudo density 
 	return density;

@@ -3,8 +3,8 @@ cmake_minimum_required (VERSION 2.6)
 project (DICE)
 
 # Set the version number
-set (DICE_VERSION_MAJOR 3)
-set (DICE_VERSION_MINOR 8)
+set (DICE_VERSION_MAJOR 4)
+set (DICE_VERSION_MINOR 0)
 set (DICE_VERSION "${DICE_VERSION_MAJOR}.${DICE_VERSION_MINOR}")
 
 # Say hello
@@ -29,7 +29,7 @@ MESSAGE( STATUS "PROJECT_BINARY_DIR = " ${PROJECT_BINARY_DIR} )
 MESSAGE( STATUS "PROJECT_SOURCE_DIR = " ${PROJECT_SOURCE_DIR} )
 
 MESSAGE( STATUS "CMAKE_BUILD_TYPE = " ${CMAKE_BUILD_TYPE} )
-MESSAGE( STATUS "CMAKE_CXX_FLAGS  = " ${CMAKE_CXX_FLAGS} )
+MESSAGE( STATUS "CMAKE_C_FLAGS  = " ${CMAKE_C_FLAGS} )
 MESSAGE( STATUS "LIBRARY TYPE     = " ${LIBTYPE} )
  
 MESSAGE( STATUS "core OPT     = " ${OPT} )
@@ -161,7 +161,7 @@ add_executable(${BIN} src/dice.c)
 
 # Link libraries
 if(${ENABLE_THREADS} MATCHES "ON")
-	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 fftw3_omp m )
+	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 fftw3_threads m )
 else()
 	target_link_libraries(${BIN} ${LIB} gsl gslcblas fftw3 m)
 endif()

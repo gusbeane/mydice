@@ -10,14 +10,14 @@ j_d		 	0.04
 # Halo spin parameter
 lambda		 	0.04
 # Refinement level of the potential grid 
-level_grid		8
+level_grid		7
 # Refinement level of the zoomed potential grid 
 level_grid_zoom1	10
 level_grid_zoom2	0
 # Refinement level of the plane plane density grid 
 level_grid_dens		7
 # Refinement level of the turbulence grid 
-level_grid_turb		8
+level_grid_turb		7
 # Refinement level of the gaussian field grid
 level_grid_dens_gauss
 # Size of the potential grid [kpc]
@@ -29,18 +29,6 @@ boxsize_zoom2	 	5.0
 dens_gauss_sigma 	0.35
 # Physical scale of the gaussian field fluctuations [kpc]
 dens_gauss_scale 	1.00
-# Position of the galactic center on XYZ-axis [kpc]
-xc			0.
-yc			0.
-zc			0.
-# XYZ-axis velocity component of the galaxy [km/s] 
-vel_xc			0.
-vel_yc			0.
-vel_zc			0.
-# Spin angle of the disk in the XY plane [degree]
-spin			45.
-# Inclination of the disk compare to XY plane [degree]
-incl 			45.
 # Seed for the random number generator
 seed			12468
 # Switch to MCMC ntry algorithm to position particles for a value > 1
@@ -62,7 +50,7 @@ mass_frac1		0.95
 # Number of particles for the component 1
 npart1			500000
 # Number of particles for the potential computation
-npart_pot1              2000000
+npart_pot1              1000000
 # Component 1 density model
 # Available models:
 # 1  = Exponential disk + sech-z profile
@@ -103,13 +91,15 @@ streaming_fraction1	0.00
 radius_nfw1		1.0
 # Cut the density function in the Jeans equation integration
 jeans_mass_cut1		0
+# Compute component velocity (debug option)
+compute_vel1		1
 
 ################################
 # Component 2: Thin stellar disk
 ################################
 mass_frac2		0.02
 npart2			250000
-npart_pot2              1000000
+npart_pot2              500000
 model2			2
 # If the value is zero and the particle type is not 1 the size is determined using the spin conservation
 # and the spin fraction initially present in the disk j_d 
@@ -121,7 +111,7 @@ mcmc_step2		0.3
 vmax2			2.0
 type2			2
 # Epicycle approximation in the Jeans equations
-epicycle		1
+epicycle2		1
 streaming_fraction2	1.00
 # Dispersion extinction coefficient. Values need to be in the interval [0,1].
 # For example, setting DispExtCoeff to 0.90 means that the azimuthal dispersion is equal to 90 percent
@@ -132,8 +122,9 @@ streaming_fraction2	1.00
 disp_ext2            	1.0
 # Minimal value for the Toomre parameter
 Q_lim2			1.25
-# Mean age of the stars [Myr]
-mean_age2               100.
+# Past constant Star Formation Rate [Msol/yr]
+# Negative value recomptes the SFR according to Bouché et al. 2010
+SFR2               	-1.
 # Minimum age of the stars [Myr]
 min_age2                0.
 # Metallicity of the stars [Zsolar]
@@ -141,13 +132,14 @@ metal2                  0.01
 # Gaussian fluctuations in the density field
 dens_gauss2             0
 jeans_mass_cut2		1
+compute_vel2		1
 
 ###########################
 # Component 3: Gaseous disk
 ###########################
 mass_frac3		0.01
-npart3			1500000
-npart_pot3              1500000
+npart3			150000
+npart_pot3              300000
 model3			1
 scale_length3		0.
 cut3			4.5
@@ -160,16 +152,15 @@ metal3                  0.01
 # Temperature of the gas particles [K]
 t_init3                 1e5
 # Turbulent velocity dispersion [km/s]
-turb_sigma3		10.0
+turb_sigma3		0.0
 # Turbulence smoothing scale [kpc]
 turb_scale3		1.0
-# Compute vertical hydrostatic equilibrium for gas components
-hydro_eq3 		1
-# Number of iterations to reach hydrostatic equilibrium
+# Number of iterations to reach hydrostatic equilibrium (zero to deactivate)
 hydro_eq_niter3 	6
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm
 # within the hydro equilibrium algorithm
 mcmc_step_hydro3	0.3
+compute_vel3		1
 
 
 ############################
@@ -177,7 +168,7 @@ mcmc_step_hydro3	0.3
 ############################
 mass_frac4		0.005
 npart4			25000
-npart_pot4              100000
+npart_pot4              50000
 model4			10
 scale_length4		1.0
 cut4			2.0
@@ -186,19 +177,19 @@ mcmc_step4		0.3
 vmax4			4.0
 type4			3
 streaming_fraction4	0.5
-mean_age4               1000.
 min_age4                50.
 metal4                  0.001
 # Structural parameter specific to the Einasto density profile
 alpha5			0.80
 Q_lim4			1.5
+compute_vel4		1
 
 ###############################
 # Component 5: Stellar spheroid
 ###############################
 mass_frac5		0.010
 npart5			250000
-npart_pot5              1000000
+npart_pot5              500000
 model5			4
 scale_length5		2.0
 cut5			6.0
@@ -207,7 +198,7 @@ mcmc_step5		0.3
 vmax5			2.0
 type5			2
 streaming_fraction5	0.50
-mean_age5               1000.
 min_age5                50.
 metal5                  0.001
 Q_lim5			1.5
+compute_vel5		1
