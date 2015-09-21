@@ -34,7 +34,7 @@
 /
 /		http://www.gnu.org/copyleft/gpl.html .
 /
-/ Date: October 2014
+/ Date: September 2015
 /
 *///---------------------------------------------------------------------------
 
@@ -110,7 +110,7 @@ double deriv_forward(galaxy *gal, double x, double h, function_to_derivate F){
 // In-Cell mass assignment with vacuum (isolated) boundary conditions on a
 // Cartesian grid. The method was adapted from the discussion found in Hockney
 // and Eastwood, "Computer Simulation Using Particles," 1981.
-int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
+int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
 	unsigned long int ii, start, end, l;
 	// Loop variables
 	int i, j, k;
@@ -141,6 +141,11 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 		fftw_plan_with_nthreads(AllVars.Nthreads);
 		fflush(stdout);
 	#endif
+	
+
+	gsl_rng *rng;
+	rng = gsl_rng_alloc(T);
+	gsl_rng_set(rng,seed);
 	
 	// Allocate grid storage variables
 	if (!(kernel = calloc(ngrid_padded[0]*ngrid_padded[1]*ngrid_padded[2],sizeof(fftw_complex)))) {
@@ -198,7 +203,7 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 	for (i = 0; i < ngrid_padded[0]; ++i) {
 		for (j = 0; j < ngrid_padded[1]; ++j) {
 			for (k = 0; k < ngrid_padded[2]; ++k) {
-				gal->gaussian_field[i][j][k] = gsl_ran_gaussian(r[0],1.0);
+				gal->gaussian_field[i][j][k] = gsl_ran_gaussian(rng,1.0);
 			}
 		}
 	}
@@ -317,7 +322,7 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale) {
 // In-Cell mass assignment with vacuum (isolated) boundary conditions on a
 // Cartesian grid. The method was adapted from the discussion found in Hockney
 // and Eastwood, "Computer Simulation Using Particles," 1981.
-int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
+int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
 	unsigned long int ii, start, end, l;
 	// Loop variables
 	int i, j, k;
@@ -347,6 +352,10 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 		fftw_plan_with_nthreads(AllVars.Nthreads);
 		fflush(stdout);
 	#endif
+	
+	gsl_rng *rng;
+	rng = gsl_rng_alloc(T);
+	gsl_rng_set(rng,seed);
 	
 	// Allocate grid storage variables
 	if (!(kernel = calloc(ngrid_padded[0]*ngrid_padded[1]*ngrid_padded[2],sizeof(fftw_complex)))) {
@@ -408,7 +417,7 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale) {
 	for (i = 0; i < ngrid_padded[0]; ++i) {
 		for (j = 0; j < ngrid_padded[1]; ++j) {
 			for (k = 0; k < ngrid_padded[2]; ++k) {
-				st->gaussian_field[i][j][k] = gsl_ran_gaussian(r[0],1.0);
+				st->gaussian_field[i][j][k] = gsl_ran_gaussian(rng,1.0);
 			}
 		}
 	}

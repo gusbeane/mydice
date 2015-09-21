@@ -34,7 +34,7 @@
  /
  /		http://www.gnu.org/copyleft/gpl.html .
  /
- / Date: October 2014
+/ Date: September 2015
  /
  *///---------------------------------------------------------------------------
 
@@ -58,7 +58,8 @@ int parse_config_file(char *fname) {
     
 	FILE *fd;
 	int i,j;
-	char buf[200], buf1[200], buf2[200], junk[200];
+	char buf[200],junk[200];
+	char buf1[200],buf2[200],buf3[200],buf4[200],buf5[200],buf6[200],buf7[200],buf8[200],buf9[200],buf10[200];
 	int nt;
 	int id[MAXTAGS];
 	int read[MAXTAGS];
@@ -66,6 +67,7 @@ int parse_config_file(char *fname) {
 	void *addr[MAXTAGS];
 	char tag[MAXTAGS][50];
 	int  errorFlag = 0;
+	double xtemp,ytemp,ztemp,vxtemp,vytemp,vztemp,spintemp,incltemp;
 	
 	// By default, we will use the computation of Keplerian orbits
 	// If one parameter is missing to compute this trajectory,
@@ -92,16 +94,32 @@ int parse_config_file(char *fname) {
 		fprintf(stderr,"\nType `double' is not 64 bit on this platform. Stopping.\n\n");
 		return -1;
 	}
+	for(i=0;i<MAX_GAL;i++) {
+		AllVars.GalSpin[i] = 0.;
+		AllVars.GalIncl[i] = 0.;
+		for(j=0;i<3;i++) {
+			AllVars.GalPos[i][j] = 0.;
+			AllVars.GalVel[i][j] = 0.;
+		}	
+	}
     
 	if((fd = fopen(fname,"r"))) {
 		j = 0;
 		while(!feof(fd)) {
 			*buf = 0;
 			fgets(buf, 200, fd);
-			if(sscanf(buf, "%s%s", buf1, buf2) < 2) continue;
-			if(buf1[0] == '%') continue;
+			if(sscanf(buf, "%s%s%s%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7,buf8,buf9,buf10) < 2) continue;
+			if(buf1[0] == '%' || buf1[0] == '#') continue;
 			if(strcmp(buf1,"Galaxy") == 0) {
 				strcpy(AllVars.GalaxyFiles[j],buf2);
+				AllVars.GalPos[j][0] 	= atof(buf3);
+				AllVars.GalPos[j][1] 	= atof(buf4);
+				AllVars.GalPos[j][2] 	= atof(buf5);
+				AllVars.GalVel[j][0] 	= atof(buf6);
+				AllVars.GalVel[j][1] 	= atof(buf7);
+				AllVars.GalVel[j][2] 	= atof(buf8);
+				AllVars.GalSpin[j] 		= atof(buf9);	
+				AllVars.GalIncl[j] 		= atof(buf10);
 				j++;
 			}
 		}
@@ -117,16 +135,43 @@ int parse_config_file(char *fname) {
 		while(!feof(fd)) {
 			*buf = 0;
 			fgets(buf, 200, fd);
-			if(sscanf(buf, "%s%s", buf1, buf2) < 2) continue;
-			if(buf1[0] == '%') continue;
+			if(sscanf(buf, "%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7) < 2) continue;
+			if(buf1[0] == '%' || buf1[0] == '#') continue;
 			if(strcmp(buf1,"Stream") == 0) {
 				strcpy(AllVars.StreamFiles[j],buf2);
+				AllVars.StreamPos[j][0] 	= atof(buf3);
+				AllVars.StreamPos[j][1] 	= atof(buf4);
+				AllVars.StreamPos[j][2] 	= atof(buf5);
+				AllVars.StreamSpin[j] 		= atof(buf6);	
+				AllVars.StreamIncl[j] 		= atof(buf7);
 				j++;
 			}
 		}
 		fclose(fd);
 	}
 	AllVars.Nstream = j;
+
+	if((fd = fopen(fname,"r"))) {
+		j = 0;
+		while(!feof(fd)) {
+			*buf = 0;
+			fgets(buf, 200, fd);
+			if(sscanf(buf,"%s%s%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7,buf8,buf9) < 9) continue;
+			if(buf1[0] == '%' || buf1[0] == '#') continue;
+			if(strcmp(buf1,"Kepler") == 0) {
+				AllVars.Kepler_Rinit[j]				= atof(buf2);
+				AllVars.Kepler_Rperi[j]				= atof(buf3);
+				AllVars.Kepler_Ecc[j]				= atof(buf4);
+				AllVars.Kepler_OrbitPlanePhi[j]		= atof(buf5);
+				AllVars.Kepler_OrbitPlaneTheta[j]	= atof(buf6);
+				AllVars.Kepler_Gal1[j]				= atoi(buf7);
+				AllVars.Kepler_Gal2[j]				= atoi(buf8);
+				AllVars.Kepler_GalCenter[j]			= atoi(buf9);
+				j++;
+			}
+		}
+		fclose(fd);
+	}
 	
 	if(AllVars.Ngal+AllVars.Nstream == 0) {
 		fprintf(stderr,"[Error] No galaxy/stream parameters files specified\n");
@@ -134,44 +179,6 @@ int parse_config_file(char *fname) {
 	}
 
 	nt = 0;
-	
-	strcpy(tag[nt], "SetKeplerian");
-	addr[nt] = &AllVars.SetKeplerian;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = INT;
-
-	strcpy(tag[nt], "Eccentricity");
-	addr[nt] = &AllVars.Eccentricity;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "Rinit");
-	addr[nt] = &AllVars.Rinit;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "Rperi");
-	addr[nt] = &AllVars.Rperi;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = DOUBLE;
-    
-	strcpy(tag[nt], "OrbitPlanePhi");
-	AllVars.OrbitPlanePhi = 0.0;
-	addr[nt] = &AllVars.OrbitPlanePhi;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = DOUBLE;
-    
-	strcpy(tag[nt], "OrbitPlaneTheta");
-	AllVars.OrbitPlaneTheta = 0.0;
-	addr[nt] = &AllVars.OrbitPlaneTheta;
-	read[nt] = 0;
-	mandatory[nt] = 0;
-	id[nt++] = DOUBLE;
 	
 	strcpy(tag[nt], "Nthreads");
 	AllVars.Nthreads = 4;
@@ -305,13 +312,16 @@ int parse_config_file(char *fname) {
 	mandatory[nt] = 0;
 	id[nt++] = INT;  
     
-	printf("/////\tReading configuration file [%s]\n",fname);
 	if((fd = fopen(fname, "r"))) {
 		while(!feof(fd)) {
 			*buf = 0;
 			fgets(buf, 200, fd);
 			if(sscanf(buf, "%s%s", buf1, buf2) < 2) continue;
-			if(buf1[0] == '%' || buf1[0] == '#' || strcmp(buf1,"Galaxy") == 0 || strcmp(buf1,"Stream") == 0) continue;
+			if(buf1[0] == '%' || buf1[0] == '#' || strcmp(buf1,"Galaxy") == 0 
+												|| strcmp(buf1,"Stream") == 0 
+												|| strcmp(buf1,"Kepler") == 0
+												|| strcmp(buf1,"Traj") == 0
+												|| strcmp(buf1,"StreamPos") == 0) continue;
 			for(i = 0, j = -1; i < nt; i++)
 				if(strcmp(buf1, tag[i]) == 0) {
 					j = i;
@@ -333,8 +343,7 @@ int parse_config_file(char *fname) {
 				}
 				
 			} else {
-				fprintf(stdout, "[Error] %s -> Keyword '%s' not allowed or multiple defined\n",
-                        fname, buf1);
+				fprintf(stdout, "[Error] %s -> Keyword '%s' not allowed or multiple defined\n",fname,buf1);
 				return -1;
 			}
 		}
@@ -347,7 +356,6 @@ int parse_config_file(char *fname) {
 	for(i = 0; i < nt; i++) {
 		if(read[i] == 0 && mandatory[i] == 1) {
 			fprintf(stderr,"[Error] '%s' not specified\n",tag[i]);
-			AllVars.SetKeplerian = 0;
 			return -1;
 		}
 	}
@@ -365,8 +373,9 @@ int parse_config_file(char *fname) {
 int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
-	#define INT	3
-	#define MAXTAGS	44*AllVars.MaxCompNumber+22
+	#define INT		3
+	#define LONG	4
+	#define MAXTAGS	51*AllVars.MaxCompNumber+15
 	
 	FILE *fd;
 	int i,j,n;
@@ -467,6 +476,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	mandatory[nt] = 0;
 	id[nt++] = INT;
 	
+	strcpy(tag[nt], "level_grid_age");
+	addr[nt] = &gal->level_grid_age;
+	gal->level_grid_age=7;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
 	strcpy(tag[nt], "level_grid_dens_gauss");
 	addr[nt] = &gal->level_grid_dens_gauss;
 	gal->level_grid_dens_gauss=7;
@@ -494,59 +510,11 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	mandatory[nt] = 0;
 	id[nt++] = DOUBLE;
 	
-	strcpy(tag[nt], "xc");
-	addr[nt] = &gal->xc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "yc");
-	addr[nt] = &gal->yc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "zc");
-	addr[nt] = &gal->zc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "vel_xc");
-	addr[nt] = &gal->vel_xc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "vel_yc");
-	addr[nt] = &gal->vel_yc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "vel_zc");
-	addr[nt] = &gal->vel_zc;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "spin");
-	addr[nt] = &gal->spin;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
-	strcpy(tag[nt], "incl");
-	addr[nt] = &gal->incl;
-	read[nt] = 0;
-	mandatory[nt] = 1;
-	id[nt++] = DOUBLE;
-	
 	strcpy(tag[nt], "seed");
 	addr[nt] = &gal->seed;
 	read[nt] = 0;
 	mandatory[nt] = 1;
-	id[nt++] = INT;
+	id[nt++] = LONG;
 	
 	strcpy(tag[nt], "dens_gauss_sigma");
 	addr[nt] = &gal->dens_gauss_sigma;
@@ -561,6 +529,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "dens_gauss_seed");
+	addr[nt] = &gal->dens_gauss_seed;
+	gal->dens_gauss_seed = 111111;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = LONG;
 	
 	strcpy(tag[nt], "softening");
 	addr[nt] = &gal->softening;
@@ -771,10 +746,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
 		
-		n = sprintf(temp_tag,"mean_age%d",j+1);
+		n = sprintf(temp_tag,"SFR%d",j+1);
 		strcpy(tag[nt], temp_tag);		
-		gal->comp_mean_age[j] = 0.;
-		addr[nt] = &gal->comp_mean_age[j];
+		gal->comp_sfr[j] = 0.;
+		addr[nt] = &gal->comp_sfr[j];
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
@@ -851,6 +826,38 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
 		
+		n = sprintf(temp_tag,"turb_seed%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_turb_seed[j] = 111111;
+		addr[nt] = &gal->comp_turb_seed[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = LONG;
+		
+		n = sprintf(temp_tag,"age_sigma%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_age_sigma[j] = 0.;
+		addr[nt] = &gal->comp_age_sigma[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"age_scale%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_age_scale[j] = 0.;
+		addr[nt] = &gal->comp_age_scale[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"age_seed%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_age_seed[j] = 111111;
+		addr[nt] = &gal->comp_age_seed[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = LONG;
+		
 		n = sprintf(temp_tag,"compute_vel%d",j+1);
 		strcpy(tag[nt], temp_tag);
 		gal->comp_compute_vel[j] = 1;
@@ -859,17 +866,9 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		mandatory[nt] = 0;
 		id[nt++] = INT;
 		
-		n = sprintf(temp_tag,"hydro_eq%d",j+1);
-		strcpy(tag[nt], temp_tag);
-		gal->comp_hydro_eq[j] = 0;
-		addr[nt] = &gal->comp_hydro_eq[j];
-		read[nt] = 0;
-		mandatory[nt] = 0;
-		id[nt++] = INT;
-		
 		n = sprintf(temp_tag,"hydro_eq_niter%d",j+1);
 		strcpy(tag[nt], temp_tag);
-		gal->comp_hydro_eq_niter[j] = 6;
+		gal->comp_hydro_eq_niter[j] = 0;
 		addr[nt] = &gal->comp_hydro_eq_niter[j];
 		read[nt] = 0;
 		mandatory[nt] = 0;
@@ -899,6 +898,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		mandatory[nt] = 0;
 		id[nt++] = INT;
 		
+		n = sprintf(temp_tag,"t_min%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_t_min[j] = 1e4;
+		addr[nt] = &gal->comp_t_min[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
 		n = sprintf(temp_tag,"part_mass%d",j+1);
 		strcpy(tag[nt], temp_tag);	
 		addr[nt] = &gal->comp_part_mass[j];
@@ -922,9 +929,24 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = INT;
+		
+		n = sprintf(temp_tag,"metal_gradient%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_metal_gradient[j] = 0;
+		addr[nt] = &gal->comp_metal_gradient[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = INT;
+		
+		n = sprintf(temp_tag,"excavate%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_excavate[j] = 0;
+		addr[nt] = &gal->comp_excavate[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = INT;
 	}
 	
-	printf("/////\tReading galaxy params file [%s]\n",fname);
 	if((fd = fopen(fname, "r"))) {
 		while(!feof(fd)) {
 			*buf = 0;
@@ -947,6 +969,9 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 						break;
 					case INT:
 						*((int *) addr[j]) = atoi(buf2);
+						break;
+					case LONG:
+						*((long *) addr[j]) = atol(buf2);
 						break;
 				}
 			} else {
@@ -981,8 +1006,9 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 int parse_stream_file(stream *st, char *fname) {
 	#define DOUBLE	1
 	#define STRING	2
-	#define INT	3
-	#define MAXTAGS	17*AllVars.MaxCompNumber+5
+	#define INT		3
+	#define LONG	4
+	#define MAXTAGS	19*AllVars.MaxCompNumber+6
 	
 	FILE 	*fd;
 	int 	i,j,n;
@@ -1052,6 +1078,13 @@ int parse_stream_file(stream *st, char *fname) {
 	mandatory[nt] = 0;
 	id[nt++] = DOUBLE;
 	
+	strcpy(tag[nt], "dens_gauss_seed");
+	addr[nt] = &st->dens_gauss_seed;
+	st->dens_gauss_seed = 222222;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = LONG;
+	
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
 	
 		n = sprintf(temp_tag,"dens%d",j+1);
@@ -1104,19 +1137,27 @@ int parse_stream_file(stream *st, char *fname) {
 
 		n = sprintf(temp_tag,"turb_sigma%d",j+1);
 		strcpy(tag[nt], temp_tag);	
+		st->comp_turb_sigma[j] = 0.;
 		addr[nt] = &st->comp_turb_sigma[j];
 		read[nt] = 0;
-		if(j==0) mandatory[nt] = 1;
-		else mandatory[nt] = 0;
+		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
 		
 		n = sprintf(temp_tag,"turb_scale%d",j+1);
 		strcpy(tag[nt], temp_tag);	
+		st->comp_turb_scale[j] = 0.;
 		addr[nt] = &st->comp_turb_scale[j];
 		read[nt] = 0;
-		if(j==0) mandatory[nt] = 1;
-		else mandatory[nt] = 0;
+		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"turb_seed%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		st->comp_turb_seed[j] = 333333;
+		addr[nt] = &st->comp_turb_seed[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = LONG;
 	
 		n = sprintf(temp_tag,"npart%d",j+1);
 		strcpy(tag[nt], temp_tag);
@@ -1148,7 +1189,15 @@ int parse_stream_file(stream *st, char *fname) {
 		addr[nt] = &st->comp_metal[j];
 		read[nt] = 0;
 		mandatory[nt] = 0;
-		id[nt++] = DOUBLE;		
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"metal_gradient%d",j+1);
+		strcpy(tag[nt], temp_tag);		
+		st->comp_metal_gradient[j] = 0;
+		addr[nt] = &st->comp_metal_gradient[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = INT;		
 		
 		n = sprintf(temp_tag,"t_init%d",j+1);
 		strcpy(tag[nt], temp_tag);		
@@ -1214,6 +1263,9 @@ int parse_stream_file(stream *st, char *fname) {
 						break;
 					case INT:
 						*((int *) addr[j]) = atoi(buf2);
+						break;
+					case LONG:
+						*((long *) addr[j]) = atol(buf2);
 						break;
 				}
 			} else {
@@ -1444,6 +1496,7 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
 	}
     P++;
 	free(P);
+	free(Ids);
 	fclose(fp1);
 	return 0;
 }
@@ -1743,6 +1796,7 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
 	}
     P++;
 	free(P);
+	free(Ids);
 	fclose(fp1);
 	return 0;
 }
