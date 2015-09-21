@@ -398,7 +398,7 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
 	
 	// Check for bad grids
 	if (st->ngrid_gauss <= 0) {
-		fprintf(stderr,"\t\tGrid dimensions must be greater than zero! (ngrid=%d)\n",st->ngrid_gauss);
+		fprintf(stderr,"\t\tGrid dimensions must be greater than zero! (ngrid=%d)\n",st->ngrid_gauss[0]);
 		return -1;
 	}
 	

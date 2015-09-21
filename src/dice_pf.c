@@ -412,12 +412,12 @@ double galaxyrsph_potential_wrapper_func(double r_sph, void *params) {
 
 	galaxy *gal = (galaxy *) params;
 	
-    r_cyl 	= sqrt(r_sph*r_sph-z*z);		
+    	z 		= cos(gal->phi_sph[gal->index[tid]])*r_sph;
+    	r_cyl 		= sqrt(r_sph*r_sph-z*z);		
 	x 		= r_cyl*cos(gal->theta_cyl[gal->index[tid]]);
 	y 		= r_cyl*sin(gal->theta_cyl[gal->index[tid]]);
-    z 		= cos(gal->phi_sph[gal->index[tid]])*r_sph;
 
-	pot 	= galaxy_total_potential(gal,x,y,z,0,0);	
+	pot 		= galaxy_total_potential(gal,x,y,z,0,0);	
 
 	return pot;
 }

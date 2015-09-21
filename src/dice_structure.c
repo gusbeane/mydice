@@ -725,7 +725,8 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 // Springel, Di Matteo er al. 2005 method.
 int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 	
-	unsigned long int i,j,k;
+	unsigned long int i,k;
+	int j;
 	int density_model, neval;
 	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, x, y, z, step, previous_step, prop_r, prop_theta, prop_x, prop_y, prop_z, acceptance;
@@ -923,7 +924,8 @@ int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
 // Springel, Di Matteo er al. 2005 method.
 int set_hydro_equilibrium_axisym(galaxy *gal, int component, int n_iter) {
 	
-	unsigned long int i,j,k;
+	unsigned long int i,k;
+	int j;
 	int density_model, neval;
 	double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius;
 	double theta, phi, randval, x, y, z, step, previous_step, prop_r, prop_theta, prop_z, acceptance;

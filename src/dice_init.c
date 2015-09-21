@@ -962,8 +962,8 @@ int deallocate_stream_gaussian_grid(stream *st) {
 // Create a galaxy structure
 int create_galaxy(galaxy *gal, char *fname, int info) {
 	
-	unsigned long int i;
-	int j,nt;
+	unsigned long int k;
+	int i,j,nt;
 	int dens_gauss,index_halo;
 	// Hubble parameter
 	double H;
@@ -1008,7 +1008,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	
 	// Create the random number generator environment
 	for(i=0;i<AllVars.Nthreads;i++) gsl_rng_set(r[i],gal->seed);
-	printf("/////\tRandom number generators initialised [seed=%d]\n",gal->seed);
+	printf("/////\tRandom number generators initialised [seed=%lu]\n",gal->seed);
 
 	// Set a bunch of constants that defines the galaxy's structure.
 	// Set the Hubble parameter from the Friedmann equation
@@ -1113,7 +1113,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		if(gal->dens_gauss_sigma>0.5){
 			printf("/////\t[Warning] Gaussian fluctuations may break the axisymmetry hypothesis\n");
 		}
-		
 	}
 	// Turn off GSL errors
 	gsl_set_error_handler_off();
@@ -1145,7 +1144,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		if(gal->comp_concentration[i]==0.&&gal->comp_scale_length[i]>0.) {
 			gal->comp_concentration[i] = gal->r200/gal->comp_scale_length[i];
 		}
-		if(gal->comp_npart[i]>0&&gal->comp_concentration[i]<=0.&&gal->comp_scale_length[i]<=0.) {
+		if(gal->comp_npart[i]>0 && gal->comp_concentration[i]<=0. && gal->comp_scale_length[i]<=0.) {
 			fprintf(stderr,"[Error] Component %d scale not properly defined\n",i+1);
 			exit(0);
 		}
@@ -1327,14 +1326,14 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			printf("\n");
 		}			
 		// Filling the arrays of the &galaxy structure
-		for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
-			gal->mass[i] 		= gal->comp_cutted_mass[j]/gal->comp_npart_pot[j];
-			gal->id[i] 			= i;
-			gal->u[i] 			= gal->comp_u_init[j];
-			gal->metal[i]		= gal->comp_metal[j];
+		for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
+			gal->mass[k] 		= gal->comp_cutted_mass[j]/gal->comp_npart_pot[j];
+			gal->id[k] 			= k;
+			gal->u[k] 			= gal->comp_u_init[j];
+			gal->metal[k]		= gal->comp_metal[j];
 			// Age is actually stored as time of formation
 			// ICs are generated for t=0 therefore formation time is negative
-			gal->age[i]				= -((2*gal->comp_mean_age[j]-gal->comp_min_age[j])*gsl_rng_uniform_pos(r[0])+gal->comp_min_age[j]);
+			gal->age[k]				= -((2*gal->comp_mean_age[j]-gal->comp_min_age[j])*gsl_rng_uniform_pos(r[0])+gal->comp_min_age[j]);
 		}
 	}
 	// Set up the particles positions, disk potential, and particle velocities of 
@@ -1374,20 +1373,20 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			max_age = 0.;
    			printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf Myr][scale=%.2lf kpc][grid scale=%.3lf kpc][seed=%ld]\n",
    				j+1,gal->comp_age_sigma[j],gal->comp_age_scale[j],gal->dx_gauss,gal->comp_age_seed[j]);
-    		for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
-				gal->age[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_age_sigma[j];
-				if(gal->age[i]>max_age) max_age = gal->age[i];
+    		for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
+				gal->age[k] += galaxy_gaussian_field_func(gal,gal->x[k],gal->y[k],gal->z[k])*gal->comp_age_sigma[k];
+				if(gal->age[k]>max_age) max_age = gal->age[k];
 			}
 			// Shift ages to get max(age)=0
-    		for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
-				gal->age[i] -= max_age;
-				mean_age += gal->age[i];
+    		for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
+				gal->age[k] -= max_age;
+				mean_age += gal->age[k];
 			}
 			mean_age /= (double)gal->comp_npart_pot[j];
 			// Rescale to user-defined SFR
 			if(gal->comp_sfr[j]>0) {
-    			for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
-    				gal->age[i] *= -gal->comp_mean_age[j]/mean_age;
+    			for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
+    				gal->age[k] *= -gal->comp_mean_age[j]/mean_age;
     			}	
 			}
 		}
@@ -1466,7 +1465,7 @@ int create_stream(stream *st, char *fname, int info) {
 
 	// Create the random number generator environment
 	for(i=0;i<AllVars.Nthreads;i++) gsl_rng_set(r[i],st->seed);
-	printf("/////\tRandom number generators initialised [seed=%d]\n",st->seed);
+	printf("/////\tRandom number generators initialised [seed=%ld]\n",st->seed);
 
 
 	allocate_stream_storage_variable(st,10);
@@ -1690,7 +1689,8 @@ int set_stream_coords(stream *st) {
 // This computation is inspired from the work of Springel et al. 2005 & Hernquist 1993
 int set_galaxy_velocity(galaxy *gal) {
     
-	unsigned long int i,j,nt;
+	unsigned long int i,nt;
+	int j;
 	int status,warning1,warning2,k;
 	double v_c, v_r, v_theta, v_z, v_cmax;
 	double v2a_r, v2a_theta, v2_theta, v2a_z, va_theta, sigma_theta, vel_x, vel_y, vel_z;
@@ -1995,8 +1995,8 @@ int set_galaxy_velocity(galaxy *gal) {
 // This computation is inspired from the work of Springel et al. 2005 & Hernquist 1993
 int set_stream_velocity(stream *st) {
     
-	unsigned long int i,j;
-	int status,warning,k;
+	unsigned long int i;
+	int j,status,warning,k;
 	double v_c, v_theta, v_r, v_z;
 	double sigma_theta;
 	double v2a_r, v2a_theta, v2_theta, va_theta, vel_x, vel_y, vel_z, streaming_fraction;
