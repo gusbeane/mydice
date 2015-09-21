@@ -123,7 +123,7 @@ typedef struct {
 	// Density fluctuation scale
 	double 				dens_gauss_scale;
 	// Density fluctuation seed
-	double 				dens_gauss_seed;
+	long 				dens_gauss_seed;
 	// Total number of components
 	int 				n_component;
 	int 				*selected_comp;
@@ -354,7 +354,7 @@ typedef struct {
 	// Level of refinement of the density gaussian fluctuations
 	int 				level_grid_dens_gauss;
 	// Number of cells in the turbulence grid
-	unsigned long int 	ngrid_gauss[3];
+	int 				ngrid_gauss[3];
 	// Gaussian field grid cell size vector [kpc]
 	double 				dx_gauss;
 	// Particle Mesh gaussian_field grid
