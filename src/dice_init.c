@@ -1326,7 +1326,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			printf("\n");
 		}			
 		// Filling the arrays of the &galaxy structure
-		for (k = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
+		for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
 			gal->mass[k] 		= gal->comp_cutted_mass[j]/gal->comp_npart_pot[j];
 			gal->id[k] 			= k;
 			gal->u[k] 			= gal->comp_u_init[j];
