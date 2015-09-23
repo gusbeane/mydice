@@ -1638,7 +1638,7 @@ int set_galaxy_coords(galaxy *gal) {
 	
 	for(i=0; i<AllVars.MaxCompNumber; i++) {
 		if((gal->comp_hydro_eq_niter[i]>0)&&(gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)) {
-			if(gal->comp_flatx[i]==gal->comp_flatx[i]) {
+			if(gal->comp_flatx[i]==gal->comp_flaty[i]) {
 				if(set_hydro_equilibrium_axisym(gal,i,gal->comp_hydro_eq_niter[i]) != 0) {
 					fprintf(stderr,"[Error] Unable to compute azimuthal profile to reach hydro equilibrium\n");
 					exit(0);
@@ -1941,6 +1941,7 @@ int set_galaxy_velocity(galaxy *gal) {
 		write_galaxy_sigma_r_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,".sigma_r"),0.01);
 	}
     // Loop over components
+    nt=0;
 	for(k=0; k<AllVars.MaxCompNumber; k++) {
     	if(gal->comp_type[k]==0 && gal->comp_turb_sigma[k]>0. && gal->comp_npart[k]>0) {
     		nt++;
@@ -2400,14 +2401,31 @@ int position_stream(galaxy *st, int index) {
 // different combination of ICs for galaxy collision simulations.
 int set_galaxy_trajectory(galaxy *gal, int index) {
 	unsigned long int i;
-    
+	int j;
+	double mean_vx,mean_vy,mean_vz,total_mass;
+
+	// Compute mean velocity of the system
+	mean_vx 	= 0.;
+	mean_vy 	= 0.;
+	mean_vz 	= 0.;
+	total_mass 	= 0.;
+	for(j = 0; j<AllVars.Ngal; ++j) {
+		mean_vx += AllVars.GalMass[j]*AllVars.GalVel[j][0];
+		mean_vy += AllVars.GalMass[j]*AllVars.GalVel[j][1];
+		mean_vz += AllVars.GalMass[j]*AllVars.GalVel[j][2];
+		total_mass += AllVars.GalMass[j];
+	}
+	mean_vx /= total_mass;
+	mean_vy /= total_mass;
+	mean_vz /= total_mass;
+	    
 	for(i = AllVars.GalStart[index]; i<AllVars.GalStart[index]+AllVars.GalNpart[index]; ++i) {
 		gal->x[i] 		+= AllVars.GalPos[index][0];
 		gal->y[i] 		+= AllVars.GalPos[index][1];
         gal->z[i] 		+= AllVars.GalPos[index][2];
-		gal->vel_x[i] 	+= AllVars.GalVel[index][0];
-		gal->vel_y[i] 	+= AllVars.GalVel[index][1];
-		gal->vel_z[i] 	+= AllVars.GalVel[index][2];
+		gal->vel_x[i] 	+= AllVars.GalVel[index][0]-mean_vx;
+		gal->vel_y[i] 	+= AllVars.GalVel[index][1]-mean_vy;
+		gal->vel_z[i] 	+= AllVars.GalVel[index][2]-mean_vz;
 	}
 	return 0;
 }

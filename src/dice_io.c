@@ -57,7 +57,7 @@ int parse_config_file(char *fname) {
 #define MAXTAGS	300
     
 	FILE *fd;
-	int i,j;
+	int i,j,rd;
 	char buf[200],junk[200];
 	char buf1[200],buf2[200],buf3[200],buf4[200],buf5[200],buf6[200],buf7[200],buf8[200],buf9[200],buf10[200];
 	int nt;
@@ -100,7 +100,7 @@ int parse_config_file(char *fname) {
 		for(j=0;i<3;i++) {
 			AllVars.GalPos[i][j] = 0.;
 			AllVars.GalVel[i][j] = 0.;
-		}	
+		}
 	}
     
 	if((fd = fopen(fname,"r"))) {
@@ -108,18 +108,19 @@ int parse_config_file(char *fname) {
 		while(!feof(fd)) {
 			*buf = 0;
 			fgets(buf, 200, fd);
-			if(sscanf(buf, "%s%s%s%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7,buf8,buf9,buf10) < 2) continue;
+			rd = sscanf(buf, "%s%s%s%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7,buf8,buf9,buf10);
+			if(rd<2) continue;
 			if(buf1[0] == '%' || buf1[0] == '#') continue;
 			if(strcmp(buf1,"Galaxy") == 0) {
 				strcpy(AllVars.GalaxyFiles[j],buf2);
-				AllVars.GalPos[j][0] 	= atof(buf3);
-				AllVars.GalPos[j][1] 	= atof(buf4);
-				AllVars.GalPos[j][2] 	= atof(buf5);
-				AllVars.GalVel[j][0] 	= atof(buf6);
-				AllVars.GalVel[j][1] 	= atof(buf7);
-				AllVars.GalVel[j][2] 	= atof(buf8);
-				AllVars.GalSpin[j] 		= atof(buf9);	
-				AllVars.GalIncl[j] 		= atof(buf10);
+				if(rd>=3) AllVars.GalPos[j][0] 	= atof(buf3);
+				if(rd>=4) AllVars.GalPos[j][1] 	= atof(buf4);
+				if(rd>=5) AllVars.GalPos[j][2] 	= atof(buf5);
+				if(rd>=6) AllVars.GalVel[j][0] 	= atof(buf6);
+				if(rd>=7) AllVars.GalVel[j][1] 	= atof(buf7);
+				if(rd>=8) AllVars.GalVel[j][2] 	= atof(buf8);
+				if(rd>=9) AllVars.GalSpin[j] 	= atof(buf9);	
+				if(rd>=10) AllVars.GalIncl[j] 	= atof(buf10);
 				j++;
 			}
 		}
@@ -135,15 +136,16 @@ int parse_config_file(char *fname) {
 		while(!feof(fd)) {
 			*buf = 0;
 			fgets(buf, 200, fd);
-			if(sscanf(buf, "%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7) < 2) continue;
+			rd = sscanf(buf, "%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7);
+			if(rd<2) continue;
 			if(buf1[0] == '%' || buf1[0] == '#') continue;
 			if(strcmp(buf1,"Stream") == 0) {
 				strcpy(AllVars.StreamFiles[j],buf2);
-				AllVars.StreamPos[j][0] 	= atof(buf3);
-				AllVars.StreamPos[j][1] 	= atof(buf4);
-				AllVars.StreamPos[j][2] 	= atof(buf5);
-				AllVars.StreamSpin[j] 		= atof(buf6);	
-				AllVars.StreamIncl[j] 		= atof(buf7);
+				if(rd>=3) AllVars.StreamPos[j][0] 	= atof(buf3);
+				if(rd>=4) AllVars.StreamPos[j][1] 	= atof(buf4);
+				if(rd>=5) AllVars.StreamPos[j][2] 	= atof(buf5);
+				if(rd>=6) AllVars.StreamSpin[j] 		= atof(buf6);	
+				if(rd>=7) AllVars.StreamIncl[j] 		= atof(buf7);
 				j++;
 			}
 		}
@@ -156,7 +158,8 @@ int parse_config_file(char *fname) {
 		while(!feof(fd)) {
 			*buf = 0;
 			fgets(buf, 200, fd);
-			if(sscanf(buf,"%s%s%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7,buf8,buf9) < 9) continue;
+			rd = sscanf(buf,"%s%s%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7,buf8,buf9);
+			if(rd<9) continue;
 			if(buf1[0] == '%' || buf1[0] == '#') continue;
 			if(strcmp(buf1,"Kepler") == 0) {
 				AllVars.Kepler_Rinit[j]				= atof(buf2);
