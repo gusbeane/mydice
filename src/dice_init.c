@@ -1720,8 +1720,8 @@ int set_galaxy_coords(galaxy *gal) {
 			if(gal->comp_turb_sigma[i]==0. && gal->comp_turb_frac[i]>0.) {
 				gal->comp_turb_sigma[i] = gal->comp_cs_init[i]*sqrt(gal->comp_turb_frac[i]/(1.0-gal->comp_turb_frac[i]))/unit_velocity;
 			}
-			gal->comp_turb_sigma[i] *= unit_velocity;
 		}
+		gal->comp_turb_sigma[i] *= unit_velocity;
 	}
 	// Be nice to the memory
 	return 0;
