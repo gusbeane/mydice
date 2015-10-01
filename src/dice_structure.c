@@ -255,6 +255,10 @@ void mcmc_metropolis_hasting(galaxy *gal, int component, int density_model) {
         gal->x[i] 			= max(gal->comp_cut_in[component],step_r)*cos(theta);
         gal->y[i] 			= max(gal->comp_cut_in[component],step_r)*sin(theta);
 		gal->z[i] 			= 0.;
+		if(gal->comp_npart[component]==1) {
+			gal->x[i] = 0.;
+        	gal->y[i] = 0.;
+		}
 		gal->r_cyl[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]);
 		gal->theta_cyl[i]	= atan2(gal->y[i],gal->x[i]);
 		gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
@@ -377,6 +381,10 @@ void mcmc_metropolis_hasting_axisym(galaxy *gal, int component, int density_mode
         gal->x[i] 			= max(gal->comp_cut_in[component],step_r)*cos(theta);
         gal->y[i] 			= max(gal->comp_cut_in[component],step_r)*sin(theta);
 		gal->z[i] 			= 0.;
+		if(gal->comp_npart[component]==1) {
+			gal->x[i] = 0.;
+        	gal->y[i] = 0.;
+		}
 		gal->r_cyl[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]);
 		gal->theta_cyl[i]	= atan2(gal->y[i],gal->x[i]);
 		gal->r_sph[i]		= sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);

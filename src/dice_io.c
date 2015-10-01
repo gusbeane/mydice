@@ -314,6 +314,27 @@ int parse_config_file(char *fname) {
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = INT;  
+	
+	strcpy(tag[nt], "UnitMass");
+	addr[nt] = &AllVars.UnitMass;
+	AllVars.UnitMass = 1.989E43;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "UnitLength");
+	addr[nt] = &AllVars.UnitLength;
+	AllVars.UnitLength = 3.085678e21;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
+	
+	strcpy(tag[nt], "UnitVelocity");
+	addr[nt] = &AllVars.UnitVelocity;
+	AllVars.UnitVelocity = 1e5;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = DOUBLE;
     
 	if((fd = fopen(fname, "r"))) {
 		while(!feof(fd)) {
@@ -378,7 +399,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define STRING	2
 	#define INT		3
 	#define LONG	4
-	#define MAXTAGS	51*AllVars.MaxCompNumber+15
+	#define MAXTAGS	54*AllVars.MaxCompNumber+15
 	
 	FILE *fd;
 	int i,j,n;
@@ -482,6 +503,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	strcpy(tag[nt], "level_grid_age");
 	addr[nt] = &gal->level_grid_age;
 	gal->level_grid_age=7;
+	read[nt] = 0;
+	mandatory[nt] = 0;
+	id[nt++] = INT;
+	
+	strcpy(tag[nt], "level_grid_metal");
+	addr[nt] = &gal->level_grid_age;
+	gal->level_grid_metal=7;
 	read[nt] = 0;
 	mandatory[nt] = 0;
 	id[nt++] = INT;
@@ -740,6 +768,30 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"metal_sigma%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_metal_sigma[j] = 0.;
+		addr[nt] = &gal->comp_metal_sigma[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"metal_scale%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_metal_scale[j] = 0.;
+		addr[nt] = &gal->comp_metal_scale[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"metal_seed%d",j+1);
+		strcpy(tag[nt], temp_tag);
+		gal->comp_metal_seed[j] = 111111;
+		addr[nt] = &gal->comp_metal_seed[j];
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = LONG;
 		
 		n = sprintf(temp_tag,"t_init%d",j+1);
 		strcpy(tag[nt], temp_tag);		

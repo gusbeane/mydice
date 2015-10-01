@@ -86,9 +86,9 @@
 #define pi						3.14159274101257 	// pi = 4.0*atan(1.0)
 #define	G						6.67428E-8			// G = 6.67428E-8 [cm^3 g^-1 s^-2]
 #define	kpc						3.085678E21			// 1 kpc = 3.085678E21 [cm]
-#define unit_mass				1.989E43			// 1.989E43 = 1E10 [Solar masses]
-#define unit_velocity			1e5					// km.s^-1 in [cm.s^-1]
-#define unit_length				3.085678e21			// kpc in [cm]
+#define unit_mass				AllVars.UnitMass	// 1.989E43 = 1E10 [Solar masses]
+#define unit_velocity			AllVars.UnitVelocity// km.s^-1 in [cm.s^-1]
+#define unit_length				AllVars.UnitLength	// kpc in [cm]
 #define unit_time				(unit_length/unit_velocity)
 #define unit_energy				(unit_mass*(unit_length*unit_length)/(unit_time*unit_time))
 #define unit_dens				(unit_mass/(unit_length*unit_length*unit_length))
@@ -158,6 +158,9 @@ typedef struct {
 	double 				*comp_theta_sph;
 	double 				*comp_phi_sph;
 	double 				*comp_metal;
+	double 				*comp_metal_sigma;
+	double 				*comp_metal_scale;
+	long 				*comp_metal_seed;
 	double 				*comp_t_init;
 	double 				*comp_u_init;
 	double 				*comp_cs_init;
@@ -258,6 +261,8 @@ typedef struct {
 	int 				level_grid_turb;
 	// Level of refinement of the stars age grid
 	int 				level_grid_age;
+	// Level of refinement of the metal grid
+	int 				level_grid_metal;
 	// Level of refinement of the density gaussian fluctuations
 	int 				level_grid_dens_gauss;
 	// Number of cells in the potential grid
@@ -280,6 +285,8 @@ typedef struct {
 	unsigned long int 	ntot_part_pot;
 	// Boolean variable checking the computation of the potential
 	int 				potential_defined;
+	// Boolean variable checking the computation of the midplane gas density
+	int 				midplane_dens_defined;
 	// Boolean variable checking the computation of the gaussian field
 	int 				gaussian_field_defined;
 	// Seed for random number generator
@@ -464,6 +471,9 @@ struct GlobalVars {
 	double 				Omega_m;
 	double 				Omega_l;
 	double 				Omega_k;
+	double				UnitMass;
+	double 				UnitVelocity;
+	double 				UnitLength;
 } AllVars;
 
 // ------------------------------------------
@@ -473,6 +483,7 @@ struct GlobalVars {
 int allocate_component_arrays(galaxy *);
 int allocate_variable_arrays(galaxy *);
 int allocate_galaxy_potential(galaxy *);
+int allocate_galaxy_midplane_dens(galaxy *);
 int reallocate_variable_arrays(galaxy *, unsigned long int);
 int allocate_component_arrays_stream(stream *);
 int allocate_variable_arrays_stream(stream *);

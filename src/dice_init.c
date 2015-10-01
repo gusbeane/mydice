@@ -151,6 +151,18 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"[Error] Unable to allocate comp_metal array\n");
 		return -1;
 	}
+	if (!(gal->comp_metal_sigma=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_metal_sigma array\n");
+		return -1;
+	}
+	if (!(gal->comp_metal_scale=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_metal_scale array\n");
+		return -1;
+	}
+	if (!(gal->comp_metal_seed=calloc(AllVars.MaxCompNumber,sizeof(long)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_metal_seed array\n");
+		return -1;
+	}
 	if (!(gal->comp_t_init=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
 		fprintf(stderr,"[Error] Unable to allocate comp_t_init array\n");
 		return -1;
@@ -519,7 +531,13 @@ int allocate_galaxy_potential(galaxy *gal) {
 			}
 		}
 	}
+	gal->potential_defined = 1;
+	return 0;
+}
 
+int allocate_galaxy_midplane_dens(galaxy *gal) {
+	int i;
+	
 	// Allocate the midplane density grid, starting with x-axis
 	if (!(gal->midplane_dens=calloc(gal->ngrid_dens[0],sizeof(double *)))) {
 		fprintf(stderr,"[Error] Unable to create midplane_dens x axis.\n");
@@ -533,7 +551,7 @@ int allocate_galaxy_potential(galaxy *gal) {
 			return -1;
 		}
 	}
-	gal->potential_defined = 1;
+	gal->midplane_dens_defined = 1;
 	return 0;
 }
 
@@ -1056,8 +1074,13 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			gal->boxsize_dens = 2.1*gal->comp_cut[i];
 		}
 	}
-
 	gal->dx_dens 	= gal->boxsize_dens/((double)gal->ngrid_dens[0]);
+	if(gal->boxsize_dens>0) {
+		if(allocate_galaxy_midplane_dens(gal)!=0) {
+			fprintf(stderr,"[Error] Unable to allocate midplane gas density grid\n");
+			return -1;
+		}
+	}
 	
 	// Initialisations
 	gal->ntot_part 			= (unsigned long int)0;
@@ -1240,7 +1263,8 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 		if(gal->comp_type[i]==3) gal->num_part_pot[3] 	+= gal->comp_npart_pot[i];
 	}
 	printf("]\n");
-    
+	printf("/////\t--------------------------------------------------\n");
+
     baryonic_fraction 			= (cutted_disk_mass+cutted_gas_mass+cutted_bulge_mass)/gal->m200;
     BT_fraction 				= cutted_bulge_mass/(cutted_bulge_mass+cutted_disk_mass);
     BD_fraction 				= cutted_bulge_mass/cutted_disk_mass;
@@ -1285,7 +1309,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			printf("/////\t\t- Gravitational potential zoom 2 \t[%4d,%4d,%4d][box=%4.1lf kpc]\n",gal->ngrid_zoom2[0],gal->ngrid_zoom2[1],gal->ngrid_zoom2[2],gal->boxsize_zoom2);
 		}
 		for(i=0;i<AllVars.MaxCompNumber;i++) {
-			if(gal->comp_hydro_eq_niter[i]>0) {
+			if(gal->comp_hydro_eq_niter[i]>0&&gal->comp_npart[i]>0) {
 				printf("/////\t\t- Midplane gas density \t\t\t[%4d,%4d][box=%4.1lf kpc]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens),gal->boxsize_dens);
 				break;
 			}
@@ -1345,13 +1369,13 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	}
 	
 	if(deallocate_galaxy_gaussian_grid(gal)!=0) {
-				fprintf(stderr,"[Error] Cannot allocate gaussian grid\n");
+			fprintf(stderr,"[Error] Cannot allocate gaussian grid\n");
 	}
 	// Set gaussian age fluctuations
 	// Allocate and set the gaussian field grid if necessary
 	nt = 0;
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
-    	if(gal->comp_type[j]>1 && gal->comp_age_sigma[j]>0. && gal->comp_npart[j]>0 && gal->comp_mean_age[j]!=0.) {
+    	if(gal->comp_type[j]>1 && gal->comp_age_sigma[j]>0. && gal->comp_age_scale[j]>0. && gal->comp_npart[j]>0 && gal->comp_mean_age[j]!=0.) {
 			double mean_age,max_age;
 			nt++;
 			if(nt==1) printf("/////\tComputing age fluctuations\n");
@@ -1371,7 +1395,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	
 			mean_age = 0.;
 			max_age = 0.;
-   			printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf Myr][scale=%.2lf kpc][grid scale=%.3lf kpc][seed=%ld]\n",
+   			printf("/////\t\t- Component %2d -> setting age fluctuations [sigma=%.2lf Myr][scale=%.2lf kpc][grid scale=%.3lf kpc][seed=%ld]\n",
    				j+1,gal->comp_age_sigma[j],gal->comp_age_scale[j],gal->dx_gauss,gal->comp_age_seed[j]);
     		for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
 				gal->age[k] += galaxy_gaussian_field_func(gal,gal->x[k],gal->y[k],gal->z[k])*gal->comp_age_sigma[k];
@@ -1391,7 +1415,47 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			}
 		}
 	}
+
+	if(deallocate_galaxy_gaussian_grid(gal)!=0) {
+			fprintf(stderr,"[Error] Cannot allocate gaussian grid\n");
+	}
+	// Set gaussian age fluctuations
+	// Allocate and set the gaussian field grid if necessary
+	nt = 0;
+	for(j=0; j<AllVars.MaxCompNumber; j++) {
+    	if(gal->comp_metal_sigma[j]>0. && gal->comp_metal_scale[j]>0. && gal->comp_npart[j]>0 && gal->comp_metal[j]!=0.) {
+			double mean_metal;
+			nt++;
+			if(nt==1) printf("/////\tComputing metal fluctuations\n");
 	
+			
+			gal->ngrid_gauss[0] 		= pow(2,gal->level_grid_metal);
+			gal->ngrid_gauss[1] 		= pow(2,gal->level_grid_metal);
+			gal->ngrid_gauss[2] 		= pow(2,gal->level_grid_metal);
+
+			if(allocate_galaxy_gaussian_grid(gal)!=0) {
+				fprintf(stderr,"[Error] Cannot allocate gaussian grid\n");
+			}
+
+			gal->dx_gauss = 2.1*gal->comp_cut[j]/((double)gal->ngrid_gauss[0]);
+		
+			set_galaxy_gaussian_field_grid(gal,gal->comp_metal_scale[j],gal->comp_metal_seed[j]);
+	
+			mean_metal = 0.;
+   			printf("/////\t\t- Component %2d -> setting metal fluctuations [sigma=%.2lf][scale=%.2lf kpc][grid scale=%.3lf kpc][seed=%ld]\n",
+   				j+1,gal->comp_metal_sigma[j],gal->comp_metal_scale[j],gal->dx_gauss,gal->comp_metal_seed[j]);
+    		for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
+				gal->metal[k] += galaxy_gaussian_field_func(gal,gal->x[k],gal->y[k],gal->z[k])*gal->comp_metal_sigma[k];
+				if(gal->metal[k]<0) gal->metal[k] = 0.;
+				mean_metal += gal->metal[k];
+			}
+			mean_metal /= (double)gal->comp_npart_pot[j];
+			// Rescale to user-defined metallicity
+    		for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
+    			gal->metal[k] *= -gal->comp_metal[j]/mean_metal;
+    		}	
+		}
+	}	
 	if(set_galaxy_potential(gal,gal->potential,gal->dx,gal->ngrid,1,0.) != 0) {
 		printf("[Error] Unable to set the potential\n");
 		exit(0);
@@ -1694,7 +1758,7 @@ int set_galaxy_velocity(galaxy *gal) {
 	int status,warning1,warning2,k;
 	double v_c, v_r, v_theta, v_z, v_cmax;
 	double v2a_r, v2a_theta, v2_theta, v2a_z, va_theta, sigma_theta, vel_x, vel_y, vel_z;
-	double vesc[4*gal->ngrid[0]], mass_in_shell;
+	double vesc[4*gal->ngrid[0]], mass_in_shell, maxvel_x, maxvel_y, maxvel_z;
     double u_min;
 	int nrejected_vr,nrejected_vtheta,nrejected_vz;
 	double radius, rmax, interval, save1, save2;
@@ -1746,6 +1810,9 @@ int set_galaxy_velocity(galaxy *gal) {
 
     // Loop over components
 	for(j=0; j<AllVars.MaxCompNumber; j++) {
+		maxvel_x			= 0.;
+		maxvel_y			= 0.;
+		maxvel_z			= 0.;
 		nrejected_vr		= 0;
 		nrejected_vtheta	= 0;
 		nrejected_vz		= 0;
@@ -1753,7 +1820,7 @@ int set_galaxy_velocity(galaxy *gal) {
 		u_min *= unit_mass / unit_energy;
 		u_min *= (1.0 / gamma_minus1)/(4./(1.+3.*hydrogen_massfrac));
 		// Particle velocities.
-		if(gal->comp_npart[j]>0&&gal->comp_compute_vel[j]==1) {
+		if(gal->comp_npart[j]>1&&gal->comp_compute_vel[j]==1) {
 			printf("/////\t\t- Component %2d -> setting velocities ",j+1);
 			if(gal->comp_thermal_eq[j]) printf("[thermal equilibrium]");
 			fflush(stdout);
@@ -1863,6 +1930,10 @@ int set_galaxy_velocity(galaxy *gal) {
 					vel_x 	= (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]))/unit_velocity;
 					vel_y 	= (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]))/unit_velocity;
 					vel_z 	= v_z/unit_velocity;
+					
+					if(fabs(vel_x)>maxvel_x) maxvel_x = vel_x;
+					if(fabs(vel_y)>maxvel_y) maxvel_y = vel_y;
+					if(fabs(vel_z)>maxvel_z) maxvel_z = vel_z;
             	
 					gal->vel_x[i] = vel_x;
 					gal->vel_y[i] = vel_y;
@@ -1870,6 +1941,7 @@ int set_galaxy_velocity(galaxy *gal) {
 				}
 			}
 			#pragma omp barrier
+			printf("[max vx=%.2lf vy=%.2lf vz=%.2lf km/s]",maxvel_x,maxvel_y,maxvel_z);
 			if(gal->comp_Q_lim[j]>0.) printf("[Q_min=%.2lf]",gal->comp_Q_min[j]);
 			if(nrejected_vr>1e-3||nrejected_vtheta>1e-3||nrejected_vz>1e-3) printf("[reject_vr=%.1lf%%][reject_vtheta=%.1lf%%][reject_vz=%.1lf%%]",
 				100.*nrejected_vr/(double)gal->comp_npart[j],
@@ -1943,7 +2015,7 @@ int set_galaxy_velocity(galaxy *gal) {
     // Loop over components
     nt=0;
 	for(k=0; k<AllVars.MaxCompNumber; k++) {
-    	if(gal->comp_type[k]==0 && gal->comp_turb_sigma[k]>0. && gal->comp_npart[k]>0) {
+    	if(gal->comp_turb_sigma[k]>0. && gal->comp_npart[k]>1) {
     		nt++;
     		if(nt==1) printf("/////\tComputing turbulence\n");
     		// Deallocate potential grid to save some memory for the next computation
@@ -2104,6 +2176,9 @@ void trash_galaxy(galaxy *gal, int info) {
 	free(gal->comp_theta_sph);
 	free(gal->comp_phi_sph);
 	free(gal->comp_metal);
+	free(gal->comp_metal_sigma);
+	free(gal->comp_metal_scale);
+	free(gal->comp_metal_seed);
 	free(gal->comp_t_init);
 	free(gal->comp_u_init);
 	free(gal->comp_cs_init);
@@ -2180,11 +2255,13 @@ void trash_galaxy(galaxy *gal, int info) {
 				}	
 				free(gal->potential_ext_zoom2);
 			}
-		}
+		}	
+	}
+	if(gal->midplane_dens_defined) {
 		for (i = 0; i < gal->ngrid_dens[1]; i++){
 			free(gal->midplane_dens[i]);
 		}
-		free(gal->midplane_dens);	
+		free(gal->midplane_dens);
 	}
 
 	// Deallocate all the small parts of the galaxy to be nice to the memory.
