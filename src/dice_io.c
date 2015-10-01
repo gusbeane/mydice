@@ -399,7 +399,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	#define STRING	2
 	#define INT		3
 	#define LONG	4
-	#define MAXTAGS	54*AllVars.MaxCompNumber+15
+	#define MAXTAGS	58*AllVars.MaxCompNumber+15
 	
 	FILE *fd;
 	int i,j,n;
@@ -1000,6 +1000,38 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 		read[nt] = 0;
 		mandatory[nt] = 0;
 		id[nt++] = INT;
+		
+		n = sprintf(temp_tag,"spiral_theta_out%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &gal->comp_spiral_theta_out[j];
+		gal->comp_spiral_theta_out[j] = 0.;
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"spiral_r_out%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &gal->comp_spiral_r_out[j];
+		gal->comp_spiral_r_out[j] = 0.;
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"spiral_r_in%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &gal->comp_spiral_r_in[j];
+		gal->comp_spiral_r_in[j] = 0.;
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
+		
+		n = sprintf(temp_tag,"spiral_alpha%d",j+1);
+		strcpy(tag[nt], temp_tag);	
+		addr[nt] = &gal->comp_spiral_alpha[j];
+		gal->comp_spiral_alpha[j] = 0.;
+		read[nt] = 0;
+		mandatory[nt] = 0;
+		id[nt++] = DOUBLE;
 	}
 	
 	if((fd = fopen(fname, "r"))) {

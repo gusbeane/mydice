@@ -192,6 +192,10 @@ typedef struct {
 	int 				*comp_metal_gradient;
 	int 				*comp_excavate;
 	double 				*comp_sfr;
+	double				*comp_spiral_theta_out;
+	double				*comp_spiral_r_in;
+	double				*comp_spiral_r_out;
+	double				*comp_spiral_alpha;
 	// Virial quantities
 	double 				v200;
 	double 				r200;

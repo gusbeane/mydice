@@ -47,10 +47,21 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 	double x,y, flatx, flaty, flatz;
 	// We consider only positive values
     if(sqrt(radius*radius+z*z) < 0.) return 0.;
+	double theta_shift, theta_out, A, B, CEDF, tanh_func;
 
-
-	x 			= radius*cos(theta);
-	y 			= radius*sin(theta);
+	// The spiral galaxy model is inspired from  the GALFIT software (Peng et al. 2010) 
+	theta_shift = 0.;
+	if(gal->comp_spiral_theta_out[component]>0.) {
+		theta_out		= gal->comp_spiral_theta_out[component]*pi/180.;
+		CEDF 			= 0.23;
+		A 				= (2*CEDF)/(fabs(theta_out)+CEDF)-1.00001;
+		B 				= (2-1./tanh(A))*(gal->comp_spiral_r_out[component]/(gal->comp_spiral_r_out[component]-gal->comp_spiral_r_in[component]));
+		tanh_func 		= 0.5*(tanh(B*(radius/gal->comp_spiral_r_out[component]-1)+2)+1);
+		theta_shift 	= theta_out*tanh_func*pow(0.5*(radius/gal->comp_spiral_r_out[component]+1),gal->comp_spiral_alpha[component]);
+	}
+	
+	x 			= radius*cos(theta+theta_shift);
+	y 			= radius*sin(theta+theta_shift);
 	r_sph 		= sqrt(x*x+y*y+z*z);
 	
 	h_cut 		= gal->comp_cut[component];

@@ -307,6 +307,22 @@ int allocate_component_arrays(galaxy *gal) {
 		fprintf(stderr,"[Error] Unable to allocate comp_sfr array\n");
 		return -1;
 	}
+	if (!(gal->comp_spiral_theta_out=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_spiral_theta_out array\n");
+		return -1;
+	}
+	if (!(gal->comp_spiral_r_out=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_spiral_r_out array\n");
+		return -1;
+	}
+	if (!(gal->comp_spiral_r_in=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_spiral_r_in array\n");
+		return -1;
+	}
+	if (!(gal->comp_spiral_alpha=calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+		fprintf(stderr,"[Error] Unable to allocate comp_spiral_alpha array\n");
+		return -1;
+	}
 	return 0;
 }
 
@@ -1171,9 +1187,13 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 			fprintf(stderr,"[Error] Component %d scale not properly defined\n",i+1);
 			exit(0);
 		}
+		// Default cut shape follows the galaxy component shape
 		if(gal->comp_flatx_cut[i]==-1.0) gal->comp_flatx_cut[i] = gal->comp_flatx[i];
 		if(gal->comp_flaty_cut[i]==-1.0) gal->comp_flaty_cut[i] = gal->comp_flaty[i];
 		if(gal->comp_flatz_cut[i]==-1.0) gal->comp_flatz_cut[i] = gal->comp_flatz[i];
+		// Setting default values for the inside and outside spiral radius
+		if(gal->comp_spiral_r_in[i]==0.) gal->comp_spiral_r_in[i]  	= 0.2*gal->comp_scale_length[i];
+		if(gal->comp_spiral_r_out[i]==0.) gal->comp_spiral_r_out[i] = 0.8*gal->comp_scale_length[i];
 		// Set the component scale height
 		gal->comp_scale_height[i] 	= gal->comp_flatz[i]*gal->comp_scale_length[i];
 		
@@ -2210,6 +2230,10 @@ void trash_galaxy(galaxy *gal, int info) {
 	free(gal->comp_metal_gradient);
 	free(gal->comp_excavate);
 	free(gal->comp_sfr);
+	free(gal->comp_spiral_theta_out);
+	free(gal->comp_spiral_r_out);
+	free(gal->comp_spiral_r_in);
+	free(gal->comp_spiral_alpha);
 	
 	// Deallocate the potential grid to be really nice to the memory.
 	if(gal->potential_defined == 1){
