@@ -144,13 +144,17 @@ typedef struct {
     double              *comp_cut;
     double              *comp_sigma_cut;
     double              *comp_sigma_cut_in;
-    double              *comp_flatz;
     double              *comp_flatx;
     double              *comp_flaty;
-    double              *comp_flatz_cut;
+    double              *comp_flatz;
     double              *comp_flatx_cut;
     double              *comp_flaty_cut;
+    double              *comp_flatz_cut;
+    double              *comp_flatx_out;
+    double              *comp_flaty_out;
+    double              *comp_flatz_out;
     double              *comp_mcmc_step;
+    double              *comp_mcmc_step_slope;
     double              *comp_mcmc_step_hydro;
     double              *comp_vmax;
     int                 *comp_type;
@@ -228,22 +232,14 @@ typedef struct {
     // Metallicity vector
     double              *metal;
     // Particle Mesh potential grid
-    double              ***potential;
-    // Particle Mesh potential grid
-    double              ***potential_zoom1;
-    double              ***potential_ext_zoom1;
-    // Particle Mesh potential grid
-    double              ***potential_zoom2;
-    double              ***potential_ext_zoom2;
+    double              ****potential;
+    double              ****potential_ext;
     // Particle Mesh gaussian field grid
     double              ***gaussian_field;
     // Gas midplane density grid
     double              **midplane_dens;
     // Potential grid cell size vector [kpc]
-    double dx;
-    // Potential zoom grid cell size vector [kpc]
-    double dx_zoom1;
-    double dx_zoom2;
+    double *dx;
     // Gas midplane density grid cell size vector [kpc]
     double dx_dens;
     // Gaussian field grid cell size vector [kpc]
@@ -252,17 +248,15 @@ typedef struct {
     unsigned long int num_part[4];
     unsigned long int num_part_pot[4];
     // Total potential grid size [kpc]
-    double boxsize;
-    // Total potential zoom grid size [kpc]
-    double boxsize_zoom1;
-    double boxsize_zoom2;
+    double *boxsize;
+    double *boxsize_flatx;
+    double *boxsize_flaty;
+    double *boxsize_flatz;
     // Total gas midplane density grid size [kpc]
     double boxsize_dens;
     // Level of refinement of the potential grid
-    int level_grid;
-    // Level of refinement of the potential zoom grid
-    int level_grid_zoom1;
-    int level_grid_zoom2;
+    int level_coarse;
+    int nlevel;
     // Level of refinement of the gas density grid
     int level_grid_dens;
     // Level of refinement of the gas turbulence grid
@@ -274,10 +268,7 @@ typedef struct {
     // Level of refinement of the density gaussian fluctuations
     int level_grid_dens_gauss;
     // Number of cells in the potential grid
-    int ngrid[3];
-    // Number of cells in the zoomed potential grid
-    int ngrid_zoom1[3];
-    int ngrid_zoom2[3];
+    int **ngrid;
     // Number of cells in the midplane density grid
     int ngrid_dens[2];
     // Number of cells in the turbulence grid
@@ -454,6 +445,7 @@ struct GlobalVars {
     int OutputSigma;
     int OutputToomre;
     int MaxCompNumber;
+    int MaxNlevel;
     int GaussianRejectIter;
     int CurrentGalaxy;
     int NormMassFact;
@@ -522,12 +514,9 @@ int position_stream(galaxy *, int);
 
 // Structure functions
 double density_functions_pool(galaxy *, double, double, double, int, int, int);
-void mcmc_metropolis_hasting_axisym(galaxy *, int, int);
-void mcmc_metropolis_hasting(galaxy *, int, int);
 void mcmc_metropolis_hasting_ntry(galaxy *, int, int);
 void mcmc_metropolis_hasting_stream(stream *, int, int);
 int set_hydro_equilibrium(galaxy *, int, int);
-int set_hydro_equilibrium_axisym(galaxy *, int, int);
 double density_functions_stream_pool(stream *, double, double, double, int, int);
 
 double surface_density_func(galaxy *, double, double, int, int);
@@ -581,7 +570,7 @@ int set_turbulent_grid(galaxy *, int);
 double galaxy_turbulence_func(galaxy *, double, double, double, int);
 
 // Potential and force functions
-int set_galaxy_potential(galaxy *, double ***, double, int [3], int, double);
+int set_galaxy_potential(galaxy *, double ***, double, int [3], int, double[3]);
 double galaxy_potential_func(galaxy *, double ***, double, int [3], double, double, double, int);
 double galaxy_zforce_func(galaxy *, double);
 double galaxy_rforce_func(galaxy *, double);
@@ -601,6 +590,7 @@ int parse_config_file(char *);
 int parse_galaxy_file(galaxy *, char *);
 void write_galaxy_rotation_curve(galaxy *, double, char *, double);
 void write_galaxy_potential_curve(galaxy *, double, char *, double);
+void write_galaxy_sigma_1D_curve(galaxy *, double, char *, double);
 void write_galaxy_sigma_z_curve(galaxy *, double, char *, double);
 void write_galaxy_sigma_r_curve(galaxy *, double, char *, double);
 void write_galaxy_sigma_theta_curve(galaxy *, double, char *, double);
@@ -615,12 +605,13 @@ int reordering(int, int *);
 int unload_snapshot();
 
 // Toolbox functions and definitions
+inline void loadBar(int, int, int, int);
 double min(double, double);
 double max(double, double);
 double sum_dbl(double *, int);
 typedef double (*function_to_derivate)(double, void *);
-double deriv_central(galaxy *, double, double, function_to_derivate);
 double deriv_central2(galaxy *, double, double, function_to_derivate);
+double deriv_central4(galaxy *, double, double, function_to_derivate);
 double deriv_forward(galaxy *, double, double, function_to_derivate);
 int set_galaxy_gaussian_field_grid(galaxy *, double, long);
 int set_stream_gaussian_field_grid(stream *, double, long);

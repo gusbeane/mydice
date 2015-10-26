@@ -252,6 +252,13 @@ int parse_config_file(char *fname) {
     mandatory[nt] = 0;
     id[nt++] = INT;
 
+    strcpy(tag[nt], "MaxNlevel");
+    AllVars.MaxNlevel = 20;
+    addr[nt] = &AllVars.MaxNlevel;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = INT;
+
     strcpy(tag[nt], "Filename");
     addr[nt] = &AllVars.Filename;
     read[nt] = 0;
@@ -399,7 +406,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 60*AllVars.MaxCompNumber+15
+#define MAXTAGS 64*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+11
 
     FILE *fd;
     int i,j,n;
@@ -466,24 +473,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     mandatory[nt] = 1;
     id[nt++] = DOUBLE;
 
-    strcpy(tag[nt], "level_grid");
-    addr[nt] = &gal->level_grid;
+    strcpy(tag[nt], "level_coarse");
+    addr[nt] = &gal->level_coarse;
     read[nt] = 0;
     mandatory[nt] = 1;
-    id[nt++] = INT;
-
-    strcpy(tag[nt], "level_grid_zoom1");
-    addr[nt] = &gal->level_grid_zoom1;
-    gal->level_grid_zoom1 = 0;
-    read[nt] = 0;
-    mandatory[nt] = 0;
-    id[nt++] = INT;
-
-    strcpy(tag[nt], "level_grid_zoom2");
-    addr[nt] = &gal->level_grid_zoom2;
-    gal->level_grid_zoom2 = 0;
-    read[nt] = 0;
-    mandatory[nt] = 0;
     id[nt++] = INT;
 
     strcpy(tag[nt], "level_grid_dens");
@@ -521,25 +514,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     mandatory[nt] = 0;
     id[nt++] = INT;
 
-    strcpy(tag[nt], "boxsize");
-    addr[nt] = &gal->boxsize;
-    read[nt] = 0;
-    mandatory[nt] = 1;
-    id[nt++] = DOUBLE;
-
-    strcpy(tag[nt], "boxsize_zoom1");
-    addr[nt] = &gal->boxsize_zoom1;
-    gal->boxsize_zoom1 = 0.;
-    read[nt] = 0;
-    mandatory[nt] = 0;
-    id[nt++] = DOUBLE;
-
-    strcpy(tag[nt], "boxsize_zoom2");
-    addr[nt] = &gal->boxsize_zoom2;
-    gal->boxsize_zoom2 = 0.;
-    read[nt] = 0;
-    mandatory[nt] = 0;
-    id[nt++] = DOUBLE;
 
     strcpy(tag[nt], "seed");
     addr[nt] = &gal->seed;
@@ -581,6 +555,41 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = INT;
+
+    for(j = 0; j<AllVars.MaxNlevel; j++) {
+        n = sprintf(temp_tag,"boxsize%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->boxsize[j] = 0.;
+        addr[nt] = &gal->boxsize[j];
+        read[nt] = 0;
+        if(j==0) mandatory[nt] = 1;
+        else mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"boxsize_flatx%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->boxsize_flatx[j] = 1.0;
+        addr[nt] = &gal->boxsize_flatx[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"boxsize_flaty%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->boxsize_flaty[j] = 1.0;
+        addr[nt] = &gal->boxsize_flaty[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"boxsize_flatz%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->boxsize_flatz[j] = 1.0;
+        addr[nt] = &gal->boxsize_flatz[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+    }
 
     for(j = 0; j<AllVars.MaxCompNumber; j++) {
 
@@ -680,6 +689,31 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
+        n = sprintf(temp_tag,"flatx_out%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flatx_out[j] = -1.0;
+        addr[nt] = &gal->comp_flatx_out[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"flaty_out%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flaty_out[j] = -1.0;
+        addr[nt] = &gal->comp_flaty_out[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"flatz_cut%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flatz_out[j] = -1.0;
+        addr[nt] = &gal->comp_flatz_out[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+
         n = sprintf(temp_tag,"mcmc_step%d",j+1);
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_mcmc_step[j];
@@ -687,6 +721,15 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         if(j==0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"mcmc_step_slope%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_mcmc_step_slope[j] = 0.;
+        addr[nt] = &gal->comp_mcmc_step_slope[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
 
         n = sprintf(temp_tag,"mcmc_step_hydro%d",j+1);
         gal->comp_mcmc_step_hydro[j] = 1.0;
@@ -1938,7 +1981,6 @@ void write_galaxy_rotation_curve(galaxy *gal, double rmax, char *fname, double i
     gal->z[gal->index[tid]] = 0.;
     gal->theta_cyl[gal->index[tid]] = 0.;
 
-
     for (i = 0; i < (int)(rmax/interval); ++i) {
         radius = i*interval;
         v_c = v_c_func(gal,radius);
@@ -2050,6 +2092,53 @@ void write_galaxy_sigma_z_curve(galaxy *gal, double rmax, char *fname, double in
     return;
 }
 
+void write_galaxy_sigma_1D_curve(galaxy *gal, double rmax, char *fname, double interval) {
+    int i,tid;
+    double radius, theta, v2a, sigma, save1, save2, save3;
+    char filename[200];
+    FILE *fp1;
+
+    // Total rotation curve
+    sprintf(filename,fname);
+    fp1 = fopen(filename, "w");
+    if (fp1 == NULL) {
+        printf("[Warning] Cannot open %s\n",fname);
+        return;
+    }
+#if USE_THREADS == 1
+    tid = omp_get_thread_num();
+#else
+    tid = 0;
+#endif
+    gal->index[tid] = 0;
+    save1 = gal->z[gal->index[tid]];
+    save2 = gal->theta_cyl[gal->index[tid]];
+    save3 = gal->r_cyl[gal->index[tid]];
+    gal->z[gal->index[tid]] = 0.;
+    gal->theta_cyl[gal->index[tid]] = 0.;
+
+    for (i = 0; i < (int)(rmax/interval); ++i) {
+        radius = i*interval;
+        gal->r_cyl[gal->index[tid]] = radius;
+        v2a = v2a_1D_func(gal,w[tid],gal->selected_comp[0]);
+
+        if(AllVars.AcceptImaginary==1) {
+            sigma = sqrt(fabs(v2a));
+        } else {
+            sigma = (v2a>0. ? sqrt(v2a) : 0.);
+        }
+        // Write the radius and sigma z to file in kpc and km2/s2 respectively.
+        fprintf(fp1,"%lf %lf\n",radius,sigma);
+    }
+    gal->z[gal->index[tid]] = save1;
+    gal->theta_cyl[gal->index[tid]] = save2;
+    gal->r_cyl[gal->index[tid]] = save3;
+    fclose(fp1);
+
+    return;
+}
+
+
 void write_galaxy_sigma_r_curve(galaxy *gal, double rmax, char *fname, double interval) {
     int i,tid;
     double radius, theta, v2ar, sigma_r, save1, save2, save3;
@@ -2089,7 +2178,7 @@ void write_galaxy_sigma_r_curve(galaxy *gal, double rmax, char *fname, double in
             sigma_r = (v2ar>0. ? sqrt(v2ar) : 0.);
         }
         if(gal->comp_disp_ext[gal->selected_comp[0]]>0. && gal->comp_disp_ext[gal->selected_comp[0]]<1.0) {
-            double disp_softening = (1.0-exp(-fabs(radius)/(-(1.0/log(1.0-gal->comp_disp_ext[gal->selected_comp[0]]))*gal->comp_scale_length[gal->selected_comp[0]])));
+            double disp_softening = (1.0-exp(radius/gal->comp_scale_length[gal->selected_comp[0]]*log(1.0-gal->comp_disp_ext[gal->selected_comp[0]])));
             sigma_r *= disp_softening;
         }
         // Write the radius and sigma z to file in kpc and km2/s2 respectively.
@@ -2139,7 +2228,7 @@ void write_galaxy_sigma_theta_curve(galaxy *gal, double rmax, char *fname, doubl
         if(gal->comp_epicycle[gal->selected_comp[0]]==1) {
             sigma_theta = sqrt(sigma2_theta_disk_func(gal,radius,v2az));
         } else {
-            v2at = v2az+v2a_theta_func(gal,radius,gal->selected_comp[0]);
+            v2at = v2az+pow(v_c_func(gal,radius),2)+v2a_theta_func(gal,radius,gal->selected_comp[0]);
             // Check if the dispersion is a real or complex number
             if(AllVars.AcceptImaginary==1) {
                 sigma_theta = sqrt(fabs(v2at));
