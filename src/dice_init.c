@@ -1634,7 +1634,7 @@ int create_stream(stream *st, char *fname, int info) {
 
     // Set up component properties
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
-
+        strcpy(st->comp_profile_name[i],"");
         // Total number of particules
         st->ntot_part += st->comp_npart[i];
         // Set the start index for each component
