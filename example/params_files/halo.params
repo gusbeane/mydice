@@ -2,46 +2,34 @@
 # Global parameters
 ###################
 # Virial velocity of the galaxy [km/s]
-v200 			200.0
+v200 			        200.0
 # Redshit of the galaxy
-redshift		0.05
+redshift		        0.05
 # Disk angular momentum fraction
-j_d		 	0.05
+j_d		 	            0.04
 # Halo spin parameter
-lambda		 	0.04
+lambda		 	        0.04
 # Refinement level of the PM potential grid 
-level_grid		8
-# Refinement level of the zoomed potential grid 
-level_grid_zoom1	10
+level_coarse		    8
 # Refinement level of the plane plane density grid 
-level_grid_dens		7
+level_grid_dens		    7
 # Refinement level of the PM turbulence grid 
-level_grid_turb		8
+level_grid_turb		    8
 # Refinement level of the PM gaussian field grid
-level_grid_dens_gauss
+level_grid_dens_gauss   7
 # Size of the PM grid [kpc]
-boxsize		 	100.0
-# Size of the zoomed potential grid [kpc]
-boxsize_zoom1	 	14.0
+boxsize1		 	    100.0
+boxsize2		 	    50.0
+boxsize3		 	    25.0
 # Dispersion for the Gaussian field fluctuations
 dens_gauss_sigma        0.35
 # Physical scale of the gaussian field fluctuations [kpc]
 dens_gauss_scale        1.00
-# Position of the galactic center on XYZ-axis [kpc]
-xc			0.
-yc			0.
-zc			0.
-# XYZ-axis velocity component of the galaxy [km/s] 
-vel_xc			0.
-vel_yc			0.
-vel_zc			0.
-# Spin angle of the disk in the XY plane [degree]
-spin			0.
-# Inclination of the disk compare to XY plane [degree]
-incl 			0.
 # Seed for the random number generator
-seed			1246
-
+seed			        1246
+# Gravitational softening [kpc]
+# Default value is the size of the smallest grid element
+softening		        0.250
 
 #######################
 # Components parameters
@@ -51,9 +39,9 @@ seed			1246
 # Component 1: Halo
 #######################
 # Fraction of the virial mass in the component 1
-mass_frac1		0.95
+mass_frac1		        0.95
 # Number of particles for the component 1
-npart1			1000000
+npart1			        1000000
 # Number of particles for the potential computation
 npart_pot1              4000000
 # Component 1 density model
@@ -68,49 +56,53 @@ npart_pot1              4000000
 # 8  = NFW profile 
 # 9  = Burkert
 # 10 = Einasto profile
-model1			8
+model1			        8
 # Scale length of the density profile [kpc]
 # If the value is zero, scale length is defined
 # by the concentration parameter
-scale_length1		0.
+scale_length1		    0.
 # Concentration parameter
 # if positive, the scale length is recomputed to match the concentration
 # the concentration parameter of an NFW halo with a mass M200*mass_frac
-concentration1		13.0
+concentration1		    13.0
 # Component 1 radial density cut [kpc] 
-cut1			50.
-# Component 1 thickness parameter
-flat1			1.00
+cut1			        50.
+# Component 1 cartesian flatenning parameter
+flatx1			        1.00
+flaty1			        1.00
+flatz1			        1.00
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
 # expressed in units of the component scale length. Default value is 0.5.
-mcmc_step1		0.3
+mcmc_step1		        0.3
 # Maximum velocity for the component 1 particles in expressed in units of escape velocity
-vmax1			5.0
+vmax1			        5.0
 # Particles type (GADGET format -- 0=Gas,1=Halo,2=Disk,3=Bulge,4=Stars)
-type1			1
+type1			        1
 # Streaming fraction of the component 1
-streaming_fraction1	0.00
+streaming_fraction1	    0.00
 # Radius at which the density profile should have the exact same
 # value as the NFW profile with the previously defined concentration
 # and with a mass M200*mass_frac [kpc]
-radius_nfw1		1.0
+radius_nfw1		        1.0
 
 ###########################
 # Component 2: Gaseous halo
 ###########################
-mass_frac2		0.05
-npart2			10000000
+mass_frac2		        0.05
+npart2			        10000000
 npart_pot2              7000000
-model2			8
-scale_length2		0.
-concentration2		13.0
-cut2			50.
-flat2			1.00
-mcmc_step2		0.3
-vmax2			5.0
-type2			0
-streaming_fraction2	0.165
+model2			        8
+scale_length2		    0.
+concentration2		    13.0
+cut2			        50.
+flatx2			        1.00
+flaty2			        1.00
+flatz2			        1.00
+mcmc_step2		        0.3
+vmax2			        5.0
+type2			        0
+streaming_fraction2	    0.165
 metal2                  1e-4
 # Compute gas temperature to reach hydrostatic equilibrium
-thermal_eq2		1
+thermal_eq2		        1
 

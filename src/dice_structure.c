@@ -267,8 +267,8 @@ double density_functions_stream_pool(stream *st, double radius, double theta, do
 }
 
 void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model) {
-    unsigned long int i,j,k,start_part,npart;
-    int selected, symmetry;
+    unsigned long int i,j,start_part,npart;
+    int k, selected, symmetry;
     double prob, *radius;
     double theta, phi, randval;
     double step_r, step_x, step_y, step_z, step_r_sph, hx, hy, hz;
@@ -574,8 +574,9 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
             }
             // Normalize weights
             norm = sum_dbl(weights,gal->mcmc_ntry);
-            for(k = 0; k<gal->mcmc_ntry; k++) weights[k] /= norm;
+            for(k = 0; k<gal->mcmc_ntry; k++) if(norm != 0.) weights[k] /= norm;
             // Select a proposal according to its probability
+            selected = 0;
             randval = gsl_rng_uniform_pos(r[0]);
             for(k = 0; k<gal->mcmc_ntry; k++) {
                 if(randval<weights[k]) {
