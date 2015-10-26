@@ -40,6 +40,30 @@
 
 #include "dice.h"
 
+// Process has done i out of n rounds,
+// and we want a bar of width w and resolution r.
+inline void loadBar(int x, int n, int r, int w) {
+    // Only update r times.
+    if ( x % (n/r +1) != 0 ) return;
+ 
+    // Calculuate the ratio of complete-to-incomplete.
+    float ratio = x/(float)n;
+    int   c     = ratio * w;
+ 
+    // Show the percentage complete.
+    printf("/////\t%3d%% [", (int)(ratio*100) );
+ 
+    int i;
+    // Show the load bar.
+    for (i=0; i<c; i++) printf("=");
+ 
+    for (i=c; i<w; i++) printf(" ");
+ 
+    // ANSI Control codes to go back to the
+    // previous line and clear it.
+    printf("]\n\033[F\033[J");
+}
+
 // Find the minimum between two values
 double min(double a, double b) {
     if(a<b) return a;
@@ -65,7 +89,7 @@ double sum_dbl(double *tab, int length) {
 }
 
 // Derivate a function using a 4-point central scheme
-double deriv_central(galaxy *gal, double x, double h, function_to_derivate F) {
+double deriv_central4(galaxy *gal, double x, double h, function_to_derivate F) {
     double new_x,f1,f2,f3,f4,derivative;
 
     new_x = x+2.0*h;

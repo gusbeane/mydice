@@ -60,7 +60,7 @@ double v2a_z_func(galaxy *gal, gsl_integration_workspace *w, int component) {
     F.params = gal;
 
     gal->selected_comp[tid] = component;
-    infinity = 10.*gal->comp_scale_height[gal->selected_comp[tid]];
+    infinity = 10.*gal->comp_cut[gal->selected_comp[tid]];
     //gsl_integration_qag(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
     gsl_integration_qng(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,&integral,&error,&neval);
 
@@ -119,7 +119,7 @@ double v2a_1D_func(galaxy *gal, gsl_integration_workspace *w, int component) {
     F.params = gal;
 
     gal->selected_comp[tid] = component;
-    infinity = 10.*gal->comp_scale_length[gal->selected_comp[tid]];
+    infinity = 10.*gal->comp_cut[gal->selected_comp[tid]];
     gsl_integration_qag(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
 
     rho = density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
@@ -236,10 +236,8 @@ double v2a_z_toomre(galaxy *gal, double radius, double v2a_z, int component) {
     h = get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
     // Calculate force and force derivative
     force = potential_deriv_wrapper_func(radius,gal);
-    dforcedr = deriv_central(gal,radius,h,potential_deriv_wrapper_func);
+    dforcedr = deriv_central2(gal,radius,h,potential_deriv_wrapper_func);
 
-    //kappa_sqrd = 3.0*force/(radius*kpc) + dforcedr;
-    //gamma_sqrd = 4.0*force/(kappa_sqrd*radius*kpc);
     kappa_sqrd = 3.0*force/(radius) + dforcedr;
     gamma_sqrd = 4.0*force/(kappa_sqrd*radius);
     // We take into account the contribution of the gas to the stability of the system
@@ -271,6 +269,8 @@ double toomre(galaxy *gal, double radius, double v2a_z, int component) {
 #else
     tid = 0;
 #endif
+    
+    if(radius==0.) return 0.;
 
     x = radius*cos(gal->theta_cyl[gal->index[tid]]);
     y = radius*sin(gal->theta_cyl[gal->index[tid]]);
@@ -278,7 +278,7 @@ double toomre(galaxy *gal, double radius, double v2a_z, int component) {
     h = get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
     // Calculate force and force derivative
     force = potential_deriv_wrapper_func(radius,gal);
-    dforcedr = deriv_central(gal,radius,h,potential_deriv_wrapper_func);
+    dforcedr = deriv_central2(gal,radius,h,potential_deriv_wrapper_func);
 
     kappa_sqrd = 3.0*force/radius + dforcedr;
     // We take into account the contribution of the gas to the stability of the system
@@ -312,7 +312,7 @@ double sigma2_theta_disk_func(galaxy *gal, double radius, double v2a_z) {
     h = get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
     // Calculate force and force derivative
     force = potential_deriv_wrapper_func(radius,gal);
-    dforcedr = deriv_central(gal,radius,h,potential_deriv_wrapper_func);
+    dforcedr = deriv_central2(gal,radius,h,potential_deriv_wrapper_func);
 
     kappa_sqrd = 3.0*force/(radius)+dforcedr;
     gamma_sqrd = 4.0*force/(kappa_sqrd*radius);
@@ -351,7 +351,7 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
     save = gal->z[gal->index[tid]];
     // Integrations done in the z=0 plane
     gal->z[gal->index[tid]] = 0.;
-    density_derivative = deriv_central(gal,radius,h,gas_density_wrapper_func);
+    density_derivative = deriv_central2(gal,radius,h,gas_density_wrapper_func);
     v_c2 = pow(v_c_func(gal,radius),2.0);
     //pressure_force = radius*kpc*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);
     pressure_force = radius*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);
@@ -461,7 +461,7 @@ double galaxy_zforce_func(galaxy *gal, double z) {
 
     h = get_h_value(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0,0);
 
-    force = deriv_central(gal,z,h,galaxyz_potential_wrapper_func);
+    force = deriv_central2(gal,z,h,galaxyz_potential_wrapper_func);
 
     return force;
 }
@@ -487,7 +487,7 @@ double galaxy_rsphforce_func(galaxy *gal, double r_sph) {
 
     h = get_h_value(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],gal->z[gal->index[tid]],0,0);
 
-    force = deriv_central(gal,r_sph,h,galaxyrsph_potential_wrapper_func);
+    force = deriv_central2(gal,r_sph,h,galaxyrsph_potential_wrapper_func);
 
     return force;
 }
