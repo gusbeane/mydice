@@ -705,7 +705,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-        n = sprintf(temp_tag,"flatz_cut%d",j+1);
+        n = sprintf(temp_tag,"flatz_out%d",j+1);
         strcpy(tag[nt], temp_tag);
         gal->comp_flatz_out[j] = -1.0;
         addr[nt] = &gal->comp_flatz_out[j];
