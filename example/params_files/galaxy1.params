@@ -22,8 +22,8 @@ level_grid_turb		    7
 level_grid_dens_gauss 	7
 # Size of the potential grid [kpc]
 boxsize1		 	    100.0
-#boxsize2	 	        14.0
-#boxsize3	 	        5.0
+boxsize2	 	        14.0
+boxsize3	 	        5.0
 # Dispersion for the Gaussian field fluctuations
 dens_gauss_sigma        0.50
 # Physical scale of the gaussian field fluctuations [kpc]

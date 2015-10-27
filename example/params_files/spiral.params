@@ -2,7 +2,7 @@
 # Global parameters
 ###################
 # Virial velocity of the galaxy [km/s]
-v200 			        100.0
+v200 			        200.0
 # Virial mass of the galaxy [1e10 Msol]
 # Overrides the v200 parameter
 #m200			100.
@@ -23,7 +23,7 @@ level_grid_dens_gauss 	7
 # Size of the potential grid [kpc]
 boxsize1		 	    100.0
 boxsize2	 	        14.0
-boxsize3	 	        5.0
+#boxsize3	 	        5.0
 # Dispersion for the Gaussian field fluctuations
 dens_gauss_sigma        0.50
 # Physical scale of the gaussian field fluctuations [kpc]
@@ -48,9 +48,9 @@ softening		        0.250
 # Fraction of the virial mass in the component 1
 mass_frac1		        0.95
 # Number of particles for the component 1
-npart1			        500000
+npart1			        1000000
 # Number of particles for the potential computation
-npart_pot1              1000000
+npart_pot1              2000000
 # Component 1 density model
 # Available models:
 # 1  = Exponential disk + sech-z profile
@@ -79,11 +79,17 @@ concentration1		    13.0
 cut1			        50.
 # Component 1 thickness parameters
 flatx1			        1.00
-flaty1			        1.00
-flatz1			        1.00
+flaty1			        0.20
+flatz1			        0.20
+flatx_cut1              1.00
+flaty_cut1              1.00
+flatz_cut1              1.00
+flatx_out1              1.00
+flaty_out1              1.00
+flatz_out1              1.00
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
 # expressed in units of the component scale length. Default value is 0.5.
-mcmc_step1		        0.50
+mcmc_step1		        0.10
 # Maximum velocity for the component 1 particles in expressed in units of escape velocity
 vmax1			        5.0
 # Particles type (GADGET format -- 0=Gas,1=Halo,2=Disk,3=Bulge,4=Stars)
@@ -105,16 +111,22 @@ compute_vel1		    1
 # Component 2: Thin stellar disk
 ################################
 mass_frac2		        0.02
-npart2			        250000
-npart_pot2              500000
-model2			        2
+npart2			        500000
+npart_pot2              1000000
+model2			        3
 # If the value is zero and the particle type is not 1 the size is determined using the spin conservation
 # and the spin fraction initially present in the disk j_d 
 # (Fitting formula from Mo, Mao & White 1998)
 scale_length2		    0.0
 cut2			        9.0
-flatz2			        0.15
-mcmc_step2		        0.3
+flatx2			        1.00
+flaty2			        0.20
+flatz2			        0.05
+flatx_cut2              1.00
+flaty_cut2              1.00
+flatx_out2              1.00
+flaty_out2              0.20
+mcmc_step2		        0.05
 vmax2			        2.0
 type2			        2
 streaming_fraction2	    1.00
@@ -133,18 +145,35 @@ metal2                  0.01
 dens_gauss2		        0
 jeans_mass_cut2		    1
 compute_vel2		    1
+# Spiral winding angle [deg]
+spiral_theta_out2       360.
+# Starting radius of the spiral arms [kpc]
+spiral_r_in2            2.0
+# Ending radius of the spiral arms [kpc]
+spiral_r_out2           8.0
+# Power index of the spiral arms
+spiral_alpha2           0.
+warp_scale2             0.50
+warp_mode2              2
+
 
 ###########################
 # Component 3: Gaseous disk
 ###########################
 mass_frac3		        0.01
-npart3			        1500000
-npart_pot3              3000000
+npart3			        3000000
+npart_pot3              6000000
 model3			        1
 scale_length3		    0.
 cut3			        9.0
-flatz3			        0.25
-mcmc_step3		        0.15
+flatx3			        1.00
+flaty3			        0.20
+flatz3			        0.05
+flatx_cut3              1.00
+flaty_cut3              1.00
+flatx_out3              1.00
+flaty_out3              0.20
+mcmc_step3		        0.05
 vmax3			        10.5
 type3			        0
 streaming_fraction3	    1.00
@@ -165,13 +194,21 @@ hydro_eq_niter3 	    6
 # within the hydro equilibrium algorithm
 mcmc_step_hydro3	    0.3
 compute_vel3		    1
+spiral_theta_out3       360.
+spiral_r_in3            2.0
+spiral_r_out3           8.0
+spiral_alpha3           0.
+warp_scale3             0.50
+warp_mode3              2
+
+
 
 ############################
 # Component 4: Stellar bulge
 ############################
 mass_frac4		        0.005
-npart4			        25000
-npart_pot4              50000
+npart4			        50000
+npart_pot4              100000
 model4			        10
 scale_length4		    2.0
 cut4			        4.0
@@ -187,21 +224,3 @@ alpha5			        0.80
 Q_lim4			        1.5
 compute_vel4		    1
 
-###############################
-# Component 5: Stellar spheroid
-###############################
-mass_frac5		        0.010
-npart5			        250000
-npart_pot5              500000
-model5			        4
-scale_length5		    4.0
-cut5			        12.0
-flatz5			        0.40
-mcmc_step5		        0.3
-vmax5			        2.0
-type5			        2
-streaming_fraction5	    0.50
-min_age5                50.
-metal5                  0.001
-Q_lim5			        1.5
-compute_vel5		    1
