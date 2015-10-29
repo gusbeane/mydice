@@ -120,7 +120,8 @@ double v2a_1D_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 
     gal->selected_comp[tid] = component;
     infinity = 10.*gal->comp_cut[gal->selected_comp[tid]];
-    gsl_integration_qag(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
+    //gsl_integration_qag(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
+    gsl_integration_qng(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,&integral,&error,&neval);
 
     rho = density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
     res = integral/rho;

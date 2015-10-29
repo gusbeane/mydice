@@ -23,7 +23,7 @@ level_grid_dens_gauss 	7
 # Size of the potential grid [kpc]
 boxsize1		 	    100.0
 boxsize2	 	        14.0
-#boxsize3	 	        5.0
+boxsize3	 	        5.0
 # Dispersion for the Gaussian field fluctuations
 dens_gauss_sigma        0.50
 # Physical scale of the gaussian field fluctuations [kpc]
@@ -79,14 +79,8 @@ concentration1		    13.0
 cut1			        50.
 # Component 1 thickness parameters
 flatx1			        1.00
-flaty1			        0.20
-flatz1			        0.20
-flatx_cut1              1.00
-flaty_cut1              1.00
-flatz_cut1              1.00
-flatx_out1              1.00
-flaty_out1              1.00
-flatz_out1              1.00
+flaty1			        0.70
+flatz1			        0.70
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
 # expressed in units of the component scale length. Default value is 0.5.
 mcmc_step1		        0.10
@@ -127,13 +121,13 @@ flaty_cut2              1.00
 flatx_out2              1.00
 flaty_out2              0.20
 mcmc_step2		        0.05
-vmax2			        2.0
+vmax2			        0.5
 type2			        2
 streaming_fraction2	    1.00
 # Epicycle approximation in the Jeans equations
 epicycle2		        1
 # Minimal value for the Toomre parameter
-Q_lim2			        1.25
+Q_lim2			        0.0
 # Past constant Star Formation Rate [Msol/yr]
 # Negative value recomptes the SFR according to Bouché et al. 2010
 SFR2               	    -1.
