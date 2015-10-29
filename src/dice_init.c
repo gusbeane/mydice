@@ -1263,7 +1263,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             gal->comp_u_init[i] *= (1.0 / gamma_minus1);
             gal->comp_u_init[i] /= mu_mol;
             // Computing isothermal sound speed
-            gal->comp_cs_init[i] = sqrt(gamma_minus1*gal->comp_u_init[i]*unit_energy/unit_mass)/unit_velocity;
+            gal->comp_cs_init[i] = sqrt(gamma_minus1*gal->comp_u_init[i]);
         }
 
         // Computing the mass of the component after cuts
@@ -1896,9 +1896,9 @@ int set_galaxy_velocity(galaxy *gal) {
                     if(gal->comp_thermal_eq[j]) {
                         v2a_r = v2a_1D_func(gal,w[tid],j);
                         v_theta = gal->comp_streaming_fraction[j]*v_c_func(gal,fabs(gal->r_cyl[i]));
-                        gal->u[i] = v2a_r/(gamma_minus1)*unit_mass/unit_energy;
+                        gal->u[i] = v2a_r/(gamma_minus1);
                         // Correct for centrifugal force
-                        gal->u[i] -= v_theta*v_theta*unit_mass/unit_energy;
+                        gal->u[i] -= pow(v_theta,2);
                         if(gal->u[i]<u_min) {
                             gal->u[i] = u_min;
                             warning2 = 1;
