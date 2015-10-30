@@ -1108,7 +1108,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     gal->boxsize_dens = 0.;
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
         if(gal->comp_type[i]==0 && 2.0*gal->comp_cut[i]>gal->boxsize_dens && gal->comp_npart[i]>0 && gal->comp_hydro_eq_niter[i]>0) {
-            gal->boxsize_dens = 2.1*gal->comp_cut[i];
+            gal->boxsize_dens = 2.5*(gal->comp_cut[i]+3*gal->comp_scale_length[i]*gal->comp_sigma_cut[i]);
         }
     }
     gal->dx_dens = gal->boxsize_dens/((double)gal->ngrid_dens[0]);
@@ -1769,10 +1769,9 @@ int set_galaxy_coords(galaxy *gal) {
             gal->comp_u_init[i] *= (1.0-gal->comp_turb_frac[i]);
             // Computing the velocity dispersion of the turbulence
             if(gal->comp_turb_sigma[i]==0. && gal->comp_turb_frac[i]>0.) {
-                gal->comp_turb_sigma[i] = gal->comp_cs_init[i]*sqrt(gal->comp_turb_frac[i]/(1.0-gal->comp_turb_frac[i]))/unit_velocity;
+                gal->comp_turb_sigma[i] = gal->comp_cs_init[i]*sqrt(gal->comp_turb_frac[i]/(1.0-gal->comp_turb_frac[i]));
             }
         }
-        gal->comp_turb_sigma[i] *= unit_velocity;
     }
     // Be nice to the memory
     return 0;
@@ -1992,7 +1991,7 @@ int set_galaxy_velocity(galaxy *gal) {
                 }
             }
             #pragma omp barrier
-            printf("[max vx=%.2lf vy=%.2lf vz=%.2lf km/s]",maxvel_x,maxvel_y,maxvel_z);
+            if(gal->comp_type[j] != 0) printf("[max vx=%.2lf vy=%.2lf vz=%.2lf km/s]",maxvel_x,maxvel_y,maxvel_z);
             if(gal->comp_Q_lim[j]>0.) printf("[Q_min=%.2lf]",gal->comp_Q_min[j]);
             if(nrejected_vr>1e-3||nrejected_vtheta>1e-3||nrejected_vz>1e-3) printf("[reject_vr=%.1lf%%][reject_vtheta=%.1lf%%][reject_vz=%.1lf%%]",
                         100.*nrejected_vr/(double)gal->comp_npart[j],
@@ -2117,18 +2116,18 @@ int set_galaxy_velocity(galaxy *gal) {
 
             gal->dx_gauss = 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss[0]);
 
-            printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc][seed=%ld]\n",k+1,gal->comp_turb_sigma[k]/unit_velocity,gal->comp_turb_scale[k],gal->dx_gauss,gal->comp_turb_seed[k]);
+            printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc][seed=%ld]\n",k+1,gal->comp_turb_sigma[k],gal->comp_turb_scale[k],gal->dx_gauss,gal->comp_turb_seed[k]);
             set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k],gal->comp_turb_seed[k]);
             for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-                gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k]/unit_velocity;
+                gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
             }
             set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k],gal->comp_turb_seed[k]+1);
             for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-                gal->vel_y[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k]/unit_velocity;
+                gal->vel_y[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
             }
             set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k],gal->comp_turb_seed[k]+2);
             for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-                gal->vel_z[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k]/unit_velocity;
+                gal->vel_z[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
             }
             deallocate_galaxy_gaussian_grid(gal);
         }
