@@ -384,7 +384,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
     hz = gal->comp_mcmc_step[component]*gal->comp_scale_length[component]*gal->comp_flatz_cut[component];
 
     if(gal->pseudo[0]) {
-        min_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,gal->comp_cut[component],0.,0.,0,density_model,component))); 
+        min_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,0.1*gal->comp_cut[component],gal->comp_scale_length[component],0.,0,density_model,component))); 
     }
 
     if(gal->comp_npart[component]>0) {
@@ -524,7 +524,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
             prob = min(1.0,(pi_y[0]/pi_x[0])*(q_y[0]/q_x[0]));
             randval = gsl_rng_uniform_pos(r[0]);
             if(randval <= prob) {
-                gal->r_cyl[i] = prop_r[0];
+                gal->r_cyl[i] = fabs(prop_r[0]);
                 gal->theta_cyl[i] = prop_theta[0];
                 gal->z[i] = prop_z[0];
             }
@@ -546,7 +546,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 step_z = hz+gal->comp_mcmc_step_slope[component]*gal->z[i-1]/gal->comp_scale_length[component];
                 if(gal->pseudo[0]) {
                     step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,gal->r_cyl[i-1],gal->theta_cyl[i-1],gal->z[i-1],0,density_model,component)));
-                    if(isinf(step_z)) step_z = min_step_z;
+                    if(isinf(step_z)||step_z<min_step_z) step_z = min_step_z;
                 }
                 step_r = sqrt(pow(step_x,2)+pow(step_y,2));
                 step_r_sph = sqrt(pow(step_x,2)+pow(step_y,2)+pow(step_z,2));
@@ -614,7 +614,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 new_step_z = hz+gal->comp_mcmc_step_slope[component]*prop_z[k]/gal->comp_scale_length[component];
                 if(gal->pseudo[0]) {
                     new_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,prop_r[k],prop_theta[k],prop_z[k],0,density_model,component)));
-                    if(isinf(new_step_z)) new_step_z = min_step_z;
+                    if(isinf(new_step_z)||new_step_z<min_step_z) new_step_z = min_step_z;
                 }
                 new_step_r = sqrt(pow(new_step_x,2)+pow(new_step_y,2));
                 new_step_r_sph = sqrt(pow(new_step_x,2)+pow(new_step_y,2)+pow(new_step_z,2));
@@ -953,6 +953,7 @@ double surface_density_func(galaxy *gal, double r, double theta, int cut, int co
 
     int status,tid;
     double surface_density,error,h;
+    size_t neval;
 
     gsl_integration_workspace *w = gsl_integration_workspace_alloc(AllVars.GslWorkspaceSize);
     gsl_function F;
@@ -970,7 +971,8 @@ double surface_density_func(galaxy *gal, double r, double theta, int cut, int co
     gal->storage[2][tid] = cut;
     gal->selected_comp[tid] = component;
 
-    gsl_integration_qag(&F,-gal->comp_cut[component]*gal->comp_flatz[component],gal->comp_cut[component]*gal->comp_flatz[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&surface_density,&error);
+    //gsl_integration_qag(&F,-gal->comp_cut[component]*gal->comp_flatz[component],gal->comp_cut[component]*gal->comp_flatz[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&surface_density,&error);
+    gsl_integration_qng(&F,-gal->comp_cut[component]*gal->comp_flatz[component],gal->comp_cut[component]*gal->comp_flatz[component],epsabs,epsrel,&surface_density,&error,&neval);
 
     gsl_integration_workspace_free(w);
 
@@ -1233,6 +1235,7 @@ double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, doub
     int status,pseudo_save;
     int tid;
     double result, integral, error, initial_surface_density, radius, theta;
+    size_t neval;
 
     gsl_function F;
 
@@ -1257,7 +1260,8 @@ double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, doub
     F.function = &dmidplane_density_gas_func;
     F.params = gal;
 
-    gsl_integration_qag(&F,-10.*gal->comp_scale_height[component],10.*gal->comp_scale_height[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
+    //gsl_integration_qag(&F,-10.*gal->comp_scale_height[component],10.*gal->comp_scale_height[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
+    gsl_integration_qng(&F,-10.*gal->comp_scale_height[component],10.*gal->comp_scale_height[component],epsabs,epsrel,&integral,&error,&neval);
 
     return initial_surface_density/integral;
 }

@@ -1407,6 +1407,8 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             printf("/////\t\t\t-> m_pot = %.2e Msol\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart_pot[j]));
             printf("/////\t\t\t-> m = %.2e Msol\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]));
             printf("/////\t\t\t-> scale = %6.2lf kpc\n",gal->comp_scale_length[j]);
+            printf("/////\t\t\t-> cut = %6.2lf kpc\n",gal->comp_cut[j]);
+            if(gal->comp_cut_in[j]>0) printf("/////\t\t\t-> inner cut = %6.2lf kpc\n",gal->comp_cut_in[j]);
             if(gal->comp_type[j]==1 && gal->lambda>=0) {
                 printf("/////\t\t\t-> c = %4.1lf\n",gal->comp_concentration[j]);
                 printf("/////\t\t\t-> lambda = %5.3lf\n",gal->lambda);
