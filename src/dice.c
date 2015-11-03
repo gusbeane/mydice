@@ -242,7 +242,7 @@ int main (int argc, char **argv) {
                 exit(0);
             }
         } else {
-            if(stream_to_galaxy(st,stack,0) != 0) {
+            if(stream_to_galaxy(st,stack) != 0) {
                 fprintf(stderr,"[Error] Unable to create galaxy from stream\n");
                 exit(0);
             }
