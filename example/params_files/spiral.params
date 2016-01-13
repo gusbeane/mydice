@@ -36,6 +36,8 @@ mcmc_ntry		        1
 # Gravitational softening [kpc]
 # Default value is the size of the smallest grid element
 softening		        0.250
+# Number of iterations to reach hydrostatic equilibrium (zero to deactivate)
+hydro_eq_niter			6
 
 
 #######################
@@ -182,8 +184,8 @@ turb_sigma3		        0.0
 turb_scale3		        1.0
 # Seed for the turbulent gaussian field
 turb_seed3		        1234
-# Number of iterations to reach hydrostatic equilibrium (zero to deactivate)
-hydro_eq_niter3 	    6
+# Compute hydrostatic equilibrium
+hydro_eq3				1
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm
 # within the hydro equilibrium algorithm
 mcmc_step_hydro3	    0.3

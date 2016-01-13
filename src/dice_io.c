@@ -315,6 +315,13 @@ int parse_config_file(char *fname) {
     mandatory[nt] = 0;
     id[nt++] = INT;
 
+    strcpy(tag[nt], "GslIntegrationScheme");
+    addr[nt] = &AllVars.GslIntegrationScheme;
+    AllVars.GslIntegrationScheme = 1;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = INT;
+
     strcpy(tag[nt], "GslWorkspaceSize");
     addr[nt] = &AllVars.GslWorkspaceSize;
     AllVars.GslWorkspaceSize = 100000;
@@ -406,7 +413,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 64*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+11
+#define MAXTAGS 75*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -486,6 +493,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     mandatory[nt] = 0;
     id[nt++] = INT;
 
+    strcpy(tag[nt], "level_grid_jeans_mixed");
+    addr[nt] = &gal->level_grid_jeans_mixed;
+    gal->level_grid_jeans_mixed = 7;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = INT;
+
     strcpy(tag[nt], "level_grid_turb");
     addr[nt] = &gal->level_grid_turb;
     gal->level_grid_turb = 7;
@@ -513,7 +527,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = INT;
-
 
     strcpy(tag[nt], "seed");
     addr[nt] = &gal->seed;
@@ -552,6 +565,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     strcpy(tag[nt], "mcmc_ntry");
     addr[nt] = &gal->mcmc_ntry;
     gal->mcmc_ntry = 1;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = INT;
+
+    strcpy(tag[nt], "hydro_eq_niter");
+    addr[nt] = &gal->hydro_eq_niter;
+    gal->hydro_eq_niter = 0;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = INT;
@@ -900,6 +920,22 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
+        n = sprintf(temp_tag,"Q_boost%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_Q_boost[j] = 0.;
+        addr[nt] = &gal->comp_Q_boost[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"Q_fixed%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_Q_fixed[j] = 0.;
+        addr[nt] = &gal->comp_Q_fixed[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
         n = sprintf(temp_tag,"turb_frac%d",j+1);
         strcpy(tag[nt], temp_tag);
         gal->comp_turb_frac[j] = 0.;
@@ -964,10 +1000,18 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = INT;
 
-        n = sprintf(temp_tag,"hydro_eq_niter%d",j+1);
+        n = sprintf(temp_tag,"hydro_eq%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_hydro_eq_niter[j] = 0;
-        addr[nt] = &gal->comp_hydro_eq_niter[j];
+        gal->comp_hydro_eq[j] = 0;
+        addr[nt] = &gal->comp_hydro_eq[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+
+        n = sprintf(temp_tag,"spherical_hydro_eq%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_spherical_hydro_eq[j] = 0;
+        addr[nt] = &gal->comp_spherical_hydro_eq[j];
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
@@ -1091,6 +1135,70 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
+
+		n = sprintf(temp_tag,"sigmar_model%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_sigmar_model[j];
+        gal->comp_sigmar_model[j] = -1;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+
+        n = sprintf(temp_tag,"sigmaz_model%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_sigmaz_model[j];
+        gal->comp_sigmaz_model[j] = -1;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+
+        n = sprintf(temp_tag,"sigmar%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_sigmar[j];
+        gal->comp_sigmar[j] = 0.;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"sigmaz%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_sigmaz[j];
+        gal->comp_sigmaz[j] = 0.;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"sigmar_radius%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_sigmar_radius[j];
+        gal->comp_sigmar_radius[j] = 0.;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"sigmaz_radius%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_sigmaz_radius[j];
+        gal->comp_sigmaz_radius[j] = 0.;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"f_sigma%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_f_sigma[j];
+        gal->comp_f_sigma[j] = 2.0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"k_stream%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_k_stream[j];
+        gal->comp_k_stream[j] = -1.0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
     }
 
     if((fd = fopen(fname, "r"))) {
@@ -2042,59 +2150,10 @@ void write_galaxy_gas_rotation_curve(galaxy *gal, double rmax, char *fname, doub
     return;
 }
 
-void write_galaxy_sigma_z_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, v2az, sigma_z, save1, save2, save3;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->z[gal->index[tid]];
-    save2 = gal->theta_cyl[gal->index[tid]];
-    save3 = gal->r_cyl[gal->index[tid]];
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        gal->r_cyl[gal->index[tid]] = radius;
-        v2az = v2a_z_func(gal,w[tid],gal->selected_comp[0]);
-
-        // Enforce Q>Q_min
-        if(gal->comp_Q_lim[gal->selected_comp[0]]>0) {
-            v2az = v2a_z_toomre(gal,radius,v2az,gal->selected_comp[0]);
-        }
-        if(AllVars.AcceptImaginary==1) {
-            sigma_z = sqrt(fabs(v2az));
-        } else {
-            sigma_z = (v2az>0. ? sqrt(v2az) : 0.);
-        }
-        // Write the radius and sigma z to file in kpc and km2/s2 respectively.
-        fprintf(fp1,"%lf %lf\n",radius,sigma_z);
-    }
-    gal->z[gal->index[tid]] = save1;
-    gal->theta_cyl[gal->index[tid]] = save2;
-    gal->r_cyl[gal->index[tid]] = save3;
-    fclose(fp1);
-
-    return;
-}
 
 void write_galaxy_sigma_1D_curve(galaxy *gal, double rmax, char *fname, double interval) {
     int i,tid;
-    double radius, theta, v2a, sigma, save1, save2, save3;
+    double radius, theta, v2a, sigma, save1, save2, save3, save4, save5;
     char filename[200];
     FILE *fp1;
 
@@ -2114,25 +2173,30 @@ void write_galaxy_sigma_1D_curve(galaxy *gal, double rmax, char *fname, double i
     save1 = gal->z[gal->index[tid]];
     save2 = gal->theta_cyl[gal->index[tid]];
     save3 = gal->r_cyl[gal->index[tid]];
+    save4 = gal->x[gal->index[tid]];
+    save5 = gal->y[gal->index[tid]];
     gal->z[gal->index[tid]] = 0.;
     gal->theta_cyl[gal->index[tid]] = 0.;
 
     for (i = 0; i < (int)(rmax/interval); ++i) {
         radius = i*interval;
         gal->r_cyl[gal->index[tid]] = radius;
+		gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
+		gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
         v2a = v2a_1D_func(gal,w[tid],gal->selected_comp[0]);
-
         if(AllVars.AcceptImaginary==1) {
             sigma = sqrt(fabs(v2a));
         } else {
             sigma = (v2a>0. ? sqrt(v2a) : 0.);
         }
         // Write the radius and sigma z to file in kpc and km2/s2 respectively.
-        fprintf(fp1,"%lf %lf\n",radius,sigma);
+        fprintf(fp1,"%lf %le\n",radius,sigma);
     }
     gal->z[gal->index[tid]] = save1;
     gal->theta_cyl[gal->index[tid]] = save2;
     gal->r_cyl[gal->index[tid]] = save3;
+    gal->x[gal->index[tid]] = save4;
+    gal->y[gal->index[tid]] = save5;
     fclose(fp1);
 
     return;
@@ -2141,7 +2205,7 @@ void write_galaxy_sigma_1D_curve(galaxy *gal, double rmax, char *fname, double i
 
 void write_galaxy_sigma_r_curve(galaxy *gal, double rmax, char *fname, double interval) {
     int i,tid;
-    double radius, theta, v2ar, sigma_r, save1, save2, save3;
+    double radius, theta, v2ar, sigma_r, save1, save2, save3, save4, save5;
     char filename[200];
     FILE *fp1;
 
@@ -2157,20 +2221,28 @@ void write_galaxy_sigma_r_curve(galaxy *gal, double rmax, char *fname, double in
 #else
     tid = 0;
 #endif
-    gal->index[tid] = 0;
+    gal->index[tid] = 100;
     save1 = gal->z[gal->index[tid]];
     save2 = gal->theta_cyl[gal->index[tid]];
     save3 = gal->r_cyl[gal->index[tid]];
+    save4 = gal->x[gal->index[tid]];
+    save5 = gal->y[gal->index[tid]];
+
     gal->z[gal->index[tid]] = 0.;
     gal->theta_cyl[gal->index[tid]] = 0.;
+    gal->r_cyl[gal->index[tid]] = gal->comp_sigmar_radius[gal->selected_comp[0]];
+	gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
+	gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
 
     for (i = 0; i < (int)(rmax/interval); ++i) {
         radius = i*interval;
         gal->r_cyl[gal->index[tid]] = radius;
-        v2ar = v2a_z_func(gal,w[tid],gal->selected_comp[0]);
+		gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
+		gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
+        v2ar = v2a_r_func(gal,w[tid],gal->selected_comp[0]);
         // Enforce Q>Q_min
-        if(gal->comp_Q_lim[gal->selected_comp[0]]>0) {
-            v2ar = v2a_z_toomre(gal,radius,v2ar,gal->selected_comp[0]);
+        if(gal->comp_Q_lim[gal->selected_comp[0]]>0 || gal->comp_Q_fixed[gal->selected_comp[0]]>0 || gal->comp_Q_boost[gal->selected_comp[0]]>0) {
+            v2ar = v2a_r_toomre(gal,radius,v2ar,gal->selected_comp[0]);
         }
         if(AllVars.AcceptImaginary==1) {
             sigma_r = sqrt(fabs(v2ar));
@@ -2182,19 +2254,21 @@ void write_galaxy_sigma_r_curve(galaxy *gal, double rmax, char *fname, double in
             sigma_r *= disp_softening;
         }
         // Write the radius and sigma z to file in kpc and km2/s2 respectively.
-        fprintf(fp1,"%lf %lf\n",radius,sigma_r);
+        fprintf(fp1,"%lf %le\n",radius,sigma_r);
     }
     gal->z[gal->index[tid]] = save1;
     gal->theta_cyl[gal->index[tid]] = save2;
     gal->r_cyl[gal->index[tid]] = save3;
+    gal->x[gal->index[tid]] = save4;
+    gal->y[gal->index[tid]] = save5;
     fclose(fp1);
 
     return;
 }
 
-void write_galaxy_sigma_theta_curve(galaxy *gal, double rmax, char *fname, double interval) {
+void write_galaxy_sigma_z_curve(galaxy *gal, double rmax, char *fname, double interval) {
     int i,tid;
-    double radius, theta, v2az, v2at, sigma_theta, save1, save2, save3;
+    double radius, theta, v2az, sigma_z, save1, save2, save3, save4, save5;
     char filename[200];
     FILE *fp1;
 
@@ -2214,34 +2288,95 @@ void write_galaxy_sigma_theta_curve(galaxy *gal, double rmax, char *fname, doubl
     save1 = gal->z[gal->index[tid]];
     save2 = gal->theta_cyl[gal->index[tid]];
     save3 = gal->r_cyl[gal->index[tid]];
+    save4 = gal->x[gal->index[tid]];
+    save5 = gal->y[gal->index[tid]];
     gal->z[gal->index[tid]] = 0.;
     gal->theta_cyl[gal->index[tid]] = 0.;
 
     for (i = 0; i < (int)(rmax/interval); ++i) {
         radius = i*interval;
         gal->r_cyl[gal->index[tid]] = radius;
+		gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
+		gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
         v2az = v2a_z_func(gal,w[tid],gal->selected_comp[0]);
+        if(AllVars.AcceptImaginary==1) {
+            sigma_z = sqrt(fabs(v2az));
+        } else {
+            sigma_z = (v2az>0. ? sqrt(v2az) : 0.);
+        }
+        // Write the radius and sigma z to file in kpc and km2/s2 respectively.
+        fprintf(fp1,"%lf %le\n",radius,sigma_z);
+    }
+    gal->z[gal->index[tid]] = save1;
+    gal->theta_cyl[gal->index[tid]] = save2;
+    gal->r_cyl[gal->index[tid]] = save3;
+    gal->x[gal->index[tid]] = save4;
+    gal->y[gal->index[tid]] = save5;
+    fclose(fp1);
+
+    return;
+}
+
+
+void write_galaxy_sigma_theta_curve(galaxy *gal, double rmax, char *fname, double interval) {
+    int i,tid;
+    double radius, theta, vc, v2ar, v2az, v2at, vat, sigma_theta, save1, save2, save3, save4, save5;
+    char filename[200];
+    FILE *fp1;
+
+    // Total rotation curve
+    sprintf(filename,fname);
+    fp1 = fopen(filename, "w");
+    if (fp1 == NULL) {
+        printf("[Warning] Cannot open %s\n",fname);
+        return;
+    }
+#if USE_THREADS == 1
+    tid = omp_get_thread_num();
+#else
+    tid = 0;
+#endif
+    gal->index[tid] = 0;
+    save1 = gal->z[gal->index[tid]];
+    save2 = gal->theta_cyl[gal->index[tid]];
+    save3 = gal->r_cyl[gal->index[tid]];
+    save4 = gal->x[gal->index[tid]];
+    save5 = gal->y[gal->index[tid]];
+    gal->z[gal->index[tid]] = 0.;
+    gal->theta_cyl[gal->index[tid]] = 0.;
+
+    for (i = 0; i < (int)(rmax/interval); ++i) {
+        radius = i*interval;
+        gal->r_cyl[gal->index[tid]] = radius;
+		gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
+		gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
+        v2ar = v2a_r_func(gal,w[tid],gal->selected_comp[0]);
+        v2az = v2a_z_func(gal,w[tid],gal->selected_comp[0]);
+		vc = v_c_func(gal,radius);
         // Enforce Q>Q_min
         if(gal->comp_Q_lim[gal->selected_comp[0]]>0) {
-            v2az = v2a_z_toomre(gal,radius,v2az,gal->selected_comp[0]);
+            v2ar = v2a_r_toomre(gal,radius,v2ar,gal->selected_comp[0]);
         }
         if(gal->comp_epicycle[gal->selected_comp[0]]==1) {
-            sigma_theta = sqrt(sigma2_theta_disk_func(gal,radius,v2az));
+            sigma_theta = sqrt(sigma2_theta_epicycle_func(gal,radius,v2ar));
         } else {
-            v2at = v2az+pow(v_c_func(gal,radius),2)+v2a_theta_func(gal,radius,gal->selected_comp[0]);
+            v2at = v2a_theta_func(gal,radius,v2ar,vc,gal->selected_comp[0]);
+			vat = gal->comp_streaming_fraction[gal->selected_comp[0]]*v_c_func(gal,radius);
             // Check if the dispersion is a real or complex number
             if(AllVars.AcceptImaginary==1) {
-                sigma_theta = sqrt(fabs(v2at));
+				sigma_theta = sqrt(fabs(v2at-vat*vat));
             } else {
-                sigma_theta = (v2at>0) ? sqrt(v2at) : 0.;
+                sigma_theta = (v2at>=vat*vat) ? sqrt(v2at-vat*vat) : 0.;
             }
         }
-        // Write the radius and sigma theta to file in kpc and km2/s2 respectively.
+        // Write the radius and sigma theta to file in kpc and km/s respectively.
         fprintf(fp1,"%lf %le\n",radius,sigma_theta);
     }
     gal->z[gal->index[tid]] = save1;
     gal->theta_cyl[gal->index[tid]] = save2;
     gal->r_cyl[gal->index[tid]] = save3;
+    gal->x[gal->index[tid]] = save4;
+    gal->y[gal->index[tid]] = save5;
     fclose(fp1);
 
     return;
@@ -2249,7 +2384,7 @@ void write_galaxy_sigma_theta_curve(galaxy *gal, double rmax, char *fname, doubl
 
 void write_galaxy_toomre_curve(galaxy *gal, double rmax, char *fname, double interval) {
     int i,tid;
-    double radius, theta, v2az, Q, save1, save2, save3;
+    double radius, theta, v2ar, Q, save1, save2, save3, save4, save5;
     char filename[200];
     FILE *fp1;
 
@@ -2269,23 +2404,29 @@ void write_galaxy_toomre_curve(galaxy *gal, double rmax, char *fname, double int
     save1 = gal->z[gal->index[tid]];
     save2 = gal->theta_cyl[gal->index[tid]];
     save3 = gal->r_cyl[gal->index[tid]];
+    save4 = gal->x[gal->index[tid]];
+    save5 = gal->y[gal->index[tid]];
     gal->z[gal->index[tid]] = 0.;
     gal->theta_cyl[gal->index[tid]] = 0.;
 
     for (i = 1; i < (int)(rmax/interval); ++i) {
         radius = i*interval;
         gal->r_cyl[gal->index[tid]] = radius;
-        v2az = v2a_z_func(gal,w[tid],gal->selected_comp[0]);
-        if(gal->comp_Q_lim[gal->selected_comp[0]]>0) {
-            v2az = v2a_z_toomre(gal,radius,v2az,gal->selected_comp[0]);
+		gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
+		gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
+        v2ar = v2a_r_func(gal,w[tid],gal->selected_comp[0]);
+        if(gal->comp_Q_lim[gal->selected_comp[0]]>0 || gal->comp_Q_fixed[gal->selected_comp[0]]>0 || gal->comp_Q_boost[gal->selected_comp[0]]>0) {
+            v2ar = v2a_r_toomre(gal,radius,v2ar,gal->selected_comp[0]);
         }
-        Q = toomre(gal,radius,v2az,gal->selected_comp[0]);
+        Q = toomre(gal,radius,v2ar,gal->selected_comp[0]);
         // Write the radius and Toomre criterion to file in kpc and km2/s2 respectively.
         fprintf(fp1,"%lf %le\n",radius,Q);
     }
     gal->z[gal->index[tid]] = save1;
     gal->theta_cyl[gal->index[tid]] = save2;
     gal->r_cyl[gal->index[tid]] = save3;
+    gal->x[gal->index[tid]] = save4;
+    gal->y[gal->index[tid]] = save5;
     fclose(fp1);
 
     return;
@@ -2363,7 +2504,7 @@ void write_galaxy_density_curve(galaxy *gal, double rmax, char *fname, double in
     for (i = 0; i < (int)(rmax/interval); ++i) {
         radius = i*interval;
         if(gal->pseudo[tid]) {
-            rho = pseudo_density_gas_func(gal,radius,0.,0.,1,gal->comp_model[gal->selected_comp[0]],gal->selected_comp[0]);
+            rho = pseudo_density_gas_func(gal,radius,0.,0.,1,gal->comp_model[gal->selected_comp[0]],gal->selected_comp[0],gal->comp_spherical_hydro_eq[gal->selected_comp[0]]);
         } else {
             rho = density_functions_pool(gal,radius,0.,0.,1,gal->comp_model[gal->selected_comp[0]],gal->selected_comp[0]);
         }

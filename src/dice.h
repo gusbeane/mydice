@@ -129,6 +129,8 @@ typedef struct {
     // Total number of components
     int n_component;
     int                 *selected_comp;
+    int                 hydro_eq_niter;
+    int                 hydro_eq;
     // Component quantities
     char                **comp_profile_name;
     unsigned long int   *comp_npart;
@@ -186,9 +188,13 @@ typedef struct {
     double              *comp_radius_nfw;
     double              *comp_Q_lim;
     double              *comp_Q_min;
+    double              *comp_Q_fixed;
+    double              *comp_Q_boost;
+    double              *comp_Q_bar;
     double              *comp_t_min;
     int                 *comp_compute_vel;
-    int                 *comp_hydro_eq_niter;
+    int                 *comp_hydro_eq;
+    int                 *comp_spherical_hydro_eq;
     int                 *comp_dens_gauss;
     double              *comp_cut_in;
     int                 *comp_thermal_eq;
@@ -204,6 +210,16 @@ typedef struct {
     double              *comp_spiral_alpha;
     double              *comp_warp_scale;
     int                 *comp_warp_mode;
+    int                 *comp_sigmar_model;
+    int                 *comp_sigmaz_model;
+    double              *comp_sigmar;
+    double              *comp_sigmaz;
+    double              *comp_sigmar_radius;
+    double              *comp_sigmaz_radius;
+    double              *comp_sigmar_scale;
+    double              *comp_sigmaz_scale;
+    double              *comp_f_sigma;
+    double              *comp_k_stream;
     // Virial quantities
     double v200;
     double r200;
@@ -234,6 +250,10 @@ typedef struct {
     // Particle Mesh potential grid
     double              ****potential;
     double              ****potential_ext;
+	double				**vr2_mixed;
+	double				**vr2_tilted_mixed;
+	double				**vz2_tilted_mixed;
+	double				**vtheta2_mixed;
     // Particle Mesh gaussian field grid
     double              ***gaussian_field;
     // Gas midplane density grid
@@ -242,6 +262,7 @@ typedef struct {
     double *dx;
     // Gas midplane density grid cell size vector [kpc]
     double dx_dens;
+    double dx_jeans;
     // Gaussian field grid cell size vector [kpc]
     double dx_gauss;
     // Number of particles per particle type
@@ -254,11 +275,13 @@ typedef struct {
     double *boxsize_flatz;
     // Total gas midplane density grid size [kpc]
     double boxsize_dens;
+    double boxsize_jeans;
     // Level of refinement of the potential grid
     int level_coarse;
     int nlevel;
     // Level of refinement of the gas density grid
     int level_grid_dens;
+    int level_grid_jeans_mixed;
     // Level of refinement of the gas turbulence grid
     int level_grid_turb;
     // Level of refinement of the stars age grid
@@ -271,6 +294,7 @@ typedef struct {
     int **ngrid;
     // Number of cells in the midplane density grid
     int ngrid_dens[2];
+    int ngrid_jeans[2];
     // Number of cells in the turbulence grid
     int ngrid_gauss[3];
     // Storage array
@@ -288,13 +312,11 @@ typedef struct {
     int midplane_dens_defined;
     // Boolean variable checking the computation of the gaussian field
     int gaussian_field_defined;
+	int jeans_mixed_defined;
     // Seed for random number generator
     long seed;
     // Pseudo density boolean
     int                 *pseudo;
-    // Shift term for the gravitational potential in the zoom region
-    double potential_shift_zoom1;
-    double potential_shift_zoom2;
     // Gravitational softening
     double softening;
     // MCMC multiple try parameter
@@ -449,6 +471,7 @@ struct GlobalVars {
     int GaussianRejectIter;
     int CurrentGalaxy;
     int NormMassFact;
+	int GslIntegrationScheme;
     unsigned long int GalStart[MAX_GAL];
     unsigned long int GalNpart[MAX_GAL];
     unsigned long int StreamStart[MAX_STREAM];
@@ -518,7 +541,6 @@ int position_stream(galaxy *, int);
 double density_functions_pool(galaxy *, double, double, double, int, int, int);
 void mcmc_metropolis_hasting_ntry(galaxy *, int, int);
 void mcmc_metropolis_hasting_stream(stream *, int, int);
-int set_hydro_equilibrium(galaxy *, int, int);
 double density_functions_stream_pool(stream *, double, double, double, int, int);
 
 double surface_density_func(galaxy *, double, double, int, int);
@@ -533,10 +555,10 @@ double cumulative_mass_func_stream(stream *, double, int);
 static double d_cumulative_mass_func_stream(double, void *);
 
 static double integrand_density_gas_func(double, void *);
-double pseudo_density_gas_func(galaxy *, double, double, double, int, int, int);
-double midplane_density_gas_func(galaxy *, gsl_integration_workspace *, double, double, int);
+double pseudo_density_gas_func(galaxy *, double, double, double, int, int, int, int);
+double midplane_density_gas_func(galaxy *, gsl_integration_workspace *, double, double);
 static double dmidplane_density_gas_func(double, void *);
-void fill_midplane_dens_grid(galaxy *, int);
+void fill_midplane_dens_grid(galaxy *);
 double get_midplane_density(galaxy *, double, double);
 
 double disk_scale_length_func(galaxy *, double);
@@ -557,13 +579,18 @@ double galaxy_metallicity(double, double);
 // Velocity functions
 double v_c_func(galaxy *,double);
 double v_c_exp_disk_func(galaxy *,double);
+double v2a_r_func(galaxy *, gsl_integration_workspace *, int);
 double v2a_z_func(galaxy *, gsl_integration_workspace *, int);
 static double dv2a_z_func(double, void *);
 double v2a_1D_func(galaxy *, gsl_integration_workspace *, int);
 static double dv2a_1D_func(double, void *);
-double v2a_theta_func(galaxy *, double, int);
-double sigma2_theta_disk_func(galaxy *, double, double);
-double v2a_z_toomre(galaxy *, double, double, int);
+void fill_jeans_mixed_grid (galaxy *, int);
+double get_jeans_array_cic(galaxy *, double, double, double **);
+double h_function(galaxy *, double, double, int);
+double h_over_r(galaxy *, double, double, int);
+double v2a_theta_func(galaxy *, double, double, double, int);
+double sigma2_theta_epicycle_func(galaxy *, double, double);
+double v2a_r_toomre(galaxy *, double, double, int);
 double toomre(galaxy *, double, double, int);
 double rho_v2a_r_func(double, void *);
 double v2_theta_gas_func(galaxy *, double, double, int);

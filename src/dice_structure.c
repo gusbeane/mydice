@@ -194,6 +194,13 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
             strcpy(gal->comp_profile_name[component],"         Uniform         ");
         density = gal->comp_scale_dens[component];
         break;
+    case 16:
+        // Isothermal profile
+        if(strcmp(gal->comp_profile_name[component],"")==0)
+            strcpy(gal->comp_profile_name[component],"     Pseudo-Isothermal   ");
+        density = gal->comp_scale_dens[component]*1.0/(1.0+pow(m,2.0));
+        break;
+
     default:
         fprintf(stderr,"[Error] model%d=%d is not a valid value\n",component+1,model);
         exit(0);
@@ -272,7 +279,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
     double prob, *radius;
     double theta, phi, randval, smooth_factor;
     double step_r, step_x, step_y, step_z, step_r_sph, hx, hy, hz;
-    double new_step_x, new_step_y, new_step_z, new_step_r, new_step_r_sph, min_step_z;
+    double new_step_x, new_step_y, new_step_z, new_step_r, new_step_r_sph, min_step_z, max_step_z;
     double acceptance, norm, ratio, rho_ref, mean_metal;
     double *prop_x, *prop_y, *prop_z, *prop_r, *prop_theta, *prop_r_sph, *prop_phi_sph;
     double *pi_x, *pi_y, *q_x, *q_y, *weights, *w_x, *w_y;
@@ -384,7 +391,9 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
     hz = gal->comp_mcmc_step[component]*gal->comp_scale_length[component]*gal->comp_flatz_cut[component];
 
     if(gal->pseudo[0]) {
-        min_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,0.1*gal->comp_cut[component],gal->comp_scale_length[component],0.,0,density_model,component))); 
+        min_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,0.1*gal->comp_cut[component],gal->comp_scale_length[component],0.,0,density_model,component,gal->comp_spherical_hydro_eq[component]))); 
+        min_step_z = 1e-3*gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
+        max_step_z = gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
     }
 
     if(gal->comp_npart[component]>0) {
@@ -394,12 +403,27 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         step_x = hx;
         step_y = hy;
         step_z = hz;
-        if(gal->pseudo[0]) step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,gal->r_cyl[i],gal->theta_cyl[i],gal->z[i],0,density_model,component)));
+        if(gal->pseudo[0]) {
+			//step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,0.1*gal->comp_cut[component],0.,0.,0,density_model,component,gal->comp_spherical_hydro_eq[component])));
+			step_z = gal->comp_mcmc_step_hydro[component]*gal->comp_scale_length[component]*gal->comp_flatz_cut[component];
+            if(isinf(step_z)||step_z<min_step_z) step_z = min_step_z;
+            if(step_z>max_step_z) step_z = max_step_z;
+			if(gal->comp_spherical_hydro_eq[component]) {
+				step_x = step_z;
+				step_y = step_z;
+			}
+		}
         step_r = sqrt(pow(step_x,2)+pow(step_y,2));
         step_r_sph = sqrt(pow(step_x,2)+pow(step_y,2)+pow(step_z,2));
         theta = 2.0*pi*gsl_rng_uniform_pos(r[0]);
-        gal->x[i] = max(gal->comp_cut_in[component],step_r)*cos(theta);
-        gal->y[i] = max(gal->comp_cut_in[component],step_r)*sin(theta);
+		// Single particle always placed at the center
+		if(gal->comp_npart[component]==1) {
+			gal->x[i] = 0.;
+			gal->y[i] = 0;
+		} else {
+			gal->x[i] = max(gal->comp_cut_in[component],step_r)*cos(theta);
+			gal->y[i] = max(gal->comp_cut_in[component],step_r)*sin(theta);
+		}
         gal->z[i] = 0.;
         gal->r_cyl[i] = sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]);
         gal->theta_cyl[i] = atan2(gal->y[i],gal->x[i]);
@@ -411,7 +435,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         mean_metal = 0.;
         // Reduce the dimensionality of the MCMC if the component is axisymmetric
         symmetry = 0;
-        if(gal->comp_flatx[component] == gal->comp_flaty[component] && gal->pseudo[0]==0) {
+        if(gal->comp_flatx[component] == gal->comp_flaty[component]) {
             // Shperical symmetry
             if(gal->comp_flatz[component]==gal->comp_flatx[component] && gal->comp_flatz[component]==gal->comp_flaty[component]) {
                 symmetry = 2;
@@ -422,7 +446,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         }
         // Accept cylindrical symmetry for the gas disk with vertical hydrostatic equilibrium
         // only if all the components display a cylindrical symmetry
-        if(gal->pseudo[0] && gal->comp_flatx[component] == gal->comp_flaty[component]) {
+        if(gal->pseudo[0] && gal->comp_flatx[component] == gal->comp_flaty[component] && gal->comp_spherical_hydro_eq[component]==0) {
             for(k = 0; k < AllVars.MaxCompNumber; k++) {
                 if(gal->comp_flatx[k] == gal->comp_flaty[k]) {
                     symmetry = 1;
@@ -449,7 +473,15 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
             step_x = hx+gal->comp_mcmc_step_slope[component]*gal->x[i-1]/gal->comp_scale_length[component];
             step_y = hy+gal->comp_mcmc_step_slope[component]*gal->y[i-1]/gal->comp_scale_length[component];
             step_z = hz+gal->comp_mcmc_step_slope[component]*gal->z[i-1]/gal->comp_scale_length[component];
-            if(gal->pseudo[0]) step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,gal->r_cyl[i-1],gal->theta_cyl[i-1],gal->z[i-1],0,density_model,component)));
+            if(gal->pseudo[0]) {
+				step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,gal->r_cyl[i],gal->theta_cyl[i-1],gal->z[i-1],0,density_model,component,gal->comp_spherical_hydro_eq[component])));
+                if(isinf(step_z)||step_z<min_step_z) step_z = min_step_z;
+                if(step_z>max_step_z) step_z = max_step_z;
+				if(gal->comp_spherical_hydro_eq[component]) {
+					step_x = step_z;
+					step_y = step_z;
+				}
+			}
             step_r = sqrt(pow(step_x,2)+pow(step_y,2));
             step_r_sph = sqrt(pow(step_x,2)+pow(step_y,2)+pow(step_z,2));
             // Generating a proposal
@@ -464,7 +496,13 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                     new_step_x = hx+gal->comp_mcmc_step_slope[component]*prop_x[0]/gal->comp_scale_length[component];
                     new_step_y = hy+gal->comp_mcmc_step_slope[component]*prop_y[0]/gal->comp_scale_length[component];
                     new_step_z = hz+gal->comp_mcmc_step_slope[component]*prop_z[0]/gal->comp_scale_length[component];
-                    if(gal->pseudo[0]) new_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,prop_r[0],prop_theta[0],prop_z[0],0,density_model,component)));
+                    if(gal->pseudo[0]) {
+						new_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,prop_r[0],prop_theta[0],prop_z[0],0,density_model,component,gal->comp_spherical_hydro_eq[component])));
+						if(gal->comp_spherical_hydro_eq[component]) {
+							new_step_x = new_step_z;
+							new_step_y = new_step_z;
+						}
+					}
                     new_step_r = sqrt(pow(new_step_x,2)+pow(new_step_y,2));
                     new_step_r_sph = sqrt(pow(new_step_x,2)+pow(new_step_y,2)+pow(new_step_z,2));
                     q_y[0] = gsl_ran_gaussian_pdf(-gal->r_cyl[i-1]+prop_r[0],step_r);
@@ -484,7 +522,13 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                     new_step_x = hx+gal->comp_mcmc_step_slope[component]*prop_x[0]/gal->comp_scale_length[component];
                     new_step_y = hy+gal->comp_mcmc_step_slope[component]*prop_y[0]/gal->comp_scale_length[component];
                     new_step_z = hz+gal->comp_mcmc_step_slope[component]*prop_z[0]/gal->comp_scale_length[component];
-                    if(gal->pseudo[0]) new_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,prop_r[0],prop_theta[0],prop_z[0],0,density_model,component)));
+                    if(gal->pseudo[0]) {
+						new_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,prop_r[0],prop_theta[0],prop_z[0],0,density_model,component,gal->comp_spherical_hydro_eq[component])));
+						if(gal->comp_spherical_hydro_eq[component]) {
+							step_x = step_z;
+							step_y = step_z;
+						}
+					}
                     new_step_r_sph = sqrt(pow(new_step_x,2)+pow(new_step_y,2)+pow(new_step_z,2));
                     q_y[0] = gsl_ran_gaussian_pdf(-gal->r_sph[i-1]+prop_r_sph[0],step_r_sph);
                     q_x[0] = gsl_ran_gaussian_pdf(gal->r_sph[i-1]-prop_r_sph[0],new_step_r_sph);
@@ -501,7 +545,13 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                     new_step_x = hx+gal->comp_mcmc_step_slope[component]*prop_x[0]/gal->comp_scale_length[component];
                     new_step_y = hy+gal->comp_mcmc_step_slope[component]*prop_y[0]/gal->comp_scale_length[component];
                     new_step_z = hz+gal->comp_mcmc_step_slope[component]*prop_z[0]/gal->comp_scale_length[component];
-                    if(gal->pseudo[0]) new_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,prop_r[0],prop_theta[0],prop_z[0],0,density_model,component)));
+                    if(gal->pseudo[0]) {
+						new_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,prop_r[0],prop_theta[0],prop_z[0],0,density_model,component,gal->comp_spherical_hydro_eq[component])));
+						if(gal->comp_spherical_hydro_eq[component]) {
+							step_x = step_z;
+							step_y = step_z;
+						}
+					}
                     q_y[0] = gsl_ran_gaussian_pdf(-gal->x[i-1]+prop_x[0],step_x);
                     q_y[0] *= gsl_ran_gaussian_pdf(-gal->y[i-1]+prop_y[0],step_y);
                     q_y[0] *= gsl_ran_gaussian_pdf(-gal->z[i-1]+prop_z[0],step_z);
@@ -515,8 +565,8 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
             // Distribution function of the considered component
             // Density of the component times the integrand of spherical volume element
             if(gal->pseudo[0]) {
-                pi_x[0] = dv_x[0]*pseudo_density_gas_func(gal,fabs(gal->r_cyl[i]),gal->theta_cyl[i],gal->z[i],1,density_model,component);
-                pi_y[0] = dv_y[0]*pseudo_density_gas_func(gal,fabs(prop_r[0]),prop_theta[0],prop_z[0],1,density_model,component);
+                pi_x[0] = dv_x[0]*pseudo_density_gas_func(gal,fabs(gal->r_cyl[i]),gal->theta_cyl[i],gal->z[i],1,density_model,component,gal->comp_spherical_hydro_eq[component]);
+                pi_y[0] = dv_y[0]*pseudo_density_gas_func(gal,fabs(prop_r[0]),prop_theta[0],prop_z[0],1,density_model,component,gal->comp_spherical_hydro_eq[component]);
             } else {
                 pi_x[0] = dv_x[0]*density_functions_pool(gal,fabs(gal->r_cyl[i]),gal->theta_cyl[i],gal->z[i],1,density_model,component);
                 pi_y[0] = dv_y[0]*density_functions_pool(gal,fabs(prop_r[0]),prop_theta[0],prop_z[0],1,density_model,component);
@@ -545,8 +595,14 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 step_y = hy+gal->comp_mcmc_step_slope[component]*gal->y[i-1]/gal->comp_scale_length[component];
                 step_z = hz+gal->comp_mcmc_step_slope[component]*gal->z[i-1]/gal->comp_scale_length[component];
                 if(gal->pseudo[0]) {
-                    step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,gal->r_cyl[i-1],gal->theta_cyl[i-1],gal->z[i-1],0,density_model,component)));
+                    step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,gal->r_cyl[i-1],gal->theta_cyl[i-1],gal->z[i-1],0,density_model,component,gal->comp_spherical_hydro_eq[component])));
                     if(isinf(step_z)||step_z<min_step_z) step_z = min_step_z;
+                    if(step_z>max_step_z) step_z = max_step_z;
+					if(gal->comp_spherical_hydro_eq[component]) {
+						step_x = step_z;
+						step_y = step_z;
+					}
+					//printf("%le %le %le %le %le\n",step_z,gal->r_cyl[i-1],min_step_z,max_step_z,pseudo_density_gas_func(gal,gal->r_cyl[i-1],gal->theta_cyl[i-1],gal->z[i-1],0,density_model,component,gal->comp_spherical_hydro_eq[component]));
                 }
                 step_r = sqrt(pow(step_x,2)+pow(step_y,2));
                 step_r_sph = sqrt(pow(step_x,2)+pow(step_y,2)+pow(step_z,2));
@@ -585,9 +641,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 }
                 // Distribution function of the considered component
                 if(gal->pseudo[0]) {
-                    pi_y[k] = dv_y[k]*pseudo_density_gas_func(gal,prop_r[k],prop_theta[k],prop_z[k],1,density_model,component);
-                    smooth_factor = 1-0.5*(1+erf((fabs(prop_z[k])/(gal->comp_cut[component]*gal->comp_flatz_cut[component])-1.0)/(gal->comp_sigma_cut[component]*sqrt(2))));
-                    pi_y[k] *= smooth_factor;
+                    pi_y[k] = dv_y[k]*pseudo_density_gas_func(gal,prop_r[k],prop_theta[k],prop_z[k],1,density_model,component,gal->comp_spherical_hydro_eq[component]);
                 } else { 
                     pi_y[k] = dv_y[k]*density_functions_pool(gal,prop_r[k],prop_theta[k],prop_z[k],1,density_model,component);
                 }
@@ -613,8 +667,13 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 new_step_y = hy+gal->comp_mcmc_step_slope[component]*prop_y[k]/gal->comp_scale_length[component];
                 new_step_z = hz+gal->comp_mcmc_step_slope[component]*prop_z[k]/gal->comp_scale_length[component];
                 if(gal->pseudo[0]) {
-                    new_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,prop_r[k],prop_theta[k],prop_z[k],0,density_model,component)));
+                    new_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,prop_r[k],prop_theta[k],prop_z[k],0,density_model,component,gal->comp_spherical_hydro_eq[component])));
                     if(isinf(new_step_z)||new_step_z<min_step_z) new_step_z = min_step_z;
+                    if(new_step_z>max_step_z) new_step_z = max_step_z;
+					if(gal->comp_spherical_hydro_eq[component]) {
+						new_step_x = new_step_z;
+						new_step_y = new_step_z;
+					}
                 }
                 new_step_r = sqrt(pow(new_step_x,2)+pow(new_step_y,2));
                 new_step_r_sph = sqrt(pow(new_step_x,2)+pow(new_step_y,2)+pow(new_step_z,2));
@@ -673,9 +732,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 }
                 // Distribution function of the considered component
                 if(gal->pseudo[0]) {
-                    pi_x[k] = dv_x[k]*pseudo_density_gas_func(gal,ref_r[k],ref_theta[k],ref_z[k],1,density_model,component);
-                    smooth_factor = 1-0.5*(1+erf((fabs(ref_z[k])/(gal->comp_cut[component]*gal->comp_flatz_cut[component])-1.0)/(gal->comp_sigma_cut[component]*sqrt(2))));
-                    pi_x[k] *= smooth_factor;
+                    pi_x[k] = dv_x[k]*pseudo_density_gas_func(gal,ref_r[k],ref_theta[k],ref_z[k],1,density_model,component,gal->comp_spherical_hydro_eq[component]);
                 } else {
                     pi_x[k] = dv_x[k]*density_functions_pool(gal,ref_r[k],ref_theta[k],ref_z[k],1,density_model,component);
                 }
@@ -766,65 +823,6 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
     free(dv_y);
 
     return;
-}
-
-// This function modify the z component of the gaseous particles according to an iterative
-// algorithm to reach the hydrostatic equilibrium of the disk. This function was inspired by
-// Springel, Di Matteo er al. 2005 method.
-int set_hydro_equilibrium(galaxy *gal, int component, int n_iter) {
-
-    unsigned long int i,k;
-    int j,n;
-    int density_model, neval;
-    double mu, z0, pi_x, pi_y, q_x, q_y, prob, *radius;
-    double theta, phi, randval, x, y, z, step, previous_step, prop_r, prop_theta, prop_x, prop_y, prop_z, acceptance;
-    double step_r, step_x, step_y, step_z, prev_step_x, prev_step_y, prev_step_z;
-    double cut_dens,theta_max_dens,smooth_factor,mean_metal;
-    double xtemp,ytemp,rtemp;
-    double exclude[3];
-
-    printf("/////\tTargeting gas azimuthal hydrostatic equilibrium\n");
-
-    fflush(stdout);
-    // Allow to use pseudo density functions
-    for(i = 0; i<AllVars.Nthreads; i++) gal->pseudo[i] = 1;
-    density_model = gal->comp_model[component];
-    // Looking for gas particles
-    if(gal->comp_type[component]==0 && gal->comp_npart_pot[component]>0) {
-        printf("/////\t\t- Component %2d -> recomputing gas particles position\n",component+1);
-        // Starting equilibrium iterations
-        for(j = 0; j < n_iter; ++j) {
-            printf("/////\t\t\tIteration %2d/%2d -> evaluating potential",j+1,n_iter);
-            fflush(stdout);
-            // Now that we've got gas particles positions, we can compute the full potential.
-            for (n = 0; n < gal->nlevel; n++) {
-                exclude[0] = 0.;
-                exclude[1] = 0.;
-                exclude[2] = 0.;
-                if(set_galaxy_potential(gal,gal->potential[n],gal->dx[n],gal->ngrid[n],0,exclude) != 0) {
-                    fprintf(stderr,"\n[Error] Unable to set the potential\n");
-                    exit(0);
-                }
-                if(n>0) {
-                    exclude[0] = gal->boxsize[n]*gal->boxsize_flatx[n]/2.;
-                    exclude[1] = gal->boxsize[n]*gal->boxsize_flaty[n]/2.;
-                    exclude[2] = gal->boxsize[n]*gal->boxsize_flatz[n]/2.;
-                    if(set_galaxy_potential(gal,gal->potential_ext[n-1],gal->dx[n-1],gal->ngrid[n-1],0,exclude) != 0) {
-                        fprintf(stderr,"\n[Error] Unable to set the potential\n");
-                        exit(0);
-                    }
-                }
-            }
-            fflush(stdout);
-            printf(" / Computing midplane dens");
-            fflush(stdout);
-            fill_midplane_dens_grid(gal,component);
-            printf(" / Computing coords ");
-            fflush(stdout);
-            mcmc_metropolis_hasting_ntry(gal,component,gal->comp_model[component]); 
-        }
-    }
-    return 0;
 }
 
 void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model) {
@@ -1189,11 +1187,11 @@ static double d_cumulative_mass_func_stream(double r, void *params) {
 // This function computes the density of the gas assuming vertical structure hydrostatic equilibirum.
 // Using this function into a iterative algorithm allows to converge towards
 // a complete equilibrium state
-double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, int cut, int density_model, int component) {
+double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, int cut, int density_model, int component, int spherical) {
 
     int tid;
-    double density, delta_pot, rho_0, save1, save2;
-    double sigma1, sigma2, smooth_factor1, smooth_factor2, hx, hy, n;
+    double density, density1, delta_pot,delta_pot1, rho_0, save1, save2, rsph, x ,y;
+    double sigma1, sigma2, smooth_factor1, smooth_factor2, smooth_factor3, hx, hy, hz, n, m;
 
 #if USE_THREADS == 1
     tid = omp_get_thread_num();
@@ -1201,40 +1199,67 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
     tid = 0;
 #endif
 
-    // Computing the potential gradient between 0 and z
-    // in cgs unit
-    save1 = gal->x[gal->index[tid]];
-    save2 = gal->y[gal->index[tid]];
-    gal->x[gal->index[tid]] = r*cos(theta);
-    gal->y[gal->index[tid]] = r*sin(theta);
-    delta_pot = galaxyz_potential_wrapper_func(z,gal)-galaxyz_potential_wrapper_func(0.,gal);
-    // Density in the xy-plane in 1e10 solar mass / kpc^3
-    rho_0 = get_midplane_density(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
-    hx = gal->comp_scale_length[component]*gal->comp_flatx[component];
-    hy = gal->comp_scale_length[component]*gal->comp_flaty[component];
-    n = sqrt(pow(gal->x[gal->index[tid]]/hx,2.0)+pow(gal->y[gal->index[tid]]/hy,2.0));
-    gal->x[gal->index[tid]] = save1;
-    gal->y[gal->index[tid]] = save2;
+	hx = gal->comp_cut[component]*gal->comp_flatx_cut[component];
+	hy = gal->comp_cut[component]*gal->comp_flaty_cut[component];
+	hz = gal->comp_cut[component]*gal->comp_flatz_cut[component];
+	if(spherical) {
+		rsph = sqrt(r*r+z*z);
+		x = r*cos(theta);
+		y = r*sin(theta);
+    	// Computing the potential gradient between 0 and rsph
+    	save1 = gal->theta_cyl[gal->index[tid]];
+    	save2 = gal->phi_sph[gal->index[tid]];
+		gal->theta_cyl[gal->index[tid]] = theta;
+		gal->phi_sph[gal->index[tid]] = acos(z/rsph);
+    	delta_pot = galaxyrsph_potential_wrapper_func(rsph,gal)-galaxyrsph_potential_wrapper_func(0.,gal);
+    	delta_pot1 = galaxyz_potential_wrapper_func(z,gal)-galaxyz_potential_wrapper_func(0.,gal);
+    	// Central density
+    	rho_0 = density_functions_pool(gal,0.,0.,0.,1,density_model,component);
+    	n = sqrt(pow(x/hx,2.0)+pow(y/hy,2.0)+pow(z/hz,2.0));
+    	gal->theta_cyl[gal->index[tid]] = save1;
+    	gal->phi_sph[gal->index[tid]] = save2;
+	} else {
+		// Computing the potential gradient between 0 and z
+    	save1 = gal->x[gal->index[tid]];
+    	save2 = gal->y[gal->index[tid]];
+    	gal->x[gal->index[tid]] = r*cos(theta);
+    	gal->y[gal->index[tid]] = r*sin(theta);
+    	delta_pot = galaxyz_potential_wrapper_func(z,gal)-galaxyz_potential_wrapper_func(0.,gal);
+    	// Density in the xy-plane in 1e10 solar mass / kpc^3
+    	rho_0 = get_midplane_density(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
+    	n = sqrt(pow(gal->x[gal->index[tid]]/hx,2.0)+pow(gal->y[gal->index[tid]]/hy,2.0));
+		m = sqrt(pow(z/hz,2.0));
+    	gal->x[gal->index[tid]] = save1;
+    	gal->y[gal->index[tid]] = save2;
+	}
 
     // Hydrostatic equilibrium requires following density
     density = rho_0*exp(-delta_pot/(pow(gal->comp_cs_init[component],2.0)));
+    density1 = rho_0*exp(-delta_pot1/(pow(gal->comp_cs_init[component],2.0)));
+	//printf("%le %le %le %le %le %le %le %lf %lf\n",density,density1,rho_0,delta_pot,delta_pot1,galaxyrsph_potential_wrapper_func(rsph,gal),galaxyrsph_potential_wrapper_func(0.,gal),r,z);
 
     sigma1 = gal->comp_sigma_cut[component];
     sigma2 = gal->comp_sigma_cut_in[component];
     smooth_factor1 = 1-0.5*(1+erf((n-1.0)/(sigma1*sqrt(2))));
     smooth_factor2 = 0.5*(1+erf((n-1.0)/(sigma2*sqrt(2))));
-
-    if(cut && r>gal->comp_cut[component]) density *= smooth_factor1;
-    if(cut && r<gal->comp_cut_in[component]) density *= smooth_factor2;
+	smooth_factor3 = 1-0.5*(1+erf((m-1.0)/(sigma1*sqrt(2))));
+	if(spherical){
+		if(cut) density *= smooth_factor1;
+		if(cut && r<gal->comp_cut_in[component]) density *= smooth_factor2;
+	} else {
+		if(cut && r>gal->comp_cut[component]) density *= smooth_factor1;
+		if(cut) density *= smooth_factor3;
+		if(cut && r<gal->comp_cut_in[component]) density *= smooth_factor2;
+	}
 
     // Return a pseudo density
     return density;
 }
 
-double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, double x, double y, int component) {
-    int status,pseudo_save;
+double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, double x, double y) {
+    int i,status,pseudo_save;
     int tid;
-    double result, integral, error, initial_surface_density, radius, theta;
+    double result, integral, error, initial_surface_density, radius, theta, zmax;
     size_t neval;
 
     gsl_function F;
@@ -1252,7 +1277,14 @@ double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, doub
     theta = atan2(y,x);
     pseudo_save = gal->pseudo[tid];
     gal->pseudo[tid] = 0;
-    initial_surface_density = surface_density_func(gal,radius,theta,1,component);
+	initial_surface_density = 0.;
+	zmax = 0.;
+    for(i = 0; i<AllVars.MaxCompNumber; i++) {
+		if(gal->comp_type[i]==0) {
+			initial_surface_density += surface_density_func(gal,radius,theta,1,i);
+			if(gal->comp_scale_height[i]>zmax) zmax = gal->comp_scale_height[i];
+		}
+	}
     gal->pseudo[tid] = pseudo_save;
 
     if(initial_surface_density==0.) return 0.;
@@ -1261,7 +1293,7 @@ double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, doub
     F.params = gal;
 
     //gsl_integration_qag(&F,-10.*gal->comp_scale_height[component],10.*gal->comp_scale_height[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
-    gsl_integration_qng(&F,-10.*gal->comp_scale_height[component],10.*gal->comp_scale_height[component],epsabs,epsrel,&integral,&error,&neval);
+    gsl_integration_qng(&F,-10.*zmax,10.*zmax,epsabs,epsrel,&integral,&error,&neval);
 
     return initial_surface_density/integral;
 }
@@ -1292,7 +1324,7 @@ static double dmidplane_density_gas_func(double z, void *params) {
 
 // This function fills a 2D grid with the value of the gas density in the midplane
 // The use of a 2D grid intends to lower the computation time
-void fill_midplane_dens_grid(galaxy *gal, int component) {
+void fill_midplane_dens_grid(galaxy *gal) {
     int i,j;
     unsigned long int k;
     double x,y;
@@ -1315,7 +1347,7 @@ void fill_midplane_dens_grid(galaxy *gal, int component) {
 #endif
             x = ((double)i-((double)(gal->ngrid_dens[0]/2)-0.5))*gal->dx_dens;
             y = ((double)j-((double)(gal->ngrid_dens[1]/2)-0.5))*gal->dx_dens;
-            gal->midplane_dens[i][j] = midplane_density_gas_func(gal,wk[tid],x,y,component);
+            gal->midplane_dens[i][j] = midplane_density_gas_func(gal,wk[tid],x,y);
         }
     }
     for(i = 0; i<AllVars.Nthreads; i++) {
