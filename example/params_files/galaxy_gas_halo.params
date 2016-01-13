@@ -33,6 +33,8 @@ mcmc_ntry		        1
 # Gravitational softening [kpc]
 # Default value is the size of the smallest grid element
 softening		        0.250
+# Number of iterations to reach hydrostatic equilibrium 
+hydro_eq_niter			6
 
 #######################
 # Components parameters
@@ -146,8 +148,8 @@ t_init3                 1e5
 turb_sigma3		        0.0
 # Turbulence smoothing scale [kpc]
 turb_scale3		        1.0
-# Number of iterations to reach hydrostatic equilibrium 
-hydro_eq_niter3 	    6
+# Compute hydrostatic equilibrium 
+hydro_eq3				1
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm
 # within the hydro equilibrium algorithm
 mcmc_step_hydro3	    0.3
@@ -191,7 +193,7 @@ metal5                  0.001
 Q_lim5			        1.5
 
 ###########################
-# Component 6: Gaseous disk
+# Component 6: Gaseous halo
 ###########################
 mass_frac6		        0.01
 npart6			        10000000
