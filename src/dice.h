@@ -73,7 +73,7 @@
 // A tolerance parameter for the GSL QAG integration.
 #define epsabs  1.0E-10
 #define epsrel  1.0E-7
-#define key     6
+#define key     1
 
 // Some physical constants needed for the computation
 #define gamma                   (5.0/3.0)           // adiabatic index of simulated gas (mono-atomic)
@@ -139,7 +139,6 @@ typedef struct {
     double              *comp_mass_frac;
     double              *comp_mass;
     int                 *comp_model;
-    double              *comp_cutted_mass;
     double              *comp_scale_length;
     double              *comp_concentration;
     double              *comp_scale_height;

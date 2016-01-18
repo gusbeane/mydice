@@ -44,9 +44,11 @@
 double density_functions_pool(galaxy *gal, double radius, double theta, double z, int cut, int model, int component) {
     double h, hx, hy, hz, h_cut, hx_cut, hy_cut, hz_cut, hx_cut_in, hy_cut_in, hz_cut_in;
     double density, w, k, l, m, n, o, r, s, alpha, beta, smooth_factor1, smooth_factor2, sigma1, sigma2, r_sph;
-    double x,y, flatx, flaty, flatz;
+    double x, y, flatx, flaty, flatz, rmin;
+
+	rmin = gal->comp_scale_length[component]*1e-3;
     // We consider only positive values
-    if(sqrt(radius*radius+z*z) < 0.) return 0.;
+    if(sqrt(radius*radius+z*z) < rmin) return rmin;
     double theta_shift, theta_out, A, B, CEDF, tanh_func;
     double z_shift;
 
@@ -969,7 +971,7 @@ double surface_density_func(galaxy *gal, double r, double theta, int cut, int co
     gal->storage[2][tid] = cut;
     gal->selected_comp[tid] = component;
 
-    //gsl_integration_qag(&F,-gal->comp_cut[component]*gal->comp_flatz[component],gal->comp_cut[component]*gal->comp_flatz[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&surface_density,&error);
+    //gsl_integration_qag(&F,gal->comp_cut[component]*gal->comp_flatz[component],gal->comp_cut[component]*gal->comp_flatz[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&surface_density,&error);
     gsl_integration_qng(&F,-gal->comp_cut[component]*gal->comp_flatz[component],gal->comp_cut[component]*gal->comp_flatz[component],epsabs,epsrel,&surface_density,&error,&neval);
 
     gsl_integration_workspace_free(w);
@@ -1025,7 +1027,7 @@ double cumulative_mass_func(galaxy *gal, double radius, int component) {
     gal->selected_comp[tid] = component;
 
     gsl_integration_qng(&F,0.0,radius,epsabs,epsrel,&integral,&error,&neval);
-    //gsl_integration_qag(&F,0.0,radius,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w[0],&integral,&error);
+	//gsl_integration_qag(&F,0.0,radius,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w[0],&integral,&error);
 
     return integral;
 }
@@ -1498,10 +1500,10 @@ void lower_resolution(galaxy *gal) {
 
     printf("/////\tLowering particule mass resolution\n");
     for(j = 0; j<AllVars.MaxCompNumber; j++) {
-        if(gal->comp_npart[j]>0) printf("/////\t\t- Component %2d -> m=%.2e Msol\n",j+1,(gal->comp_cutted_mass[j]*1.0E10)/(gal->comp_npart[j]));
+        if(gal->comp_npart[j]>0) printf("/////\t\t- Component %2d -> m=%.2e Msol\n",j+1,(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]));
         // Filling the arrays of the &galaxy structure
         for(i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
-            gal->mass[i] = gal->comp_cutted_mass[j]/gal->comp_npart[j];
+            gal->mass[i] = gal->comp_mass[j]/gal->comp_npart[j];
         }
     }
     return;

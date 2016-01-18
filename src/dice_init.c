@@ -75,10 +75,6 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_start_part array\n");
         return -1;
     }
-    if (!(gal->comp_cutted_mass = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-        fprintf(stderr,"[Error] Unable to allocate comp_cutted_mass array\n");
-        return -1;
-    }
     if (!(gal->comp_scale_length = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_scale_length array\n");
         return -1;
@@ -1319,16 +1315,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         }
         // Computing the mass of the component
         if(gal->comp_mass_frac[i]>0.) {
-            // Main halo case
-            if(i==index_halo && gal->comp_cut[i]!=gal->r200) {
-                gal->comp_mass[i] = gal->m200*gal->comp_mass_frac[i]*cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
-                double save = gal->comp_cut[i];
-                gal->comp_cut[i] = 1.1*gal->r200;
-                gal->comp_mass[i] /= cumulative_mass_func(gal,gal->r200,i);
-                gal->comp_cut[i] = save;
-            } else {
-                gal->comp_mass[i] = gal->m200*gal->comp_mass_frac[i];
-            }
+            gal->comp_mass[i] = gal->m200*gal->comp_mass_frac[i];
         }
         if(gal->comp_npart[i]>0 && gal->comp_concentration[i]<=0. && gal->comp_scale_length[i]<=0.) {
             fprintf(stderr,"[Error] Component %d scale not properly defined\n",i+1);
@@ -1386,22 +1373,37 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                     }
                 }
             }
+			// Setting the density function scale factor
             if(gal->comp_radius_nfw[i]==-1.0) {
-                gal->comp_scale_dens[i] = gal->comp_mass[i]/cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
+				// Main halo case
+				if(i==index_halo && gal->comp_cut[i]!=gal->r200) {
+					double save_cut = gal->comp_cut[i];
+					double save_sigma_cut = gal->comp_sigma_cut[i];
+					gal->comp_mass[i] = gal->m200*gal->comp_mass_frac[i];
+					// Scaling factor is computed for a density function truncated at R200
+					gal->comp_sigma_cut[i] = 1e-5;
+					gal->comp_cut[i] = gal->r200;
+					gal->comp_scale_dens[i] = gal->comp_mass[i]/cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
+					// Restoring cut properties
+					gal->comp_cut[i] = save_cut;
+					gal->comp_sigma_cut[i] = save_sigma_cut;
+				} else {
+					gal->comp_scale_dens[i] = gal->comp_mass[i]/cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
+				}
             } else {
                 // Case where the final cutted mass is defined by a scaling with respect to a NFW halo density
-                m_scale_nfw = sqrt(pow(gal->comp_radius_nfw[i]/gal->comp_scale_length[i],2.0));
-                rho_crit = (gal->m200*gal->comp_mass_frac[i]/200.)*(3.0/(4.0*pi*pow(gal->r200,3.0)));
-                delta_c = (200./3.)*pow(gal->comp_concentration[i],3.0)/
+                m_scale_nfw = gal->comp_radius_nfw[i]/gal->comp_scale_length[i];
+                rho_crit = 3*H*H/(8*pi*G);
+                delta_c = ((200./3.)*pow(gal->comp_concentration[i],3.0))/
                           (log(1.0+gal->comp_concentration[i])-gal->comp_concentration[i]/(1.0+gal->comp_concentration[i]));
-                rho0_nfw = rho_crit*delta_c;
+                rho0_nfw = gal->comp_mass_frac[i]*rho_crit*delta_c;
                 rho_scale_nfw = rho0_nfw/(m_scale_nfw*pow(1.0+m_scale_nfw,2.0));
                 gal->comp_scale_dens[i] = rho_scale_nfw/density_functions_pool(gal,gal->comp_radius_nfw[i],theta_max_dens,0.,0,gal->comp_model[i],i);
             }
-
+			// Recompute cutted mass
+			gal->comp_mass[i] = cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
             gal->comp_cut_dens[i] = density_functions_pool(gal,gal->comp_cut[i],theta_max_dens,0.,0,gal->comp_model[i],i);
-            gal->comp_cutted_mass[i] = cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
-            gal->total_mass += gal->comp_cutted_mass[i];
+            gal->total_mass += gal->comp_mass[i];
 			if(gal->jeans_mixed_defined == 0) {
 				if(gal->comp_sigmar_model[i]==-2 || gal->comp_sigmar_model[i]==-2) {
 					gal->boxsize_jeans = 2*gal->r200;
@@ -1417,7 +1419,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
         }
 
-        if(gal->comp_part_mass[i]>0.&&gal->comp_npart[i]>0) gal->comp_npart[i] = (int)round(gal->comp_cutted_mass[i]/(gal->comp_part_mass[i]*solarmass/unit_mass));
+        if(gal->comp_part_mass[i]>0.&&gal->comp_npart[i]>0) gal->comp_npart[i] = (int)round(gal->comp_mass[i]/(gal->comp_part_mass[i]*solarmass/unit_mass));
         if(gal->comp_npart_pot[i]<gal->comp_npart[i]) gal->comp_npart_pot[i] = gal->comp_npart[i];
         gal->ntot_part_pot += gal->comp_npart_pot[i];
         gal->ntot_part += gal->comp_npart[i];
@@ -1429,10 +1431,10 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         if(gal->comp_type[i]==0 && gal->comp_scale_length[i]>max_gas_radius) max_gas_radius = gal->comp_scale_length[i];
         if(gal->comp_type[i]==1 && gal->lambda>=0) gal->comp_streaming_fraction[i] = f_s_func(gal->comp_concentration[i],gal->lambda);
         // Checking total cutted mass
-        if(gal->comp_type[i]==0) cutted_gas_mass += gal->comp_bool[i]*gal->comp_cutted_mass[i];
-        if(gal->comp_type[i]==1) cutted_halo_mass += gal->comp_bool[i]*gal->comp_cutted_mass[i];
-        if(gal->comp_type[i]==2) cutted_disk_mass += gal->comp_bool[i]*gal->comp_cutted_mass[i];
-        if(gal->comp_type[i]==3) cutted_bulge_mass += gal->comp_bool[i]*gal->comp_cutted_mass[i];
+        if(gal->comp_type[i]==0) cutted_gas_mass += gal->comp_bool[i]*gal->comp_mass[i];
+        if(gal->comp_type[i]==1) cutted_halo_mass += gal->comp_bool[i]*gal->comp_mass[i];
+        if(gal->comp_type[i]==2) cutted_disk_mass += gal->comp_bool[i]*gal->comp_mass[i];
+        if(gal->comp_type[i]==3) cutted_bulge_mass += gal->comp_bool[i]*gal->comp_mass[i];
         // Checking particle number
         if(gal->comp_type[i]==0) gal->num_part[0] += gal->comp_npart[i];
         if(gal->comp_type[i]==1) gal->num_part[1] += gal->comp_npart[i];
@@ -2467,7 +2469,6 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_mass_frac);
     free(gal->comp_mass);
     free(gal->comp_model);
-    free(gal->comp_cutted_mass);
     free(gal->comp_scale_length);
     free(gal->comp_concentration);
     free(gal->comp_scale_height);
