@@ -81,7 +81,6 @@ double v2a_r_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 		}
     	rho = density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
     	v2a_r = integral/rho;
-
     	if(AllVars.AcceptImaginary==1) v2a_r = fabs(v2a_r);
     	v2a_r = (v2a_r>0. ? v2a_r : 0.);
 	// Dispersion from Isothermal sheet
@@ -139,7 +138,6 @@ double v2a_z_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 		}
     	rho = density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
     	v2a_z = integral/rho;
-
     	if(AllVars.AcceptImaginary==1) v2a_z = fabs(v2a_z);
     	v2a_z = (v2a_z>0. ? v2a_z : 0.);
 	// Dispersion from Isothermal sheet
@@ -506,7 +504,8 @@ double v2a_r_toomre(galaxy *gal, double radius, double v2a_r, int component) {
 #endif
 
 	if(radius==0.) return 0.;
-
+	
+	v2a_r_new = v2a_r;
     x = radius*cos(gal->theta_cyl[gal->index[tid]]);
     y = radius*sin(gal->theta_cyl[gal->index[tid]]);
     // Set the derivative step

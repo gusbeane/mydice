@@ -413,7 +413,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 75*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 76*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -1199,6 +1199,15 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
+
+		n = sprintf(temp_tag,"delete%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_delete[j];
+        gal->comp_delete[j] = 0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+
     }
 
     if((fd = fopen(fname, "r"))) {
@@ -1621,7 +1630,7 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
     //We need to transfer in the order of particle type as defined in GADGET2. 0->Gas 1->Disk 2->Halo etc.
     for (ptype = 0; ptype<10; ptype++) {
         for (k = 0; k<AllVars.MaxCompNumber; k++) {
-            if(gal->comp_type[k]==ptype&&gal->comp_npart[k]>0) {
+            if(gal->comp_type[k]==ptype&&gal->comp_npart[k]>0&&gal->comp_delete[k]==0) {
                 for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k] + gal->comp_npart[k]; ++i) {
                     P[j].Pos[0] = gal->x[i];
                     P[j].Pos[1] = gal->y[i];
@@ -1828,7 +1837,7 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
     //We need to transfer in the order of particle type as defined in GADGET2. 0->Gas 1->Disk 2->Halo etc.
     for (ptype = 0; ptype<10; ptype++) {
         for (k = 0; k<AllVars.MaxCompNumber; k++) {
-            if(gal->comp_type[k]==ptype&&gal->comp_npart[k]>0) {
+            if(gal->comp_type[k]==ptype&&gal->comp_npart[k]>0&&gal->comp_delete[k]==0) {
                 for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k] + gal->comp_npart[k]; ++i) {
                     P[j].Pos[0] = gal->x[i];
                     P[j].Pos[1] = gal->y[i];
@@ -2242,7 +2251,8 @@ void write_galaxy_sigma_r_curve(galaxy *gal, double rmax, char *fname, double in
         v2ar = v2a_r_func(gal,w[tid],gal->selected_comp[0]);
         // Enforce Q>Q_min
         if(gal->comp_Q_lim[gal->selected_comp[0]]>0 || gal->comp_Q_fixed[gal->selected_comp[0]]>0 || gal->comp_Q_boost[gal->selected_comp[0]]>0) {
-            v2ar = v2a_r_toomre(gal,radius,v2ar,gal->selected_comp[0]);
+            double v2ar_new = v2a_r_toomre(gal,radius,v2ar,gal->selected_comp[0]);
+			v2ar = v2ar_new;
         }
         if(AllVars.AcceptImaginary==1) {
             sigma_r = sqrt(fabs(v2ar));

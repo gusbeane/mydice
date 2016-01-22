@@ -219,6 +219,7 @@ typedef struct {
     double              *comp_sigmaz_scale;
     double              *comp_f_sigma;
     double              *comp_k_stream;
+	int					*comp_delete;
     // Virial quantities
     double v200;
     double r200;

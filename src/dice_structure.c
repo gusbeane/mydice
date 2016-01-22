@@ -393,7 +393,6 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
     hz = gal->comp_mcmc_step[component]*gal->comp_scale_length[component]*gal->comp_flatz_cut[component];
 
     if(gal->pseudo[0]) {
-        min_step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,0.1*gal->comp_cut[component],gal->comp_scale_length[component],0.,0,density_model,component,gal->comp_spherical_hydro_eq[component]))); 
         min_step_z = 1e-3*gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
         max_step_z = gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
     }
@@ -406,7 +405,6 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         step_y = hy;
         step_z = hz;
         if(gal->pseudo[0]) {
-			//step_z = gal->comp_mcmc_step_hydro[component]*sqrt(pow(gal->comp_cs_init[component],2.0)/(2.0*pi*G*pseudo_density_gas_func(gal,0.1*gal->comp_cut[component],0.,0.,0,density_model,component,gal->comp_spherical_hydro_eq[component])));
 			step_z = gal->comp_mcmc_step_hydro[component]*gal->comp_scale_length[component]*gal->comp_flatz_cut[component];
             if(isinf(step_z)||step_z<min_step_z) step_z = min_step_z;
             if(step_z>max_step_z) step_z = max_step_z;
@@ -604,7 +602,6 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 						step_x = step_z;
 						step_y = step_z;
 					}
-					//printf("%le %le %le %le %le\n",step_z,gal->r_cyl[i-1],min_step_z,max_step_z,pseudo_density_gas_func(gal,gal->r_cyl[i-1],gal->theta_cyl[i-1],gal->z[i-1],0,density_model,component,gal->comp_spherical_hydro_eq[component]));
                 }
                 step_r = sqrt(pow(step_x,2)+pow(step_y,2));
                 step_r_sph = sqrt(pow(step_x,2)+pow(step_y,2)+pow(step_z,2));
@@ -794,8 +791,34 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         }
         acceptance /= gal->comp_npart_pot[component];
         printf("[acceptance=%.2lf]\n",acceptance);
-        if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component+1);
-        if(acceptance>0.99 && gal->mcmc_ntry>1) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component+1);
+		// Recursive calls if acceptance is outside the range [0.80,0.95]
+        if(acceptance<0.80) {
+			if(gal->pseudo[0]==1) {
+				gal->comp_mcmc_step_hydro[component] /= 2.0;
+				printf("/////\t\t\t\t[Warning] MCMC acceptance is low->Decreasing mcmc_step_hydro%d to %.2le & recomputing\n",component+1,gal->comp_mcmc_step_hydro[component]);
+				printf("/////\t\t\t- Component %2d -> recomputing gas particles position ",component+1);
+			} else {
+				gal->comp_mcmc_step[component] /= 2.0;
+				printf("/////\t\t\t[Warning] MCMC acceptance is low->Decreasing mcmc_step%d to %.2le & recomputing\n",component+1,gal->comp_mcmc_step[component]);
+				printf("/////\t\t- Component %2d [%s]",component+1,gal->comp_profile_name[component]);
+			}
+			fflush(stdout);
+			mcmc_metropolis_hasting_ntry(gal,component,gal->comp_model[component]);
+		}
+        if(acceptance>0.95) {
+			if(gal->pseudo[0]==1) {
+				gal->comp_mcmc_step_hydro[component] *= 2.0;
+				printf("/////\t\t\t\t[Warning] MCMC acceptance is high->Increasing mcmc_step_hydro%d to %.2le & recomputing\n",component+1,gal->comp_mcmc_step_hydro[component]);
+				printf("/////\t\t\t- Component %2d -> recomputing gas particles position ",component+1);
+			} else {
+				gal->comp_mcmc_step[component] *= 2.0;
+				printf("/////\t\t\t[Warning] MCMC acceptance is high->Increasing mcmc_step%d to %.2le & recomputing\n",component+1,gal->comp_mcmc_step[component]);
+				printf("/////\t\t- Component %2d [%s]",component+1,gal->comp_profile_name[component]);
+			}
+			fflush(stdout);
+			mcmc_metropolis_hasting_ntry(gal,component,gal->comp_model[component]);
+
+		}
         if(AllVars.MeanPartDist) printf("/////\t\t\tMean inter-particle distance -> %lf [kpc]\n",mean_interparticle_distance(gal,component));
     }
     free(prop_x);
@@ -1237,7 +1260,8 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
 
     // Hydrostatic equilibrium requires following density
     density = rho_0*exp(-delta_pot/(pow(gal->comp_cs_init[component],2.0)));
-    density1 = rho_0*exp(-delta_pot1/(pow(gal->comp_cs_init[component],2.0)));
+	//if(z==0.) printf("%le %le %le\n",rho_0,exp(-delta_pot/(pow(gal->comp_cs_init[component],2.0))),density);
+    //density1 = rho_0*exp(-delta_pot1/(pow(gal->comp_cs_init[component],2.0)));
 	//printf("%le %le %le %le %le %le %le %lf %lf\n",density,density1,rho_0,delta_pot,delta_pot1,galaxyrsph_potential_wrapper_func(rsph,gal),galaxyrsph_potential_wrapper_func(0.,gal),r,z);
 
     sigma1 = gal->comp_sigma_cut[component];

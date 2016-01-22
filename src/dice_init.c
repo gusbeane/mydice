@@ -399,6 +399,11 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_k_stream array\n");
         return -1;
     }
+    if (!(gal->comp_delete = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate com_delete array\n");
+        return -1;
+    }
+
 
     return 0;
 }
@@ -1523,7 +1528,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     printf("/////\tComponent informations\n");
     for (j = 0; j<AllVars.MaxCompNumber; j++) {
         if(gal->comp_npart[j]>0) {
-            if(gal->comp_sfr[j]<0.) {
+            if(gal->comp_sfr[j]<=0.) {
                 gal->comp_sfr[j] = 150.*pow(0.1*(cutted_bulge_mass+cutted_disk_mass),0.8)*pow((1.0+gal->redshift)/3.2,2.7);
             }
             if(gal->comp_sfr[j]!=0.) gal->comp_mean_age[j] = (gal->comp_mass[j]*1e10)/(gal->comp_sfr[j]*1e6)/2.0;
@@ -1543,8 +1548,10 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                 printf("/////\t\t\t-> T_init = %6.2le K\n",gal->comp_t_init[j]);
                 printf("/////\t\t\t-> cs = %6.2lf km/s\n",gal->comp_cs_init[j]);
             }
-            if(gal->comp_type[j]>1 && gal->comp_sfr[j]>0.) {
+            if(gal->comp_type[j]>1) {
                 printf("/////\t\t\t-> SFR = %5.2lf [Msol/yr]\n",gal->comp_sfr[j]);
+                printf("/////\t\t\t-> <t> = %5.2lf [Myr]\n",gal->comp_mean_age[j]);
+                printf("/////\t\t\t-> t_min = %5.2lf [Myr]\n",gal->comp_min_age[j]);
             }
             if(gal->comp_metal[j]>0.) {
                 printf("/////\t\t\t-> <Z>=%5.2le\n",gal->comp_metal[j]);
@@ -1558,7 +1565,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             gal->metal[k] = gal->comp_metal[j];
             // Age is actually stored as time of formation
             // ICs are generated for t=0 therefore formation time is negative
-            gal->age[k] = -((2*gal->comp_mean_age[j]-gal->comp_min_age[j])*gsl_rng_uniform_pos(r[0])+gal->comp_min_age[j]);
+            gal->age[k] = -(2*gal->comp_mean_age[j]*gsl_rng_uniform_pos(r[0])+gal->comp_min_age[j]);
         }
     }
     printf("/////\t-----------------------------------------------\n");
@@ -1920,15 +1927,19 @@ int set_galaxy_coords(galaxy *gal) {
 		        if((gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)) {
 					printf("/////\t\t\t- Component %2d -> recomputing gas particles position ",i+1);
 					mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]); 
-		            // Removing the turbulent energy support
-		            gal->comp_cs_init[i] *= (1.0-gal->comp_turb_frac[i]);
-		            gal->comp_u_init[i] *= (1.0-gal->comp_turb_frac[i]);
-		            // Computing the velocity dispersion of the turbulence
-		            if(gal->comp_turb_sigma[i]==0. && gal->comp_turb_frac[i]>0.) {
-		                gal->comp_turb_sigma[i] = gal->comp_cs_init[i]*sqrt(gal->comp_turb_frac[i]/(1.0-gal->comp_turb_frac[i]));
-		            }
 		        }
 		    }
+		}
+		for(i = 0; i<AllVars.MaxCompNumber; i++) {
+			if(gal->comp_turb_frac[i]>0) {
+				// Removing the turbulent energy support
+				gal->comp_cs_init[i] *= (1.0-gal->comp_turb_frac[i]);
+				gal->comp_u_init[i] *= (1.0-gal->comp_turb_frac[i]);
+				// Computing the velocity dispersion of the turbulence
+				if(gal->comp_turb_sigma[i]==0. && gal->comp_turb_frac[i]>0.) {
+				    gal->comp_turb_sigma[i] = gal->comp_cs_init[i]*sqrt(gal->comp_turb_frac[i]/(1.0-gal->comp_turb_frac[i]));
+				}
+			}
 		}
 	}
     // Be nice to the memory
@@ -2102,8 +2113,6 @@ int set_galaxy_velocity(galaxy *gal) {
 #else
 		            int tid = 0;
 #endif
-					//if(i%10000==0) printf("/////\t\t %d %lf\n",tid,(double)(i-gal->comp_start_part[j])/((double)gal->comp_npart[j]/AllVars.Nthreads));
-					//fflush(stdout);
 	                gal->index[tid] = i;
 	                // Specific case of gas particles
 	                if(gal->comp_type[j]==0) {
@@ -2150,7 +2159,6 @@ int set_galaxy_velocity(galaxy *gal) {
 	                        double disp_softening = (1.0-exp(-fabs(gal->r_cyl[i])/(-(1.0/log(1.0-gal->comp_disp_ext[j]))*gal->comp_scale_length[j])));
 	                        v2a_r *= disp_softening;
 	                    }
-	
 	                    v2a_theta = v2a_theta_func(gal,fabs(gal->r_cyl[i]),v2a_r,v_c,j);
 						// Using epicyclic approximation (Binney & Tremaine 1987)
 	                    if(gal->comp_epicycle[j]==1) {
@@ -2159,7 +2167,7 @@ int set_galaxy_velocity(galaxy *gal) {
 							sigma2_theta = v2a_theta-pow(va_theta,2.0);
 							Q = toomre(gal,fabs(gal->r_cyl[i]),v2a_r,j);
 						} else {
-							if(gal->comp_k_stream[j]!=-1){
+							if(gal->comp_k_stream[j]==-1){
 	                        	va_theta = gal->comp_streaming_fraction[j]*v_c;
 							} else {
 								double kmax = v2a_theta/(v2a_theta-v2a_r);
@@ -2545,6 +2553,7 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_sigmaz_scale);
     free(gal->comp_f_sigma);
     free(gal->comp_k_stream);
+    free(gal->comp_delete);
     // Deallocate the potential grid to be really nice to the memory.
     if(gal->potential_defined == 1) {
         for (n = 0; n < gal->nlevel; n++) {
