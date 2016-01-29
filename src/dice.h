@@ -1,42 +1,42 @@
 /*-----------------------------------------------------------------------------
-   /
-   / Filename: dice.h
-   / Author: Valentin Perret
-   / Author's email: perret.valentin@gmail.com
-   / Description: DICE creates galaxies.
-   /
-   /	       DICE uses the GNU Scientific Library (GSL). You can
-   /	       download the GSL source code from:
-   /
-   /		http://www.gnu.org/software/gsl
-   /
-   /	       or replace it with another math library.
-   /
-   / Copyright Information:
-   /
-   / Copyright (c) 2014       Valentin Perret
-   /
-   / This program is free software; you can redistribute it and/or modify
-   / it under the terms of the GNU General Public License as published by
-   / the Free Software Foundation; either version 2 of the License, or
-   / (at your option) any later version.
-   /
-   / This program is distributed in the hope that it will be useful,
-   / but WITHOUT ANY WARRANTY; without even the implied warranty of
-   / MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   / GNU General Public License for more details.
-   /
-   / You should have received a copy of the GNU General Public License
-   / along with this program; if not, write to the Free Software
-   / Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-   /
-   / The license is also available at:
-   /
-   /		http://www.gnu.org/copyleft/gpl.html .
-   /
-   / Date: September 2015
-   /
- */
+  /
+  / Filename: dice.h
+  / Author: Valentin Perret
+  / Author's email: perret.valentin@gmail.com
+  / Description: DICE creates galaxies.
+  /
+  /	       DICE uses the GNU Scientific Library (GSL). You can
+  /	       download the GSL source code from:
+  /
+  /		http://www.gnu.org/software/gsl
+  /
+  /	       or replace it with another math library.
+  /
+  / Copyright Information:
+  /
+  / Copyright (c) 2014       Valentin Perret
+  /
+  / This program is free software; you can redistribute it and/or modify
+  / it under the terms of the GNU General Public License as published by
+  / the Free Software Foundation; either version 2 of the License, or
+  / (at your option) any later version.
+  /
+  / This program is distributed in the hope that it will be useful,
+  / but WITHOUT ANY WARRANTY; without even the implied warranty of
+  / MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  / GNU General Public License for more details.
+  /
+  / You should have received a copy of the GNU General Public License
+  / along with this program; if not, write to the Free Software
+  / Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  /
+  / The license is also available at:
+  /
+  /		http://www.gnu.org/copyleft/gpl.html .
+  /
+  / Date: September 2015
+  /
+  */
 
 // Header files to include
 #include <stdlib.h>
@@ -182,7 +182,6 @@ typedef struct {
     double              *comp_min_age;
     double              *comp_alpha;
     double              *comp_beta;
-    double              *comp_disp_ext;
     double              *comp_scale_dens;
     double              *comp_radius_nfw;
     double              *comp_Q_lim;
@@ -219,7 +218,7 @@ typedef struct {
     double              *comp_sigmaz_scale;
     double              *comp_f_sigma;
     double              *comp_k_stream;
-	int					*comp_delete;
+    int					*comp_delete;
     // Virial quantities
     double v200;
     double r200;
@@ -250,10 +249,10 @@ typedef struct {
     // Particle Mesh potential grid
     double              ****potential;
     double              ****potential_ext;
-	double				**vr2_mixed;
-	double				**vr2_tilted_mixed;
-	double				**vz2_tilted_mixed;
-	double				**vtheta2_mixed;
+    double				**vr2_mixed;
+    double				**vr2_tilted_mixed;
+    double				**vz2_tilted_mixed;
+    double				**vtheta2_mixed;
     // Particle Mesh gaussian field grid
     double              ***gaussian_field;
     // Gas midplane density grid
@@ -312,7 +311,7 @@ typedef struct {
     int midplane_dens_defined;
     // Boolean variable checking the computation of the gaussian field
     int gaussian_field_defined;
-	int jeans_mixed_defined;
+    int jeans_mixed_defined;
     // Seed for random number generator
     long seed;
     // Pseudo density boolean
@@ -408,13 +407,13 @@ struct io_header_1 {
     //char fill[256-6*4-6*8-2*8-2*4-6*4-2*4-4*8];
     int npart[6];                                 /*!< number of particles of each type in this file */
     double mass[6];                               /*!< mass of particles of each type. If 0, then the masses are explicitly
-	                                                     stored in the mass-block of the snapshot file, otherwise they are omitted */
+                                                    stored in the mass-block of the snapshot file, otherwise they are omitted */
     double time;                                  /*!< time of snapshot file */
     double redshift;                              /*!< redshift of snapshot file */
     int flag_sfr;                                 /*!< flags whether the simulation was including star formation */
     int flag_feedback;                            /*!< flags whether feedback was included (obsolete) */
     unsigned int npartTotal[6];                   /*!< total number of particles of each type in this snapshot. This can be
-	                                                     different from npart if one is dealing with a multi-file snapshot. */
+                                                    different from npart if one is dealing with a multi-file snapshot. */
     int flag_cooling;                             /*!< flags whether cooling was included  */
     int num_files;                                /*!< number of files in multi-file snapshot */
     double BoxSize;                               /*!< box-size of simulation in case periodic boundaries were used */
@@ -459,7 +458,6 @@ struct GlobalVars {
     int Nstream;
     int Nthreads;
     int MeanPartDist;
-    int AcceptImaginary;
     int OutputRc;
     int OutputGasRc;
     int OutputPot;
@@ -471,7 +469,7 @@ struct GlobalVars {
     int GaussianRejectIter;
     int CurrentGalaxy;
     int NormMassFact;
-	int GslIntegrationScheme;
+    int GslIntegrationScheme;
     unsigned long int GalStart[MAX_GAL];
     unsigned long int GalNpart[MAX_GAL];
     unsigned long int StreamStart[MAX_STREAM];
@@ -625,6 +623,8 @@ void write_galaxy_sigma_1D_curve(galaxy *, double, char *, double);
 void write_galaxy_sigma_z_curve(galaxy *, double, char *, double);
 void write_galaxy_sigma_r_curve(galaxy *, double, char *, double);
 void write_galaxy_sigma_theta_curve(galaxy *, double, char *, double);
+void write_galaxy_v2a_theta_curve(galaxy *, double, char *, double);
+void write_galaxy__curve(galaxy *, double, char *, double);
 void write_galaxy_potential_curve(galaxy *, double, char *, double);
 void write_galaxy_density_curve(galaxy *, double, char *, double);
 void write_galaxy_toomre_curve(galaxy *, double, char *, double);

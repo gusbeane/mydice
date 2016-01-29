@@ -1,68 +1,44 @@
 /*-----------------------------------------------------------------------------
-   /
-   / Filename: dice_init.c
-   / Author: Valentin Perret
-   / Author's email: perret.valentin@gmail.com
-   / Description: DICE creates galaxies.
-   /
-   /	       DICE uses the GNU Scientific Library (GSL). You can
-   /	       download the GSL source code from:
-   /
-   /		http://www.gnu.org/software/gsl
-   /
-   /	       or replace it with another math library.
-   /
-   / Copyright Information:
-   /
-   / Copyright (c) 2014       Valentin Perret
-   /
-   / This program is free software; you can redistribute it and/or modify
-   / it under the terms of the GNU General Public License as published by
-   / the Free Software Foundation; either version 2 of the License, or
-   / (at your option) any later version.
-   /
-   / This program is distributed in the hope that it will be useful,
-   / but WITHOUT ANY WARRANTY; without even the implied warranty of
-   / MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   / GNU General Public License for more details.
-   /
-   / You should have received a copy of the GNU General Public License
-   / along with this program; if not, write to the Free Software
-   / Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-   /
-   / The license is also available at:
-   /
-   /		http://www.gnu.org/copyleft/gpl.html .
-   /
-   / Date: September 2015
-   /
- */
+  /
+  / Filename: dice_init.c
+  / Author: Valentin Perret
+  / Author's email: perret.valentin@gmail.com
+  / Description: DICE creates galaxies.
+  /
+  /	       DICE uses the GNU Scientific Library (GSL). You can
+  /	       download the GSL source code from:
+  /
+  /		http://www.gnu.org/software/gsl
+  /
+  /	       or replace it with another math library.
+  /
+  / Copyright Information:
+  /
+  / Copyright (c) 2014       Valentin Perret
+  /
+  / This program is free software; you can redistribute it and/or modify
+  / it under the terms of the GNU General Public License as published by
+  / the Free Software Foundation; either version 2 of the License, or
+  / (at your option) any later version.
+  /
+  / This program is distributed in the hope that it will be useful,
+  / but WITHOUT ANY WARRANTY; without even the implied warranty of
+  / MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  / GNU General Public License for more details.
+  /
+  / You should have received a copy of the GNU General Public License
+  / along with this program; if not, write to the Free Software
+  / Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  /
+  / The license is also available at:
+  /
+  /		http://www.gnu.org/copyleft/gpl.html .
+  /
+  / Date: September 2015
+  /
+  */
 
 #include "dice.h"
-
-// Process has done i out of n rounds,
-// and we want a bar of width w and resolution r.
-inline void loadBar(int x, int n, int r, int w) {
-    // Only update r times.
-    if ( x % (n/r +1) != 0 ) return;
- 
-    // Calculuate the ratio of complete-to-incomplete.
-    float ratio = x/(float)n;
-    int   c     = ratio * w;
- 
-    // Show the percentage complete.
-    printf("/////\t%3d%% [", (int)(ratio*100) );
- 
-    int i;
-    // Show the load bar.
-    for (i=0; i<c; i++) printf("=");
- 
-    for (i=c; i<w; i++) printf(" ");
- 
-    // ANSI Control codes to go back to the
-    // previous line and clear it.
-    printf("]\n\033[F\033[J");
-}
 
 // Find the minimum between two values
 double min(double a, double b) {
@@ -100,7 +76,6 @@ double deriv_central4(galaxy *gal, double x, double h, function_to_derivate F) {
     f3 = F(new_x,gal);
     new_x = x-2.0*h;
     f4 = F(new_x,gal);
-    //derivative = (-f1 + 8.0*f2 - 8.0*f3 + f4)/(12.0*h*kpc);
     derivative = (-f1 + 8.0*f2 - 8.0*f3 + f4)/(12.0*h);
 
     return derivative;
@@ -251,7 +226,7 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
     // counter clockwise.
     for (i = 0; i < ngrid_padded[0]/2; ++i) {
         for (j = 0; j < ngrid_padded[1]/2; ++j) {
-            #pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
+#pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
             for (k = 0; k < ngrid_padded[2]/2; ++k) {
                 dx = sqrt(pow((double)(i+0.5)*gal->dx_gauss,2.0));
                 dy = sqrt(pow((double)(j+0.5)*gal->dx_gauss,2.0));
@@ -461,7 +436,7 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
     // counter clockwise.
     for (i = 0; i < ngrid_padded[0]/2; ++i) {
         for (j = 0; j < ngrid_padded[1]/2; ++j) {
-            #pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
+#pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
             for (k = 0; k < ngrid_padded[2]/2; ++k) {
                 dx = sqrt(pow((double)(i+0.5)*st->dx_gauss,2.0));
                 dy = sqrt(pow((double)(j+0.5)*st->dx_gauss,2.0));
@@ -612,9 +587,9 @@ double galaxy_gaussian_field_func(galaxy *gal, double x, double y, double z) {
         tz = 1.0 - dz;
         // Return the interpolated potential.
         gaussian_field = dx*dy*dz*gauss1 + tx*dy*dz*gauss2 +
-                         dx*ty*dz*gauss3 + dx*dy*tz*gauss4 +
-                         dx*ty*tz*gauss5 + tx*ty*dz*gauss6 +
-                         tx*dy*tz*gauss7 + tx*ty*tz*gauss8;
+            dx*ty*dz*gauss3 + dx*dy*tz*gauss4 +
+            dx*ty*tz*gauss5 + tx*ty*dz*gauss6 +
+            tx*dy*tz*gauss7 + tx*ty*tz*gauss8;
     }
     return gaussian_field;
 }
@@ -672,9 +647,9 @@ double stream_gaussian_field_func(stream *st, double x, double y, double z) {
         tz = 1.0 - dz;
         // Return the interpolated potential.
         gaussian_field = dx*dy*dz*gauss1 + tx*dy*dz*gauss2 +
-                         dx*ty*dz*gauss3 + dx*dy*tz*gauss4 +
-                         dx*ty*tz*gauss5 + tx*ty*dz*gauss6 +
-                         tx*dy*tz*gauss7 + tx*ty*tz*gauss8;
+            dx*ty*dz*gauss3 + dx*dy*tz*gauss4 +
+            dx*ty*tz*gauss5 + tx*ty*dz*gauss6 +
+            tx*dy*tz*gauss7 + tx*ty*tz*gauss8;
     }
     return gaussian_field;
 }

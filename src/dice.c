@@ -1,42 +1,42 @@
 /*-----------------------------------------------------------------------------
-   /
-   / Filename: dice.c
-   / Author: Valentin Perret
-   / Author's email: perret.valentin@gmail.com
-   / Description: DICE creates galaxies.
-   /
-   /	       DICE uses the GNU Scientific Library (GSL). You can
-   /	       download the GSL source code from:
-   /
-   /		http://www.gnu.org/software/gsl
-   /
-   /	       or replace it with another math library.
-   /
-   / Copyright Information:
-   /
-   / Copyright (c) 2014       Valentin Perret
-   /
-   / This program is free software; you can redistribute it and/or modify
-   / it under the terms of the GNU General Public License as published by
-   / the Free Software Foundation; either version 2 of the License, or
-   / (at your option) any later version.
-   /
-   / This program is distributed in the hope that it will be useful,
-   / but WITHOUT ANY WARRANTY; without even the implied warranty of
-   / MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   / GNU General Public License for more details.
-   /
-   / You should have received a copy of the GNU General Public License
-   / along with this program; if not, write to the Free Software
-   / Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-   /
-   / The license is also available at:
-   /
-   /		http://www.gnu.org/copyleft/gpl.html .
-   /
-   / Date: September 2015
-   /
- */
+  /
+  / Filename: dice.c
+  / Author: Valentin Perret
+  / Author's email: perret.valentin@gmail.com
+  / Description: DICE creates galaxies.
+  /
+  /	       DICE uses the GNU Scientific Library (GSL). You can
+  /	       download the GSL source code from:
+  /
+  /		http://www.gnu.org/software/gsl
+  /
+  /	       or replace it with another math library.
+  /
+  / Copyright Information:
+  /
+  / Copyright (c) 2014       Valentin Perret
+  /
+  / This program is free software; you can redistribute it and/or modify
+  / it under the terms of the GNU General Public License as published by
+  / the Free Software Foundation; either version 2 of the License, or
+  / (at your option) any later version.
+  /
+  / This program is distributed in the hope that it will be useful,
+  / but WITHOUT ANY WARRANTY; without even the implied warranty of
+  / MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  / GNU General Public License for more details.
+  /
+  / You should have received a copy of the GNU General Public License
+  / along with this program; if not, write to the Free Software
+  / Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  /
+  / The license is also available at:
+  /
+  /		http://www.gnu.org/copyleft/gpl.html .
+  /
+  / Date: September 2015
+  /
+  */
 
 // Include the DICE header
 #include "dice.h"
@@ -194,8 +194,8 @@ int main (int argc, char **argv) {
         if(AllVars.Kepler_Gal1[k]>0 && AllVars.Kepler_Gal2[k]>0) {
             if(AllVars.GalMass[AllVars.Kepler_Gal1[k]-1]>0 && AllVars.GalMass[AllVars.Kepler_Gal2[k]-1]>0) {
                 set_orbit_keplerian(AllVars.Kepler_Gal1[k]-1,AllVars.Kepler_Gal2[k]-1,
-                                    AllVars.Kepler_Rinit[k],AllVars.Kepler_Rperi[k],AllVars.Kepler_Ecc[k],
-                                    AllVars.Kepler_OrbitPlanePhi[k],AllVars.Kepler_OrbitPlaneTheta[k],AllVars.Kepler_GalCenter[k]);
+                        AllVars.Kepler_Rinit[k],AllVars.Kepler_Rperi[k],AllVars.Kepler_Ecc[k],
+                        AllVars.Kepler_OrbitPlanePhi[k],AllVars.Kepler_OrbitPlaneTheta[k],AllVars.Kepler_GalCenter[k]);
             }
         }
     }
@@ -204,9 +204,9 @@ int main (int argc, char **argv) {
     printf("/////\tGalaxies trajectories\n");
     for(k = 0; k<AllVars.Ngal; k++) {
         printf("/////\t\tGalaxy %d -> [x=%5.1lf y=%5.1lf z=%5.1lf][kpc] [vx=%5.1lf vy=%5.1lf vz=%5.1lf][km/s] [spin=%5.1lf incl=%5.1lf][deg]\n",k,
-               AllVars.GalPos[k][0],AllVars.GalPos[k][1],AllVars.GalPos[k][2],
-               AllVars.GalVel[k][0],AllVars.GalVel[k][1],AllVars.GalVel[k][2],
-               AllVars.GalSpin[k],AllVars.GalIncl[k]);
+                AllVars.GalPos[k][0],AllVars.GalPos[k][1],AllVars.GalPos[k][2],
+                AllVars.GalVel[k][0],AllVars.GalVel[k][1],AllVars.GalVel[k][2],
+                AllVars.GalSpin[k],AllVars.GalIncl[k]);
         // Apply rotation using spherical reference frame
         rotate_galaxy(stack,k);
         set_galaxy_trajectory(stack,k);
@@ -259,8 +259,8 @@ int main (int argc, char **argv) {
         for(k = 0; k<AllVars.Nstream; k++) {
             if(AllVars.StreamNpart[k]>0) {
                 printf("/////\t\tStream %d -> [x=%5.1lf y=%5.1lf z=%5.1lf][kpc] [spin=%5.1lf incl=%5.1lf][deg]\n",k,
-                       AllVars.StreamPos[k][0],AllVars.StreamPos[k][1],AllVars.StreamPos[k][2],
-                       AllVars.StreamSpin[k],AllVars.StreamIncl[k]);
+                        AllVars.StreamPos[k][0],AllVars.StreamPos[k][1],AllVars.StreamPos[k][2],
+                        AllVars.StreamSpin[k],AllVars.StreamIncl[k]);
                 position_stream(stack,k);
                 rotate_stream(stack,k);
             }
@@ -268,9 +268,14 @@ int main (int argc, char **argv) {
     }
     printf("/////\t--------------------------------------------------\n");
     // Write initial conditions for the massively parallel N-body code Gadget2.
-    printf("/////\tWriting %s file\n",AllVars.ICformat);
-    if(strcmp(AllVars.ICformat,"Gadget1")==0) write_gadget1_ics(stack,AllVars.Filename);
-    if(strcmp(AllVars.ICformat,"Gadget2")==0) write_gadget2_ics(stack,AllVars.Filename);
+    if(strcmp(AllVars.ICformat,"Gadget1")==0) {
+        printf("/////\tWriting <%s.g1> file [%s format]\n",AllVars.Filename,AllVars.ICformat);
+        write_gadget1_ics(stack,AllVars.Filename);
+    }
+    if(strcmp(AllVars.ICformat,"Gadget2")==0) {
+        printf("/////\tWriting <%s.g2> file [%s format]\n",AllVars.Filename,AllVars.ICformat);
+        write_gadget2_ics(stack,AllVars.Filename);
+    }
     printf("/////\tCleaning memory\n");
     trash_galaxy(pgal,0);
     trash_galaxy(stack,0);
