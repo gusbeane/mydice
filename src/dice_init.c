@@ -1294,7 +1294,8 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         strcpy(gal->comp_profile_name[i],"");
         gal->comp_scale_dens[i] = 1.0;
         // Total number of particules
-        if(gal->comp_mass_frac[i]==0.) gal->comp_npart[i] = 0;
+        if(gal->comp_mass_frac[i]==0. && gal->comp_part_mass[i]==0.) gal->comp_npart[i] = 0;
+        if(gal->comp_mass_frac[i]==0. && gal->comp_part_mass[i]>0.) gal->comp_mass_frac[i] = gal->comp_npart[i]*gal->comp_part_mass[i]*solarmass/unit_mass;
         if(gal->comp_npart_pot[i]<gal->comp_npart[i]) gal->comp_npart_pot[i] = gal->comp_npart[i];
         if(gal->comp_npart[i]==0) gal->comp_npart_pot[i] = 0;
         // Rescale the mass fractions
@@ -1536,7 +1537,11 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             }
             if(gal->comp_sfr[j]!=0.) gal->comp_mean_age[j] = (gal->comp_mass[j]*1e10)/(gal->comp_sfr[j]*1e6)/2.0;
             printf("/////\t---------------- Component %2d ----------------\n",j+1);
-            printf("/////\t\t\t-> %ld particles \n",gal->comp_npart[j]);
+            if(gal->comp_npart[j]>1) {
+                printf("/////\t\t\t-> %ld particles \n",gal->comp_npart[j]);
+            } else {
+                printf("/////\t\t\t-> %ld particle \n",gal->comp_npart[j]);
+            }
             printf("/////\t\t\t-> m_pot = %.2e Msol\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart_pot[j]));
             printf("/////\t\t\t-> m = %.2e Msol\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]));
             printf("/////\t\t\t-> scale = %6.2lf kpc\n",gal->comp_scale_length[j]);
@@ -1975,13 +1980,14 @@ int set_stream_coords(stream *st) {
 int set_galaxy_velocity(galaxy *gal) {
 
     unsigned long int i,nt,progress;
-    int j,k,n;
+    int j,k,n,nbin;
     int status,warning1,warning2;
     double v_c, v_r, v_theta, v_z, v_cmax, Q;
     double v2a_r, v2a_theta, v2_theta, v2a_z, va_theta, sigma2_theta, vel_x, vel_y, vel_z;
-    double vesc[4*gal->ngrid[0][0]], mass_in_shell, maxvel_x, maxvel_y, maxvel_z;
+    double mass_in_shell, maxvel_x, maxvel_y, maxvel_z;
     double u_min, maxrad, maxrad_gas, k_stream, kmax_stream;
     int nrejected_vr,nrejected_vtheta,nrejected_vz;
+    int nrejected_vr_failed,nrejected_vtheta_failed,nrejected_vz_failed;
     double radius, rmax, interval, save1, save2, save3, save4, save5;
     char buffer[MAXLEN_FILENAME], ext[20];
 
@@ -2004,12 +2010,6 @@ int set_galaxy_velocity(galaxy *gal) {
     // against axisymetric perturbations.
     printf("/////\tComputing velocities ");
     fflush(stdout);
-    // We fill an array with the value of the escape velocity sampled at radii up to boxsize
-    for(j = 0; j<4*gal->ngrid[0][0]; j++) {
-        mass_in_shell = 0.;
-        for (i = 0; i<gal->ntot_part_pot; ++i) if(gal->r_sph[i]<(j+1)*gal->dx[0]/4.) mass_in_shell += gal->mass[i];
-        vesc[j] = sqrt(2.0*G*mass_in_shell/((j+1)*gal->dx[0]/4.));
-    }
 
 #if USE_THREADS == 1
     int tid = omp_get_thread_num();
@@ -2025,15 +2025,29 @@ int set_galaxy_velocity(galaxy *gal) {
     gal->theta_cyl[gal->index[tid]] = 0.;
 
     rmax = gal->boxsize[0]/2.0;
-    interval = 0.1;
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
+    interval = gal->dx[gal->nlevel-1];
+    nbin = (int)(rmax/interval);
+    for (j = 0; j < nbin; ++j) {
+        radius = j*interval;
         v_c = v_c_func(gal,radius);
         if(v_c>v_cmax) v_cmax = v_c;
     }
     printf("[vc_max=%.1lf km/s]\n",v_cmax);
     gal->z[gal->index[tid]] = save1;
     gal->theta_cyl[gal->index[tid]] = save2;
+
+    double vesc[nbin];
+    // Compute escape velocity array only if one of the component has this velocity truncation scheme
+    for(k = 0; k<AllVars.MaxCompNumber; k++) {
+        if(gal->comp_vmax[k]<0. && gal->comp_npart[k]>0) {
+            for (j = 0; j < nbin; ++j) {
+                mass_in_shell = 0.;
+                for (i = 0; i<gal->ntot_part_pot; ++i) if(gal->r_sph[i]<(j+1)*interval) mass_in_shell += gal->mass[i];
+                vesc[j] = sqrt(2.0*G*mass_in_shell/((j+1)*interval));
+            }
+            break;
+        }
+    }
 
     // Loop over components
     for(j = 0; j<AllVars.MaxCompNumber; j++) {
@@ -2084,6 +2098,9 @@ int set_galaxy_velocity(galaxy *gal) {
         nrejected_vr = 0;
         nrejected_vtheta = 0;
         nrejected_vz = 0;
+        nrejected_vr_failed = 0;
+        nrejected_vtheta_failed = 0;
+        nrejected_vz_failed = 0;
         // Setting a minimum thermal energy
         u_min = (boltzmann / protonmass) * gal->comp_t_min[j];
         u_min *= unit_mass / unit_energy;
@@ -2113,7 +2130,7 @@ int set_galaxy_velocity(galaxy *gal) {
                 gal->vel_y[0] = 0.;
                 gal->vel_z[0] = 0.;
             } else {
-#pragma omp parallel for private(v_c, v_r, v_theta, v_z, v2a_r, v2a_z, v2a_theta, v2_theta, va_theta, sigma2_theta, vel_x, vel_y, vel_z, Q) shared(j,gal)
+#pragma omp parallel for private(v_c, v_r, v_theta, v_z, v2a_r, v2a_z, v2a_theta, v2_theta, va_theta, sigma2_theta, vel_x, vel_y, vel_z, Q) shared(j,gal) reduction(+:nrejected_vr,nrejected_vtheta,nrejected_vz,nrejected_vr_failed,nrejected_vtheta_failed,nrejected_vz_failed)
                 for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j]+gal->comp_npart[j]; ++i) {
                     // Get thread ID
 #if USE_THREADS == 1
@@ -2178,18 +2195,27 @@ int set_galaxy_velocity(galaxy *gal) {
                             sigma2_theta = (v2a_theta>=pow(va_theta,2.0)) ? (v2a_theta-pow(va_theta,2.0)) : 0.;
 
                         }
+                        if(va_theta>v2a_theta) warning1 = 1;
                         v_r = gsl_ran_gaussian(r[tid],sqrt(v2a_r+pow(0.01*gal->v200,2)));
                         v_theta = gsl_ran_gaussian(r[tid],sqrt(sigma2_theta+pow(0.01*gal->v200,2)))+va_theta;
                         v_z = gsl_ran_gaussian(r[tid],sqrt(v2a_z+pow(0.01*gal->v200,2)));
                         // Escape velocity
-                        //int vesc_index = (int)(gal->r_sph[i]/(gal->space[0]/4.));
+                        // Work with private omp variables
+                        int vesc_index = (int)(gal->r_sph[i]/interval);
+                        double vmax;
+                        if(gal->comp_vmax[j]>0.) {
+                            vmax = gal->comp_vmax[j]*v_cmax;
+                        } else {
+                            vmax = fabs(gal->comp_vmax[j])*vesc[vesc_index];
+                        }
 
-                        // Let's ensure that the particle velocity is lower than gal->disk_vmax times the escape velocity
+                        // Let's ensure that the particle velocity is lower than gal->comp_vmax times the escape velocity
                         int ct = 0;
 
-                        while(fabs(v_r) > gal->comp_vmax[j]*v_cmax) {
+                        while(fabs(v_r) > vmax) {
                             if(ct >= AllVars.GaussianRejectIter) {
-                                v_r = 2.0*gal->comp_vmax[j]*v_cmax*(gsl_rng_uniform_pos(r[tid])-0.5);
+                                v_r = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
+                                nrejected_vr_failed += 1;
                                 break;
                             }
                             v_r = gsl_ran_gaussian(r[tid],sqrt(v2a_r));
@@ -2197,9 +2223,10 @@ int set_galaxy_velocity(galaxy *gal) {
                             ct++;
                         }
                         ct = 0;
-                        while(fabs(v_theta-va_theta) > gal->comp_vmax[j]*v_cmax) {
+                        while(fabs(v_theta-va_theta) > vmax) {
                             if(ct >= AllVars.GaussianRejectIter) {
-                                v_theta = 2.0*gal->comp_vmax[j]*v_cmax*(gsl_rng_uniform_pos(r[tid])-0.5)+va_theta;
+                                v_theta = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5)+va_theta;
+                                nrejected_vtheta_failed += 1;
                                 break;
                             }
                             v_theta = gsl_ran_gaussian(r[tid],sqrt(sigma2_theta))+va_theta;
@@ -2207,9 +2234,10 @@ int set_galaxy_velocity(galaxy *gal) {
                             ct++;
                         }
                         ct = 0;
-                        while(fabs(v_z) > gal->comp_vmax[j]*v_cmax) {
+                        while(fabs(v_z) > vmax) {
                             if(ct >= AllVars.GaussianRejectIter) {
-                                v_z = 2.0*gal->comp_vmax[j]*v_cmax*(gsl_rng_uniform_pos(r[tid])-0.5);
+                                v_z = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
+                                nrejected_vz_failed += 1;
                                 break;
                             }
                             v_z = gsl_ran_gaussian(r[tid],sqrt(v2a_z));
@@ -2234,13 +2262,19 @@ int set_galaxy_velocity(galaxy *gal) {
 #pragma omp barrier
                 if(gal->comp_type[j] != 0) printf("[max vx=%.2lf vy=%.2lf vz=%.2lf km/s]",maxvel_x,maxvel_y,maxvel_z);
                 if(gal->comp_epicycle[j]==1) printf("[Q_min=%.2lf][Q_bar=%.2lf]",gal->comp_Q_min[j],gal->comp_Q_bar[j]);
-                if(nrejected_vr>1e-3||nrejected_vtheta>1e-3||nrejected_vz>1e-3) printf("[reject_vr=%.1lf%%][reject_vtheta=%.1lf%%][reject_vz=%.1lf%%]",
+                if(nrejected_vr>1e-3||nrejected_vtheta>1e-3||nrejected_vz>1e-3) printf("[reject_vr=%.1lf%%/%.1lf%%][reject_vtheta=%.1lf%%/%.1lf%%][reject_vz=%.1lf%%/%.1lf%%]",
                         100.*nrejected_vr/(double)gal->comp_npart[j],
+                        100.*nrejected_vr_failed/(double)gal->comp_npart[j],
                         100.*nrejected_vtheta/(double)gal->comp_npart[j],
-                        100.*nrejected_vz/(double)gal->comp_npart[j]);
+                        100.*nrejected_vtheta_failed/(double)gal->comp_npart[j],
+                        100.*nrejected_vz/(double)gal->comp_npart[j],
+                        100.*nrejected_vz_failed/(double)gal->comp_npart[j]);
+
                 printf("\n");
             }
         }
+        if(warning1) printf("/////\t\t[Warning] Streaming veloxity > <v2_theta>\n");
+        warning1 = 0;
         if(warning2) printf("/////\t\t[Warning] Gaseous halo unstable -> Lower streaming_fraction%d\n",j+1);
         warning2 = 0;
 
