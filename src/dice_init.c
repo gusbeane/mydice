@@ -2322,13 +2322,8 @@ int set_galaxy_velocity(galaxy *gal) {
                 write_galaxy_sigma_theta_curve(gal,min(2.0*gal->comp_cut[gal->selected_comp[0]],maxrad),strcat(buffer,ext),interval);
 
                 strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-                sprintf(ext,".v2a_theta%d",j+1);
-                write_galaxy_v2a_theta_curve(gal,min(2.0*gal->comp_cut[gal->selected_comp[0]],maxrad),strcat(buffer,ext),interval);
-
-                strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
                 sprintf(ext,".sigma_r%d",j+1);
                 write_galaxy_sigma_r_curve(gal,min(2.0*gal->comp_cut[gal->selected_comp[0]],maxrad),strcat(buffer,ext),interval);
-
             }
         }
         gal->pseudo[tid] = 0;
@@ -2354,10 +2349,6 @@ int set_galaxy_velocity(galaxy *gal) {
         strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
         //printf("/////\tWriting potential curve \t\t[%s.pot]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
         write_galaxy_potential_curve(gal,maxrad,strcat(buffer,".pot"),interval);
-
-        strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-        write_galaxy_h_curve(gal,min(2.0*gal->comp_cut[gal->selected_comp[0]],maxrad),strcat(buffer,".h"),interval);
-
     }
     // Writing gas density curve to ascii file
     if(AllVars.OutputRho==1) {
