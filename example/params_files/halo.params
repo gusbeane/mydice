@@ -56,6 +56,12 @@ npart_pot1              4000000
 # 8  = NFW profile 
 # 9  = Burkert
 # 10 = Einasto profile
+# 11 = Mestel profile
+# 12 = Kalnajs profile
+# 13 = Sersic profile
+# 14 = Toomre-Kuzmin profile
+# 15 = Uniform profile
+# 16 = Pseudo-isothermal profile
 model1			        8
 # Scale length of the density profile [kpc]
 # If the value is zero, scale length is defined

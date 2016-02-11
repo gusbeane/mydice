@@ -66,6 +66,7 @@ npart_pot1              3000000
 # 13 = Sersic profile
 # 14 = Toomre-Kuzmin profile
 # 15 = Uniform profile
+# 16 = Pseudo-isothermal profile
 model1			        8
 # Scale length of the density profile [kpc]
 scale_length1		    1.

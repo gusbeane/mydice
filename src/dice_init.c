@@ -1114,7 +1114,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
     // Parse the galaxy parameters file
     if(parse_galaxy_file(gal,fname) != 0) {
-        fprintf(stderr,"[Error] Unable to find the galaxy parameters file\n");
+        fprintf(stderr,"[Error] Unable to initialize from the galaxy parameters file\n");
         return -1;
     }
     // Allocate pseudo all the threads.

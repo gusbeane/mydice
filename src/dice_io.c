@@ -410,6 +410,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
     FILE *fd;
     int i,j,n;
+    unsigned long int sum;
     char buf[400], buf1[400], buf2[400];
     int nt;
     int id[MAXTAGS];
@@ -438,6 +439,55 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     if(sizeof(double) != 8) {
         fprintf(stderr,"[Error] Type `double' is not 64 bit on this platform. Stopping.\n\n");
         return -1;
+    }
+
+    nt = 0;
+
+    for(j = 0; j<AllVars.MaxCompNumber; j++) {
+        n = sprintf(temp_tag,"npart%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_npart[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+    }
+
+    if((fd = fopen(fname, "r"))) {
+        while(!feof(fd)) {
+            *buf = 0;
+            fgets(buf, 400, fd);
+            if(sscanf(buf, "%s%s", buf1, buf2) < 2) continue;
+            if(buf1[0] == '%' || buf1[0] == '#' ) continue;
+            for(i = 0, j = -1; i < nt; i++)
+                if(strcmp(buf1,tag[i]) == 0) {
+                    j = i;
+                    read[i] = 1;
+                    break;
+                }
+            if(j >= 0) {
+                *((int *) addr[j]) = atoi(buf2);
+            }
+        }
+        fclose(fd);
+    } else {
+        fprintf(stderr,"[Error] %s not found\n", fname);
+        return -2;
+    }
+
+    for(i = 0; i < nt; i++) {
+        if(read[i] == 0 && mandatory[i] == 1) {
+            fprintf(stderr,"[Error] '%s' -> '%s' not specified\n",fname,tag[i]);
+            return -1;
+        }
+    }
+
+    sum = 0;
+    for(j = 0; j<AllVars.MaxCompNumber; j++) {
+        sum += gal->comp_npart[j];
+    }
+    if(sum==0) {
+            fprintf(stderr,"[Error] 0 particles\n");
+            return -1;
     }
 
     nt = 0;
@@ -610,7 +660,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_mass_frac[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
@@ -618,7 +668,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_model[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = INT;
 
@@ -626,7 +676,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_scale_length[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
@@ -634,7 +684,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_cut[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
@@ -682,7 +732,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_flatz[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
@@ -739,7 +789,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_mcmc_step[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
@@ -764,7 +814,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_vmax[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
@@ -772,7 +822,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_npart[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = INT;
 
@@ -788,7 +838,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         gal->comp_type[j] = -1;
         addr[nt] = &gal->comp_type[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = INT;
 
@@ -805,7 +855,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         gal->comp_streaming_fraction[j] = 0.;
         addr[nt] = &gal->comp_streaming_fraction[j];
         read[nt] = 0;
-        if(j==0) mandatory[nt] = 1;
+        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
