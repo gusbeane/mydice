@@ -1558,6 +1558,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             }
             if(gal->comp_type[j]>1) {
                 printf("/////\t\t\t-> SFR = %5.2lf [Msol/yr]\n",gal->comp_sfr[j]);
+                printf("/////\t\t\t-> <age> = %5.2lf [Myr]\n",gal->comp_mean_age[j]);
             }
             if(gal->comp_metal[j]>0.) {
                 printf("/////\t\t\t-> <Z>=%5.2le\n",gal->comp_metal[j]);
@@ -1930,7 +1931,7 @@ int set_galaxy_coords(galaxy *gal) {
             fill_midplane_dens_grid(gal);
             // Recompute particle position
             for(i = 0; i<AllVars.MaxCompNumber; i++) {
-                if((gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)) {
+                if((gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)&(gal->comp_hydro_eq[i]==1)) {
                     printf("/////\t\t\t- Component %2d [%s][Vertical hydrostatic equilibrium]",i+1,gal->comp_profile_name[i]);
                     mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]); 
                 }
