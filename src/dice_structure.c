@@ -437,6 +437,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         gal->r_sph[i] = sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]+gal->z[i]*gal->z[i]);
         gal->theta_sph[i] = atan2(gal->y[i],gal->x[i]);
         gal->phi_sph[i] = acos(gal->z[i]/gal->r_sph[i]);
+	if(gal->comp_npart[component]==1) return;
 
         acceptance = 0.;
         mean_metal = 0.;
