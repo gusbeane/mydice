@@ -122,9 +122,17 @@ int main (int argc, char **argv) {
     for(i = 0; i<AllVars.Nthreads; i++) {
         w[i] = gsl_integration_workspace_alloc(AllVars.GslWorkspaceSize);
     }
+    printf("/////\t--------------------------------------------------\n");
+    printf("/////\tUnits\n");
     printf("/////\tMass     unit = %le [g]\n",AllVars.UnitMass);
     printf("/////\tVelocity unit = %le [cm/s]\n",AllVars.UnitVelocity);
     printf("/////\tLength   unit = %le [cm]\n",AllVars.UnitLength);
+    printf("/////\t--------------------------------------------------\n");
+    printf("/////\tCosmology\n");
+    printf("/////\tH0            = %.1lf [km/s/Mpc]\n",AllVars.H0);
+    printf("/////\tOmega_m       = %.3lf\n",AllVars.Omega_m);
+    printf("/////\tOmega_l       = %.3lf\n",AllVars.Omega_l);
+
     if (AllVars.Ngal>0) {
         printf("/////\t--------------------------------------------------\n");
         if(AllVars.Ngal==1) printf("/////\t%d galaxy to generate\n",AllVars.Ngal);

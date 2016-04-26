@@ -678,7 +678,7 @@ double gas_density_wrapper_func(double radius, void *params) {
 // The circular velocity function. This function returns the velocity
 double v_c_func(galaxy *gal, double radius) {
 
-    double v_c, rforce;
+    double v_c, rforce, save;
     int tid;
 
 #if USE_THREADS == 1
@@ -688,8 +688,11 @@ double v_c_func(galaxy *gal, double radius) {
 #endif
 
     if(radius <= 0.0) return 0.;
+    //gal->z[gal->index[tid]] = 0.;
+    //save = gal->z[gal->index[tid]];
     rforce = galaxy_rforce_func(gal,radius);
     v_c = sqrt(radius*rforce);
+    //gal->z[gal->index[tid]] = save;
 
     if(rforce<0) return 0.;
     else return v_c;
@@ -745,7 +748,6 @@ double galaxy_zforce_func(galaxy *gal, double z) {
     tid = 0;
 #endif
 
-    //printf("-->%lf %lf\n",gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
     h = get_h_value(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0,0);
 
     force = deriv_central2(gal,z,h,galaxyz_potential_wrapper_func);
@@ -779,3 +781,22 @@ double galaxy_rsphforce_func(galaxy *gal, double r_sph) {
     return force;
 }
 
+// This function computes the total angular momentum of a given component using the particles
+double Jtot_func(galaxy *gal, int component) {
+    unsigned long int i;
+    double Jx, Jy, Jz, J;
+
+    Jx = 0.;
+    Jy = 0.;
+    Jz = 0.;
+    for(i=gal->comp_start_part[component]; i<gal->comp_start_part[component]+gal->comp_npart_pot[component]; i++) {
+	if(gal->r_sph[i]<=gal->r200) {
+            Jx += gal->mass[i]*(gal->y[i]*gal->vel_z[i]-gal->z[i]*gal->vel_y[i]);
+            Jy += gal->mass[i]*(gal->z[i]*gal->vel_x[i]-gal->x[i]*gal->vel_z[i]);
+            Jz += gal->mass[i]*(gal->x[i]*gal->vel_y[i]-gal->y[i]*gal->vel_x[i]);
+	}
+    }
+    J = sqrt(Jx*Jx+Jy*Jy+Jz*Jz);
+
+    return J;
+}

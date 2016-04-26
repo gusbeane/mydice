@@ -466,13 +466,13 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         }
         switch(symmetry) {
             case 1:
-                printf("[cylindrical symmetry]");
+                printf("[ cylindrical symmetry ]");
                 break;
             case 2:
-                printf("[ spherical symmetry ]");
+                printf("[  spherical symmetry  ]");
                 break;
             default:
-                printf("[     no symmetry    ]");
+                printf("[      no symmetry     ]");
                 break;
         }
         fflush(stdout);
@@ -798,7 +798,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
             }
         }
         acceptance /= gal->comp_npart_pot[component];
-        printf("[acceptance=%.2lf]\n",acceptance);
+        printf("[  acceptance=%.2lf  ]\n",acceptance);
         // Recursive calls if acceptance is outside the range [0.80,0.95]
         if(acceptance<0.80) {
             if(gal->pseudo[0]==1) {
@@ -807,7 +807,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 printf("/////\t\t\t- Component %2d [%s][Vertical hydrostatic equilibrium]",component+1,gal->comp_profile_name[component]);
             } else {
                 gal->comp_mcmc_step[component] /= 2.0;
-                printf("/////\t\t---------------[         Warning         ][Low MCMC acceptance->mcmc_step%d=%.2le]\n",component+1,gal->comp_mcmc_step[component]);
+                printf("/////\t\t---------------[         Warning         ][ Low MCMC acceptance->mcmc_step%d=%.2le ]\n",component+1,gal->comp_mcmc_step[component]);
                 printf("/////\t\t- Component %2d [%s]",component+1,gal->comp_profile_name[component]);
             }
             fflush(stdout);
@@ -820,7 +820,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 printf("/////\t\t\t- Component %2d [%s][Vertical hydrostatic equilibrium]",component+1,gal->comp_profile_name[component]);
             } else {
                 gal->comp_mcmc_step[component] *= 2.0;
-                printf("/////\t\t---------------[         Warning         ][High MCMC acceptance->mcmc_step%d=%.2le]\n",component+1,gal->comp_mcmc_step[component]);
+                printf("/////\t\t---------------[         Warning         ][ High MCMC acceptance->mcmc_step%d=%.2le ]\n",component+1,gal->comp_mcmc_step[component]);
                 printf("/////\t\t- Component %2d [%s]",component+1,gal->comp_profile_name[component]);
             }
             fflush(stdout);
@@ -1427,18 +1427,18 @@ double get_midplane_density(galaxy *gal, double x, double y) {
 // This function determines the scale length of a self gravitating disk in a NFW halo using
 // the fitting formula provided in Mo et al. 1998, if the user want to use it.
 // Otherwise, the user chose himself the value for the disk scale length.
-double disk_scale_length_func(galaxy *gal, double c) {
+double disk_scale_length_func(galaxy *gal, double c, int component) {
 
     int i;
     double f_r_base, f_r_power, f_c, f_r, disk_scale;
 
     f_c = f_c_func(c);
 
-    f_r_base = (gal->j_d*gal->lambda)/(0.1*gal->m_d);
-    f_r_power = (-0.06+2.71*gal->m_d+0.0047*gal->m_d/(gal->j_d*gal->lambda));
-    f_r = pow(f_r_base,f_r_power)*(1.0-3.0*gal->m_d+5.2*gal->m_d*gal->m_d)*(1.0-0.019*c+0.00025*c*c+0.52/c);
+    f_r_base = (gal->comp_angmom_frac[component]*gal->lambda)/(0.1*gal->comp_mass_frac[component]);
+    f_r_power = (-0.06+2.71*gal->comp_mass_frac[component]+0.0047*gal->comp_mass_frac[component]/(gal->comp_angmom_frac[component]*gal->lambda));
+    f_r = pow(f_r_base,f_r_power)*(1.0-3.0*gal->comp_mass_frac[component]+5.2*pow(gal->comp_mass_frac[component],2))*(1.0-0.019*c+0.00025*c*c+0.52/c);
 
-    disk_scale = (1.0/sqrt(2.0))*(gal->j_d/gal->m_d)*gal->lambda*gal->r200*(f_r/sqrt(f_c));
+    disk_scale = (1.0/sqrt(2.0))*(gal->comp_angmom_frac[component]/gal->comp_mass_frac[component])*gal->lambda*gal->r200*(f_r/sqrt(f_c));
 
     return disk_scale;
 }

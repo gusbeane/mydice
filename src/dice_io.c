@@ -265,24 +265,24 @@ int parse_config_file(char *fname) {
     mandatory[nt] = 0;
     id[nt++] = STRING;
 
-    // Default values for cosmological parameters is Planck cosmology
+    // Default values for cosmological parameters is Planck15 cosmology
     strcpy(tag[nt], "H0");
     addr[nt] = &AllVars.H0;
-    AllVars.H0 = 67.77;
+    AllVars.H0 = 67.74;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = DOUBLE;
 
     strcpy(tag[nt], "OmegaM");
     addr[nt] = &AllVars.Omega_m;
-    AllVars.Omega_m = 0.30712;
+    AllVars.Omega_m = 0.3089;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = DOUBLE;
 
     strcpy(tag[nt], "OmegaL");
     addr[nt] = &AllVars.Omega_l;
-    AllVars.Omega_l = 0.691391;
+    AllVars.Omega_l = 0.6911;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = DOUBLE;
@@ -342,6 +342,28 @@ int parse_config_file(char *fname) {
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = DOUBLE;
+
+    strcpy(tag[nt], "UnitMassName");
+    addr[nt] = &AllVars.UnitMassName;
+    strcpy(AllVars.UnitMassName,"e10 Msol");
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = STRING;
+
+    strcpy(tag[nt], "UnitLengthName");
+    addr[nt] = &AllVars.UnitLengthName;
+    strcpy(AllVars.UnitLengthName,"kpc");
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = STRING;
+
+    strcpy(tag[nt], "UnitVelocityName");
+    addr[nt] = &AllVars.UnitVelocityName;
+    strcpy(AllVars.UnitVelocityName,"km/s");
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = STRING;
+
 
     if((fd = fopen(fname, "r"))) {
         while(!feof(fd)) {
@@ -406,7 +428,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 77*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 79*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -664,6 +686,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
+	n = sprintf(temp_tag,"angmom_frac%d",j+1);
+        strcpy(tag[nt], temp_tag);
+	gal->comp_angmom_frac[j] = -1.;
+        addr[nt] = &gal->comp_angmom_frac[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
         n = sprintf(temp_tag,"model%d",j+1);
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_model[j];
@@ -852,8 +882,8 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
         n = sprintf(temp_tag,"streaming_fraction%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_streaming_fraction[j] = 0.;
-        addr[nt] = &gal->comp_streaming_fraction[j];
+        gal->comp_stream_frac[j] = 0.;
+        addr[nt] = &gal->comp_stream_frac[j];
         read[nt] = 0;
         if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
@@ -1251,6 +1281,13 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = INT;
 
+        n = sprintf(temp_tag,"stream_method%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_stream_method[j];
+        gal->comp_stream_method[j] = 0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
     }
 
     if((fd = fopen(fname, "r"))) {
@@ -2455,7 +2492,7 @@ void write_galaxy_sigma_theta_curve(galaxy *gal, double rmax, char *fname, doubl
             vat = v2at>=sigma2_theta?sqrt(v2at-sigma2_theta):0.;
         } else {
             if(gal->comp_k_stream[gal->selected_comp[0]]==-1){
-                vat = gal->comp_streaming_fraction[gal->selected_comp[0]]*vc;
+                vat = gal->comp_stream_frac[gal->selected_comp[0]]*vc;
             } else {
                 kmax_stream = v2at/(v2at-v2ar);
                 k_stream = gal->comp_k_stream[gal->selected_comp[0]]>kmax_stream?kmax_stream:gal->comp_k_stream[gal->selected_comp[0]];

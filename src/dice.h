@@ -160,7 +160,7 @@ typedef struct {
     double              *comp_vmax;
     int                 *comp_type;
     int                 *comp_bool;
-    double              *comp_streaming_fraction;
+    double              *comp_stream_frac;
     double              *comp_cut_dens;
     double              *comp_theta_sph;
     double              *comp_phi_sph;
@@ -218,11 +218,16 @@ typedef struct {
     double              *comp_sigmaz_scale;
     double              *comp_f_sigma;
     double              *comp_k_stream;
-    int					*comp_delete;
+    int			*comp_delete;
+    double              *comp_stream_scale;
+    int              	*comp_stream_method;
+    double              *comp_angmom_frac;
     // Virial quantities
     double v200;
     double r200;
     double m200;
+    // Total angular momentum within R200
+    double J200;
     // Coordinates vectors
     double              *x;
     double              *y;
@@ -249,10 +254,10 @@ typedef struct {
     // Particle Mesh potential grid
     double              ****potential;
     double              ****potential_ext;
-    double				**vr2_mixed;
-    double				**vr2_tilted_mixed;
-    double				**vz2_tilted_mixed;
-    double				**vtheta2_mixed;
+    double		**vr2_mixed;
+    double		**vr2_tilted_mixed;
+    double		**vz2_tilted_mixed;
+    double		**vtheta2_mixed;
     // Particle Mesh gaussian field grid
     double              ***gaussian_field;
     // Gas midplane density grid
@@ -315,11 +320,15 @@ typedef struct {
     // Seed for random number generator
     long seed;
     // Pseudo density boolean
-    int                 *pseudo;
+    int *pseudo;
     // Gravitational softening
     double softening;
     // MCMC multiple try parameter
     int mcmc_ntry;
+    // Main halo compoenent index
+    int index_halo;
+    // Main disk compoenent index
+    int index_disk;
 } galaxy;
 
 // This is a type definition of a stream. The thought here is to create streams
@@ -489,12 +498,17 @@ struct GlobalVars {
     double Kepler_OrbitPlaneTheta[MAX_GAL];
     double Kepler_OrbitPlanePhi[MAX_GAL];
     double H0;
+    double H;
+    double h;
     double Omega_m;
     double Omega_l;
     double Omega_k;
     double UnitMass;
     double UnitVelocity;
     double UnitLength;
+    char UnitMassName[20];
+    char UnitVelocityName[20];
+    char UnitLengthName[20];
 } AllVars;
 
 // ------------------------------------------
@@ -559,7 +573,7 @@ static double dmidplane_density_gas_func(double, void *);
 void fill_midplane_dens_grid(galaxy *);
 double get_midplane_density(galaxy *, double, double);
 
-double disk_scale_length_func(galaxy *, double);
+double disk_scale_length_func(galaxy *, double, int);
 double f_c_func(double);
 double g_c_func(double);
 static double dg_c_func(double, void *);
@@ -595,6 +609,7 @@ double v2_theta_gas_func(galaxy *, double, double, int);
 double gas_density_wrapper_func(double, void *);
 int set_turbulent_grid(galaxy *, int);
 double galaxy_turbulence_func(galaxy *, double, double, double, int);
+double Jtot_func(galaxy *, int);
 
 // Potential and force functions
 int set_galaxy_potential(galaxy *, double ***, double, int [3], int, double[3]);
@@ -609,7 +624,6 @@ double potential_deriv_wrapper_func(double, void *);
 void copy_potential(galaxy *, galaxy *, int);
 double galaxy_total_potential(galaxy *, double, double, double, int, int);
 double get_h_value(galaxy *, double, double, double, int, int);
-
 
 // Input, output, and manipulation functions
 void write_dice_version();
@@ -643,6 +657,7 @@ typedef double (*function_to_derivate)(double, void *);
 double deriv_central2(galaxy *, double, double, function_to_derivate);
 double deriv_central4(galaxy *, double, double, function_to_derivate);
 double deriv_forward(galaxy *, double, double, function_to_derivate);
+double interpol(double, double, double, double, double);
 int set_galaxy_gaussian_field_grid(galaxy *, double, long);
 int set_stream_gaussian_field_grid(stream *, double, long);
 double galaxy_gaussian_field_func(galaxy *, double, double, double);

@@ -109,6 +109,11 @@ double deriv_forward(galaxy *gal, double x, double h, function_to_derivate F) {
     return derivative;
 }
 
+// Linear interpolation between two points
+double interpol(double x0, double x1, double x, double y0, double y1) {
+	return y0+(y1-y0)*(x-x0)/(x1-x0);
+}
+
 // This function calculates the potential due to a galactic disk using Cloud-
 // In-Cell mass assignment with vacuum (isolated) boundary conditions on a
 // Cartesian grid. The method was adapted from the discussion found in Hockney
