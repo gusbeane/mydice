@@ -2438,7 +2438,7 @@ int set_galaxy_velocity(galaxy *gal) {
 #pragma omp barrier
                 printf("[J=%4.2le  Msol.%s.%s]",J_comp*unit_mass/solarmass,AllVars.UnitLengthName,AllVars.UnitVelocityName);
                 if(gal->comp_type[j] != 0) printf("[    max vx=%4.2le vy=%4.2le vz=%4.2le  %s    ]",maxvel_x,maxvel_y,maxvel_z,AllVars.UnitVelocityName);
-                if(gal->comp_type[j] == 0) printf("[          v_stream_max = %4.2le %s           ]",v_stream_max,AllVars.UnitVelocityName);
+                if(gal->comp_type[j] == 0) printf("[            v_stream_max = %4.2le %s             ]",v_stream_max,AllVars.UnitVelocityName);
                 if(gal->comp_epicycle[j]==1) {
 		    printf("\n/////\t\t---------------[  Q_min=%5.2lf  ][  Q_bar=%5.2lf  ]",gal->comp_Q_min[j],gal->comp_Q_bar[j]);
 		    //if(lamda_crit>gal->lambda*gal->comp_angmom_frac[j]/gal->comp_mass_frac[j]) printf()
