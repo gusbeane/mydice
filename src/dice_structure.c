@@ -469,7 +469,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 printf("[ cylindrical symmetry ]");
                 break;
             case 2:
-                printf("[  spherical symmetry  ]");
+                printf("[  spherical  symmetry ]");
                 break;
             default:
                 printf("[      no symmetry     ]");
@@ -803,11 +803,12 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         if(acceptance<0.80) {
             if(gal->pseudo[0]==1) {
                 gal->comp_mcmc_step_hydro[component] /= 2.0;
-                printf("/////\t\t\t---------------[         Warning         ][Low MCMC acceptance->mcmc_step_hydro%d=%.2le]\n",component+1,gal->comp_mcmc_step_hydro[component]);
+                printf("/////\t\t\t---------------[         Warning         ][               Low MCMC acceptance->mcmc_hydro_step%d=%.2le                ]\n",
+		    component+1,gal->comp_mcmc_step_hydro[component]);
                 printf("/////\t\t\t- Component %2d [%s][Vertical hydrostatic equilibrium]",component+1,gal->comp_profile_name[component]);
             } else {
                 gal->comp_mcmc_step[component] /= 2.0;
-                printf("/////\t\t---------------[         Warning         ][ Low MCMC acceptance->mcmc_step%d=%.2le ]\n",component+1,gal->comp_mcmc_step[component]);
+                printf("/////\t\t---------------[         Warning         ][ Low MCMC acceptance->mcmc_step%d=%.2le  ]\n",component+1,gal->comp_mcmc_step[component]);
                 printf("/////\t\t- Component %2d [%s]",component+1,gal->comp_profile_name[component]);
             }
             fflush(stdout);
@@ -816,7 +817,8 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         if(acceptance>0.95) {
             if(gal->pseudo[0]==1) {
                 gal->comp_mcmc_step_hydro[component] *= 2.0;
-                printf("/////\t\t\t---------------[         Warning         ][High MCMC acceptance->mcmc_step_hydro%d=%.2le]\n",component+1,gal->comp_mcmc_step_hydro[component]);
+                printf("/////\t\t\t---------------[         Warning         ][               High MCMC acceptance->mcmc_step_hydro%d=%.2le               ]\n",
+		    component+1,gal->comp_mcmc_step_hydro[component]);
                 printf("/////\t\t\t- Component %2d [%s][Vertical hydrostatic equilibrium]",component+1,gal->comp_profile_name[component]);
             } else {
                 gal->comp_mcmc_step[component] *= 2.0;
@@ -1430,13 +1432,10 @@ double get_midplane_density(galaxy *gal, double x, double y) {
 double disk_scale_length_func(galaxy *gal, double c, int component) {
 
     int i;
-    double f_r_base, f_r_power, f_c, f_r, disk_scale;
+    double f_c, f_r, disk_scale;
 
     f_c = f_c_func(c);
-
-    f_r_base = (gal->comp_angmom_frac[component]*gal->lambda)/(0.1*gal->comp_mass_frac[component]);
-    f_r_power = (-0.06+2.71*gal->comp_mass_frac[component]+0.0047*gal->comp_mass_frac[component]/(gal->comp_angmom_frac[component]*gal->lambda));
-    f_r = pow(f_r_base,f_r_power)*(1.0-3.0*gal->comp_mass_frac[component]+5.2*pow(gal->comp_mass_frac[component],2))*(1.0-0.019*c+0.00025*c*c+0.52/c);
+    f_r = f_r_func(gal,component);
 
     disk_scale = (1.0/sqrt(2.0))*(gal->comp_angmom_frac[component]/gal->comp_mass_frac[component])*gal->lambda*gal->r200*(f_r/sqrt(f_c));
 
@@ -1450,7 +1449,7 @@ double f_c_func(double c) {
     double a, upper, lower;
 
     upper = c*(1.0 - 1.0/pow(1.0+c,2.0) - 2.0*log(1.0+c)/(1.0+c));
-    a = log(1.0+c) - c/(1.0+c);
+    a = -log(1.0+c) + c/(1.0+c);
     lower = (2.0*pow(a,2.0));
 
     return upper/lower;
@@ -1495,6 +1494,38 @@ double f_s_func(double c, double lambda) {
     f_s = 1.5*lambda*sqrt(2.0*c/f_c)*pow(log(1.0+c)-c/(1.0+c),1.5)/g_c;
 
     return f_s;
+}
+
+// This is the azimuthal circular velocity fraction, f_s. It is needed
+// to determine the azimuthal streaming velocity.
+double f_r_func(galaxy *gal, int component) {
+
+    double f_r, c, m_d, lambdap, power;
+
+    m_d = gal->comp_mass_frac[component];
+    c = gal->comp_concentration[gal->index_halo];
+    lambdap = gal->lambda*gal->comp_angmom_frac[component]/m_d;
+
+    power = -0.06+2.71*m_d+0.0047/lambdap;
+    f_r = pow(lambdap/0.1,power)*(1.0-3.0*m_d+5.2*m_d*m_d)*(1.0-0.019*c+0.00025*c*c+0.52/c);
+
+    return f_r;
+}
+
+// This is the azimuthal circular velocity fraction, f_s. It is needed
+// to determine the azimuthal streaming velocity.
+double f_v_func(galaxy *gal, int component) {
+
+    double f_v, c, m_d, lambdap, power;
+
+    m_d = gal->comp_mass_frac[component];
+    c = gal->comp_concentration[gal->index_halo];
+    lambdap = gal->lambda*gal->comp_angmom_frac[component]/gal->comp_mass_frac[component];
+
+    power = -2.67*m_d-0.0038/lambdap+0.2*lambdap;
+    f_v = pow(lambdap/0.1,power)*(1.0+4.35*m_d-3.76*m_d*m_d)*(1.0+0.057*c-0.00034*c*c-1.54/c)/sqrt(-c/(1.0+c)+log(1.0+c));
+
+    return f_v;
 }
 
 // This function computes the mean inter-particle distance
@@ -1542,50 +1573,22 @@ void lower_resolution(galaxy *gal) {
 }
 
 // This function computes the halo concentration parameter
-// for a given redshift and a given mass according to Prada et al. 2012
+// for a given redshift and a given mass according to Dutton et al. 2014
 double halo_concentration(double m200, double z) {
-    double a, x, y ,d ,sigma, b0, b1, sigma_prime, C, c_vir;
-    double integral, error;
+    double a, b, log10_c200;
 
-    gsl_function F;
-    F.function = &linear_growth_rate_integrand;
+    a = 0.520+(0.905-0.520)*exp(-0.617*pow(z,1.21));
+    b = -0.101+0.026*z;
+    log10_c200 = a+b*log10(m200*unit_mass/solarmass/(1e12/AllVars.h));
 
-    a = 1./(1.+z);
-    x = pow(AllVars.Omega_l/AllVars.Omega_m,1./3.)*a;
-    y = 1e2/m200;
-
-    // Compute the linear growth rate
-    gsl_integration_qag(&F,0,x,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w[0],&integral,&error);
-    d = (5./2.)*pow(AllVars.Omega_m/AllVars.Omega_l,1./3.)*sqrt(1.+pow(x,3.))/pow(x,3./2.)*integral;
-
-    sigma = (d*16.9*pow(y,0.41))/(1.+1.102*pow(y,0.20)+6.22*pow(y,0.333));
-    b0 = c_min(x)/c_min(1.393);
-    b1 = sigma_min(x)/sigma_min(1.393);
-    sigma_prime = b1*sigma;
-    C = 2.881*(pow((sigma_prime/1.257),1.022)+1)*exp(0.06/pow(sigma_prime,2.));
-    c_vir = b0*C; 
-
-    return c_vir;
-}
-
-// Integrand of the integral in the linear growth rate equation
-static double linear_growth_rate_integrand(double x, void *params) {
-    return pow(x,3./2.)/pow((1.+pow(x,3.)),3./2.);
-}
-
-double c_min(double x) {
-    return 3.681+(5.033-3.681)*((1/pi)*atan(6.948*(x-0.424))+0.5);
-}
-
-double sigma_min(double x) {
-    return 1.047+(1.646-1.047)*((1/pi)*atan(7.386*(x-0.526))+0.5);
+    return pow(10.,log10_c200);
 }
 
 // This function computes the stellar mass expected from abundance matching (Behroozi et al. 2013)
 double halo_abundance(double m200, double z) {
     double a, nu, log_eps, log_M1, alpha, delta, beta, x, f0, fx, mstar; 
 
-    a = 1./(1. +z);
+    a = 1./(1.+z);
     nu = exp(-4*a*a);
     log_eps = -1.777+(-0.006*(a-1)+0.000*z)*nu-0.119*(a-1);
     log_M1 = 11.514+(-1.793*(a-1)+(-0.251)*z)*nu;

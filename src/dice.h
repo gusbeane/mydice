@@ -114,8 +114,6 @@ typedef struct {
     double redshift;
     // Spin parameter of the galaxy
     double lambda;
-    // Spin fraction of the disk
-    double j_d;
     // Baryonic mass fraction of the disk
     double m_d;
     // Total mass of the galactic model
@@ -578,13 +576,12 @@ double f_c_func(double);
 double g_c_func(double);
 static double dg_c_func(double, void *);
 double f_s_func(double, double);
+double f_r_func(galaxy *, int);
+double f_v_func(galaxy *, int);
 double mean_interparticle_distance(galaxy *, int);
 void lower_resolution(galaxy *);
 
 double halo_concentration(double, double);
-static double linear_growth_rate_integrand(double, void *);
-double c_min(double);
-double sigma_min(double);
 double halo_abundance(double, double);
 double galaxy_metallicity(double, double);
 

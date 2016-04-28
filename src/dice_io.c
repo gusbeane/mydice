@@ -533,12 +533,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     mandatory[nt] = 1;
     id[nt++] = DOUBLE;
 
-    strcpy(tag[nt], "j_d");
-    addr[nt] = &gal->j_d;
-    read[nt] = 0;
-    mandatory[nt] = 1;
-    id[nt++] = DOUBLE;
-
     strcpy(tag[nt], "lambda");
     addr[nt] = &gal->lambda;
     read[nt] = 0;
@@ -688,7 +682,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
 	n = sprintf(temp_tag,"angmom_frac%d",j+1);
         strcpy(tag[nt], temp_tag);
-	gal->comp_angmom_frac[j] = -1.;
+	gal->comp_angmom_frac[j] = -1.0;
         addr[nt] = &gal->comp_angmom_frac[j];
         read[nt] = 0;
         mandatory[nt] = 0;
