@@ -2446,7 +2446,7 @@ int set_galaxy_velocity(galaxy *gal) {
 		}
 		if(gal->comp_thermal_eq[j]==1) printf("[   thermal equilibirum   ]");
                 printf("\n");
-        	if(J_sum>1.01*gal->J200) printf("/////\t\t---------------[         Warning         ][               sum(J_component) > J200               ]\n",j+1);
+        	if(J_sum>1.01*gal->J200) printf("/////\t\t---------------[         Warning         ][               sum(J_component) > J200               ]\n");
                 if(nrejected_vr>1e-3||nrejected_vtheta>1e-3||nrejected_vz>1e-3) {
 		    printf("/////\t\t---------------[         Warning         ][  reject vr=%3.1lf%%/%3.1lf%% vtheta=%3.1lf%%/%3.1lf%% vz=%3.1lf%%/%3.1lf%%  ]\n",
                         100.*nrejected_vr/(double)gal->comp_npart[j],
