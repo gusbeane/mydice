@@ -1491,8 +1491,8 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     if (info != 0) {
         printf("/////\tVirial quantities [z=%5.2lf]\n",gal->redshift);
         printf("/////\t\t- V200 =  %7.1lf %s\n",gal->v200,AllVars.UnitVelocityName);
-        printf("/////\t\t- R200 =  %7.1lf %s\n",gal->r200,AllVars.UnitLengthName);
-        printf("/////\t\t- M200 = %6.2le Msol\n",gal->m200*unit_mass/solarmass);
+        printf("/////\t\t- R200 =  %7.1lf %s  [  %7.1lf %s.h^-1  ]\n",gal->r200,AllVars.UnitLengthName,gal->r200*AllVars.h,AllVars.UnitLengthName);
+        printf("/////\t\t- M200 = %6.2le Msol [ %6.2le Msol.h^-1 ]\n",gal->m200*unit_mass/solarmass,gal->m200*AllVars.h*unit_mass/solarmass);
         printf("/////\t\t- J200 = %6.2le Msol.%s.%s\n",gal->J200*unit_mass/solarmass,AllVars.UnitLengthName,AllVars.UnitVelocityName);
     	printf("/////\t--------------------------------------------------\n");
         printf("/////\tSystem mass\n");
@@ -1502,7 +1502,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         printf("/////\t\t- Gas mass \t\t-> %10.2le Msol [%4.1lf%%]\n",cutted_gas_mass*unit_mass/solarmass,100.*cutted_gas_mass/gal->total_mass);
         printf("/////\t\t- Bulge mass \t\t-> %10.2le Msol [%4.1lf%%]\n",cutted_bulge_mass*unit_mass/solarmass,100.*cutted_bulge_mass/gal->total_mass);
         printf("/////\t\t- Stellar mass \t\t-> %10.2le Msol [%4.1lf%%] \n",
-	    (cutted_bulge_mass+cutted_disk_mass),100.*(cutted_bulge_mass+cutted_disk_mass)/gal->total_mass);
+	    (cutted_bulge_mass+cutted_disk_mass)*unit_mass/solarmass,100.*(cutted_bulge_mass+cutted_disk_mass)/gal->total_mass);
         printf("/////\t\t- Abundance matching \t-> %10.2le Msol [%4.1lf%%] \n",
 	    halo_abundance(gal->m200,gal->redshift)*unit_mass/solarmass,100.*halo_abundance(gal->m200,gal->redshift)/gal->total_mass);
 
