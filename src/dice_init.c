@@ -2472,9 +2472,9 @@ int set_galaxy_velocity(galaxy *gal) {
                         vel_y = (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
                         vel_z = v_z;
 
-                        if(fabs(vel_x)>maxvel_x) maxvel_x = vel_x;
-                        if(fabs(vel_y)>maxvel_y) maxvel_y = vel_y;
-                        if(fabs(vel_z)>maxvel_z) maxvel_z = vel_z;
+                        if(fabs(vel_x)>maxvel_x) maxvel_x = fabs(vel_x);
+                        if(fabs(vel_y)>maxvel_y) maxvel_y = fabs(vel_y);
+                        if(fabs(vel_z)>maxvel_z) maxvel_z = fabs(vel_z);
 
                         gal->vel_x[i] = vel_x;
                         gal->vel_y[i] = vel_y;
@@ -2501,6 +2501,7 @@ int set_galaxy_velocity(galaxy *gal) {
 		    printf("[    lambda=%4.2le   lambda_crit=%4.2le    ]",gal->lambda*gal->comp_angmom_frac[j]/gal->comp_mass_frac[j],lambda_crit);
 		}
 		if(gal->comp_thermal_eq[j]==1) printf("[   thermal equilibirum   ]");
+                if(gal->comp_type[j] == 0) printf("[ v_st_max = %4.2le %s ]",v_stream_max,AllVars.UnitVelocityName);
                 printf("\n");
         	if(J_sum>1.01*gal->J200) printf("/////\t\t---------------[         Warning         ][               sum(J_component) > J200               ]\n");
                 if(nrejected_vr>1e-3||nrejected_vtheta>1e-3||nrejected_vz>1e-3) {

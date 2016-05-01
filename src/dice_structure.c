@@ -228,11 +228,8 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     }
     // Cutting the density
     if(cut==1) {
-        if(density<gal->comp_cut_dens[component]/unit_nh) {
-	    density = 0.;
-	} else {
-            density *= smooth_factor1;
-	}
+        if(density<gal->comp_cut_dens[component]/unit_nh) density = 0.;
+        density *= smooth_factor1;
         if(density<gal->comp_cut_dens[component]/unit_nh) density = 0.;
         if(gal->comp_cut_in[component]>0.) density *= smooth_factor2;
     }
@@ -1270,7 +1267,7 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
         gal->x[gal->index[tid]] = r*cos(theta);
         gal->y[gal->index[tid]] = r*sin(theta);
         delta_pot = galaxyz_potential_wrapper_func(z,gal)-galaxyz_potential_wrapper_func(0.,gal);
-        // Density in the xy-plane in 1e10 solar mass / kpc^3
+        // Density in the xy-plane
         rho_0 = get_midplane_density(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
         n = sqrt(pow(gal->x[gal->index[tid]]/hx,2.0)+pow(gal->y[gal->index[tid]]/hy,2.0));
         m = sqrt(pow(z/hz,2.0));
