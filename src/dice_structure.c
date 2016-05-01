@@ -1281,23 +1281,22 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
     // Hydrostatic equilibrium requires following density
     density = rho_0*exp(-delta_pot/(pow(gal->comp_cs_init[component],2.0)));
 
-    //if(cut==1) {
-        //sigma1 = gal->comp_sigma_cut[component];
-        //sigma2 = gal->comp_sigma_cut_in[component];
-        //smooth_factor1 = 1-0.5*(1+erf((n-1.0)/(sigma1*sqrt(2))));
-        //smooth_factor2 = 0.5*(1+erf((n-1.0)/(sigma2*sqrt(2))));
-        //smooth_factor3 = 1-0.5*(1+erf((m-1.0)/(sigma1*sqrt(2))));
-        //if(spherical){
-        //    density *= smooth_factor1;
-        //    if(r<gal->comp_cut_in[component]) density *= smooth_factor2;
-        //} else {
-        //    if(r>gal->comp_cut[component]) density *= smooth_factor1;
-        //    density *= smooth_factor3;
-        //    if(r<gal->comp_cut_in[component]) density *= smooth_factor2;
-        //}
-        if(r>gal->comp_cut[component]) density = 0.;
+    if(cut==1) {
+        sigma1 = gal->comp_sigma_cut[component];
+        sigma2 = gal->comp_sigma_cut_in[component];
+        smooth_factor1 = 1-0.5*(1+erf((n-1.0)/(sigma1*sqrt(2))));
+        smooth_factor2 = 0.5*(1+erf((n-1.0)/(sigma2*sqrt(2))));
+        smooth_factor3 = 1-0.5*(1+erf((m-1.0)/(sigma1*sqrt(2))));
+        if(spherical){
+            density *= smooth_factor1;
+            if(r<gal->comp_cut_in[component]) density *= smooth_factor2;
+        } else {
+            if(r>gal->comp_cut[component]) density = 0.;
+            density *= smooth_factor3;
+            if(r<gal->comp_cut_in[component]) density *= smooth_factor2;
+        }
         if(density<gal->comp_cut_dens[component]/unit_nh) density = 0.;
-    //}
+    }
 
     // Return a pseudo density
     return density;
