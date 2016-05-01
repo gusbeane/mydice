@@ -411,6 +411,14 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_stream_method array\n");
         return -1;
     }
+    if (!(gal->comp_dens_min = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_dens_min array\n");
+        return -1;
+    }
+    if (!(gal->comp_dens_max = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_dens_max array\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -1072,18 +1080,17 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     unsigned long int k;
     int i,j,n,nt;
     int dens_gauss;
-    // Hubble parameter
-    double H;
     // Seed for the random number generator
     long seed;
-    double cutted_halo_mass,cutted_disk_mass,cutted_gas_mass,cutted_bulge_mass;
-    double halo_npart,disk_npart,gas_npart,bulge_npart;
+    double cutted_halo_mass, cutted_disk_mass, cutted_gas_mass, cutted_bulge_mass;
+    double cutted_halo_mass_r200, cutted_gas_mass_r200, mass_r200;
+    double halo_npart, disk_npart, gas_npart, bulge_npart;
     double max_gas_radius;
     double baryonic_fraction;
     double BD_fraction,BT_fraction,gas_fraction;
     double effective_mass_factor;
     double rho_crit, delta_c, rho0_nfw, rho_scale_nfw, m_scale_nfw;
-    double cut_dens,theta_max_dens;
+    double cut_dens, mean_dens;
     double exclude[3];
 
     if(allocate_component_arrays(gal)!=0) {
@@ -1218,18 +1225,14 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     }
     if(gal->softening==0.0) gal->softening = gal->dx[gal->nlevel-1];
 
-    gal->boxsize_dens = 0.;
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
-        if(gal->comp_type[i]==0 && 2.0*gal->comp_cut[i]>gal->boxsize_dens && gal->comp_npart[i]>0 && gal->comp_hydro_eq[i]>0 && gal->hydro_eq_niter>0) {
-            gal->boxsize_dens = 2.5*(gal->comp_cut[i]+3*gal->comp_scale_length[i]*gal->comp_sigma_cut[i]);
-        }
-    }
-    gal->dx_dens = gal->boxsize_dens/((double)gal->ngrid_dens[0]);
-    if(gal->boxsize_dens>0) {
-        if(allocate_galaxy_midplane_dens(gal)!=0) {
-            fprintf(stderr,"[Error] Unable to allocate midplane gas density grid\n");
-            return -1;
-        }
+        if(gal->comp_type[i]==0 && gal->comp_npart[i]>0 && gal->comp_hydro_eq[i]>0 && gal->hydro_eq_niter>0) {
+            if(allocate_galaxy_midplane_dens(gal)!=0) {
+                fprintf(stderr,"[Error] Unable to allocate midplane gas density grid\n");
+                return -1;
+            }
+	    break;
+	}
     }
 
 
@@ -1239,10 +1242,13 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     gal->ntot_part_stars = (unsigned long int)0;
     gal->comp_start_part[0] = (unsigned long int)0;
     gal->total_mass = 0.;
+    gal->total_mass_r200 = 0.;
     max_gas_radius = 0.0;
     cutted_halo_mass = 0.0;
+    cutted_halo_mass_r200 = 0.0;
     cutted_disk_mass = 0.0;
     cutted_gas_mass = 0.0;
+    cutted_gas_mass_r200 = 0.0;
     cutted_bulge_mass = 0.0;
     gal->num_part[0] = 0;
     gal->num_part[1] = 0;
@@ -1262,7 +1268,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         // Checking for gaussian fluctuations bool
         dens_gauss += gal->comp_dens_gauss[i];
         // Rescale the mass fractions
-        if(gal->comp_npart[i]>0) effective_mass_factor += gal->comp_mass_frac[i];
+        if(gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.) effective_mass_factor = effective_mass_factor+gal->comp_mass_frac[i];
         // Disk fraction - count only flat components
         if(gal->comp_flatz[i]<0.4 && gal->comp_type[i]!=1 && gal->comp_npart[i]>0) gal->m_d += gal->comp_mass_frac[i];
         // Find the main halo
@@ -1312,7 +1318,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         if(gal->comp_mass_frac[i]==0. && gal->comp_part_mass[i]==0.) gal->comp_npart[i] = 0;
         if(gal->comp_mass_frac[i]==0. && gal->comp_part_mass[i]>0.) gal->comp_mass_frac[i] = gal->comp_npart[i]*gal->comp_part_mass[i]*solarmass/unit_mass;
         if(gal->comp_npart_pot[i]<gal->comp_npart[i]) gal->comp_npart_pot[i] = gal->comp_npart[i];
-        if(gal->comp_npart[i]==0) gal->comp_npart_pot[i] = 0;
+        if(gal->comp_npart[i]==0 && gal->comp_part_mass[i]==0.) gal->comp_npart_pot[i] = 0;
         // Rescale the mass fractions
         if(AllVars.NormMassFact==1) gal->comp_mass_frac[i] = gal->comp_mass_frac[i]/effective_mass_factor;
 	// Set the angular momentum fraction if not defined
@@ -1358,6 +1364,20 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
         // Reset Q_min to some arbitrary value so it can be calculated later.
         gal->comp_Q_min[i] = 1000.0;
+	// Rescale component mass
+        if(gal->comp_part_mass[i]>0.&&gal->comp_npart[i]>0) {
+            gal->comp_mass[i] = gal->comp_npart[i]*gal->comp_part_mass[i]*solarmass/unit_mass;
+            gal->comp_mass_frac[i] = gal->comp_mass[i]/gal->m200;
+        }
+	// Rescale particle number
+        if(gal->comp_part_mass[i]>0.&&gal->comp_npart[i]==0) {
+            gal->comp_npart[i] = (int)round(gal->comp_mass[i]/(gal->comp_part_mass[i]*solarmass/unit_mass));
+        }
+        if(gal->comp_npart_pot[i]<gal->comp_npart[i]) gal->comp_npart_pot[i] = gal->comp_npart[i];
+        gal->ntot_part_pot += gal->comp_npart_pot[i];
+        gal->ntot_part += gal->comp_npart[i];
+        // Count stars
+        if(gal->comp_type[i]>1) gal->ntot_part_stars += gal->comp_npart[i];
 
         // We check how many components are present in the galaxy
         // in order to compute masses
@@ -1383,19 +1403,11 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
         // Computing the mass of the component after cuts
         if(gal->comp_bool[i]) {
+	    cut_dens = 0.;
+	    // Turn off the additional density cut for total mass computation
             if(gal->comp_cut_dens[i]>0.) {
-                // Case where the final cutted mass is defined by the user
-                theta_max_dens = 0.0;
-                gal->comp_cut_dens[i] = density_functions_pool(gal,gal->comp_cut[i],0.,0.,0,gal->comp_model[i],i);
-                if(gal->dens_gauss_sigma>0. && gal->dens_gauss_scale>0. && gal->comp_dens_gauss[i]>0) {
-                    for(n = 0; n<1000; n = n+1) {
-                        cut_dens = density_functions_pool(gal,gal->comp_cut[i],(2.0*pi*n/1000.),0.,0,gal->comp_model[i],i);
-                        if(cut_dens>gal->comp_cut_dens[i]) {
-                            gal->comp_cut_dens[i] = cut_dens;
-                            theta_max_dens = 2.0*pi*n/1000.;
-                        }
-                    }
-                }
+                cut_dens = gal->comp_cut_dens[i];
+                gal->comp_cut_dens[i] = 0.;
             }	
             // Setting the density function scale factor
             if(gal->comp_radius_nfw[i]==-1.0) {
@@ -1412,7 +1424,12 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                     gal->comp_cut[i] = save_cut;
                     gal->comp_sigma_cut[i] = save_sigma_cut;
                 } else {
+		    int save = gal->comp_excavate[i];
+		    if(gal->comp_excavate[i]>0) {
+		        gal->comp_excavate[i] = 0;
+		    }
                     gal->comp_scale_dens[i] = gal->comp_mass[i]/cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
+		    if(gal->comp_excavate[i]>0) gal->comp_excavate[i] = save;
                 }
             } else {
                 // Case where the final cutted mass is defined by a scaling with respect to a NFW halo density
@@ -1421,12 +1438,20 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                     (log(1.0+gal->comp_concentration[i])-gal->comp_concentration[i]/(1.0+gal->comp_concentration[i]));
                 rho0_nfw = gal->comp_mass_frac[i]*rho_crit*delta_c;
                 rho_scale_nfw = rho0_nfw/(m_scale_nfw*pow(1.0+m_scale_nfw,2.0));
-                gal->comp_scale_dens[i] = rho_scale_nfw/density_functions_pool(gal,gal->comp_radius_nfw[i],theta_max_dens,0.,0,gal->comp_model[i],i);
+		// Compute mean density at r=r_nfw
+		mean_dens = 0.;
+                for(n = 0; n<1000; n = n+1) {
+		    mean_dens += density_functions_pool(gal,gal->comp_radius_nfw[i],(2.0*pi*n/1000.),0.,0,gal->comp_model[i],i);
+		}
+		mean_dens /= 1000.;
+		// Rescale density
+                gal->comp_scale_dens[i] = rho_scale_nfw/mean_dens;
             }
+	    // Turn on density cut
+            if(cut_dens>0.) gal->comp_cut_dens[i] = cut_dens;
             // Recompute cutted mass
-            if(gal->comp_cut_dens[i]>0.) gal->comp_cut_dens[i] = density_functions_pool(gal,gal->comp_cut[i],theta_max_dens,0.,0,gal->comp_model[i],i);
             gal->comp_mass[i] = cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
-            gal->total_mass += gal->comp_mass[i];
+            gal->total_mass += gal->comp_mass_frac[i]*gal->m200;
             if(gal->jeans_mixed_defined == 0) {
                 if(gal->comp_sigmar_model[i]==-2 || gal->comp_sigmar_model[i]==-2) {
                     gal->boxsize_jeans = 2*gal->r200;
@@ -1439,20 +1464,16 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                     }
                 }
             }
-
+            double save_cut = gal->comp_cut[i];
+            gal->comp_cut[i] = 1.0*gal->r200;
+	    mass_r200 = cumulative_mass_func(gal,gal->r200,i);
+	    gal->comp_cut[i] = save_cut;
+	    if(gal->comp_cut[i]>gal->r200) {
+	        gal->total_mass_r200 += mass_r200;
+	    } else {
+	        gal->total_mass_r200 += gal->comp_mass[i];
+	    }
         }
-        if(gal->comp_part_mass[i]>0.&&gal->comp_npart[i]>0) {
-            gal->comp_mass[i] = gal->comp_npart[i]*gal->comp_part_mass[i]*solarmass/unit_mass;
-            gal->comp_mass_frac[i] = gal->comp_mass[i]/gal->m200;
-        }
-        if(gal->comp_part_mass[i]>0.&&gal->comp_npart[i]==0) {
-            gal->comp_npart[i] = (int)round(gal->comp_mass[i]/(gal->comp_part_mass[i]*solarmass/unit_mass));
-        }
-        if(gal->comp_npart_pot[i]<gal->comp_npart[i]) gal->comp_npart_pot[i] = gal->comp_npart[i];
-        gal->ntot_part_pot += gal->comp_npart_pot[i];
-        gal->ntot_part += gal->comp_npart[i];
-        // Count stars
-        if(gal->comp_type[i]>1) gal->ntot_part_stars += gal->comp_npart[i];
 
         // Check for disk scalelength values lower or equal to 0
         // If it is the case, compute the disk scalelength according to Mo et al. 1998
@@ -1463,6 +1484,18 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         if(gal->comp_type[i]==1) cutted_halo_mass += gal->comp_bool[i]*gal->comp_mass[i];
         if(gal->comp_type[i]==2) cutted_disk_mass += gal->comp_bool[i]*gal->comp_mass[i];
         if(gal->comp_type[i]==3) cutted_bulge_mass += gal->comp_bool[i]*gal->comp_mass[i];
+        if(gal->comp_type[i]==0 && gal->comp_cut[i]>gal->r200) {
+	    cutted_gas_mass_r200 = cutted_gas_mass_r200+gal->comp_bool[i]*mass_r200;
+	}
+	if(gal->comp_type[i]==0 && gal->comp_cut[i]<=gal->r200) {
+	    cutted_gas_mass_r200 = cutted_gas_mass_r200+gal->comp_bool[i]*gal->comp_mass[i];
+	}
+        if(gal->comp_type[i]==1 && gal->comp_cut[i]>gal->r200) {
+	    cutted_halo_mass_r200 += gal->comp_bool[i]*mass_r200;
+	}
+	if(gal->comp_type[i]==1 && gal->comp_cut[i]<=gal->r200) {
+	    cutted_halo_mass_r200 += gal->comp_bool[i]*gal->comp_mass[i];
+	}
         // Checking particle number
         if(gal->comp_type[i]==0) gal->num_part[0] += gal->comp_npart[i];
         if(gal->comp_type[i]==1) gal->num_part[1] += gal->comp_npart[i];
@@ -1485,7 +1518,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     baryonic_fraction = (cutted_disk_mass+cutted_gas_mass+cutted_bulge_mass)/gal->m200;
     BT_fraction = cutted_bulge_mass/(cutted_bulge_mass+cutted_disk_mass);
     BD_fraction = cutted_bulge_mass/cutted_disk_mass;
-    gas_fraction = cutted_gas_mass/(cutted_disk_mass+cutted_gas_mass);
+    gas_fraction = cutted_gas_mass/(cutted_disk_mass+cutted_bulge_mass+cutted_gas_mass);
 
     // Print some information to screen.
     if (info != 0) {
@@ -1496,15 +1529,24 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         printf("/////\t\t- J200 = %6.2le Msol.%s.%s\n",gal->J200*unit_mass/solarmass,AllVars.UnitLengthName,AllVars.UnitVelocityName);
     	printf("/////\t--------------------------------------------------\n");
         printf("/////\tSystem mass\n");
-        printf("/////\t\t- Total mass \t\t-> %10.2le Msol\n",gal->total_mass*unit_mass/solarmass);
-        printf("/////\t\t- Disk mass \t\t-> %10.2le Msol [%4.1lf%%]\n",cutted_disk_mass*unit_mass/solarmass,100.*cutted_disk_mass/gal->total_mass);
-        printf("/////\t\t- Halo mass \t\t-> %10.2le Msol [%4.1lf%%]\n",cutted_halo_mass*unit_mass/solarmass,100.*cutted_halo_mass/gal->total_mass);
-        printf("/////\t\t- Gas mass \t\t-> %10.2le Msol [%4.1lf%%]\n",cutted_gas_mass*unit_mass/solarmass,100.*cutted_gas_mass/gal->total_mass);
-        printf("/////\t\t- Bulge mass \t\t-> %10.2le Msol [%4.1lf%%]\n",cutted_bulge_mass*unit_mass/solarmass,100.*cutted_bulge_mass/gal->total_mass);
-        printf("/////\t\t- Stellar mass \t\t-> %10.2le Msol [%4.1lf%%] \n",
-	    (cutted_bulge_mass+cutted_disk_mass)*unit_mass/solarmass,100.*(cutted_bulge_mass+cutted_disk_mass)/gal->total_mass);
+        printf("/////\t\t- Total         mass \t-> %10.2le Msol\n",gal->total_mass*unit_mass/solarmass);
+	if(gal->total_mass>1.01*gal->total_mass_r200) {
+            printf("/////\t\t- Total(r<R200) mass \t-> %10.2le Msol\n",gal->total_mass_r200*unit_mass/solarmass);
+	}
+        printf("/////\t\t- Halo          mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_halo_mass*unit_mass/solarmass,100.*cutted_halo_mass/gal->total_mass_r200);
+	if(cutted_halo_mass>1.01*cutted_halo_mass_r200) {
+            printf("/////\t\t- Halo(r<R200)  mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_halo_mass_r200*unit_mass/solarmass,100.*cutted_halo_mass_r200/gal->total_mass_r200);
+	}
+        printf("/////\t\t- Disk          mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_disk_mass*unit_mass/solarmass,100.*cutted_disk_mass/gal->total_mass_r200);
+        printf("/////\t\t- Gas           mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_gas_mass*unit_mass/solarmass,100.*cutted_gas_mass/gal->total_mass_r200);
+	if(cutted_gas_mass>1.01*cutted_gas_mass_r200) {
+            printf("/////\t\t- Gas(r<R200)   mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_gas_mass_r200*unit_mass/solarmass,100.*cutted_gas_mass_r200/gal->total_mass_r200);
+	}
+        printf("/////\t\t- Bulge         mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_bulge_mass*unit_mass/solarmass,100.*cutted_bulge_mass/gal->total_mass_r200);
+        printf("/////\t\t- Stellar       mass \t-> %10.2le Msol [%4.1lf%%] \n",
+	    (cutted_bulge_mass+cutted_disk_mass)*unit_mass/solarmass,100.*(cutted_bulge_mass+cutted_disk_mass)/gal->total_mass_r200);
         printf("/////\t\t- Abundance matching \t-> %10.2le Msol [%4.1lf%%] \n",
-	    halo_abundance(gal->m200,gal->redshift)*unit_mass/solarmass,100.*halo_abundance(gal->m200,gal->redshift)/gal->total_mass);
+	    halo_abundance(gal->m200,gal->redshift)*unit_mass/solarmass,100.*halo_abundance(gal->m200,gal->redshift)/gal->total_mass_r200);
 
     	printf("/////\t--------------------------------------------------\n");
         printf("/////\tParticle count \t\t\t      [final]    [potential]\n");
@@ -1516,6 +1558,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
     	printf("/////\t--------------------------------------------------\n");
         printf("/////\tFractions\n");
+        printf("/////\t\t- Total mass frac\t-> %10.3lf\n",effective_mass_factor);
         printf("/////\t\t- Baryonic fraction\t-> %10.3lf\n",baryonic_fraction);
         printf("/////\t\t- Disk fraction\t\t-> %10.3lf\n",gal->m_d);
         if(gal->num_part[0]>0&&gal->num_part[2]>0) printf("/////\t\t- Gas fraction\t\t-> %10.3lf\n",gas_fraction);
@@ -1531,7 +1574,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     	printf("/////\t\t------------------------------------------\n");
         for(i = 0; i<AllVars.MaxCompNumber; i++) {
             if(gal->comp_hydro_eq[i]>0 && gal->comp_npart[i]>0) {
-                printf("/////\t\t- Midplane gas density \t\t[   %4d,%4d    ][box=%6.1lf %s]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens),gal->boxsize_dens,AllVars.UnitLengthName);
+                printf("/////\t\t- Midplane gas density \t\t[   %4d,%4d    ]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens));
                 break;
             }
         }
@@ -1570,11 +1613,12 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             if(gal->comp_sfr[j]!=0.) gal->comp_mean_age[j] = (gal->comp_mass[j]*1e10)/(gal->comp_sfr[j]*1e6)/2.0;
             printf("/////\t------------------ Component %2d ------------------\n",j+1);
             printf("/////\t\t-> npart    = %ld \n",gal->comp_npart[j]);
-            printf("/////\t\t-> m_pot    = %6.2le [Msol]\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart_pot[j]));
-            printf("/////\t\t-> m        = %6.2le [Msol]\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]));
+            printf("/////\t\t-> m_tot    = %6.2le [Msol]\n",gal->comp_mass[j]*unit_mass/solarmass);
+            printf("/////\t\t-> mp_pot   = %6.2le [Msol]\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart_pot[j]));
+            printf("/////\t\t-> mp       = %6.2le [Msol]\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]));
             printf("/////\t\t-> scale    = %6.2le [%s]\n",gal->comp_scale_length[j],AllVars.UnitLengthName);
             printf("/////\t\t-> cut      = %6.2le [%s]\n",gal->comp_cut[j],AllVars.UnitLengthName);
-            if(gal->comp_cut_in[j]>0) printf("/////\t\t\t-> inner cut = %6.2lf %s\n",gal->comp_cut_in[j],AllVars.UnitLengthName);
+            if(gal->comp_cut_in[j]>0) printf("/////\t\t-> cut_in   = %6.2le [%s]\n",gal->comp_cut_in[j],AllVars.UnitLengthName);
             if(gal->comp_type[j]==1) {
                 printf("/////\t\t-> c        = %6.1le\n",gal->comp_concentration[j]);
                 printf("/////\t\t-> lambda   = %6.3le\n",gal->lambda);
@@ -1666,7 +1710,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     if(deallocate_galaxy_gaussian_grid(gal)!=0) {
         fprintf(stderr,"[Error] Cannot allocate gaussian grid\n");
     }
-    // Set gaussian age fluctuations
+    // Set gaussian metal fluctuations
     // Allocate and set the gaussian field grid if necessary
     nt = 0;
     for(j = 0; j<AllVars.MaxCompNumber; j++) {
@@ -1741,11 +1785,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         free(gal->storage[i]);
     }
     free(gal->storage);
-
-    // Normalise mass fractions to 1 if not already done
-    for(j = 0; j<AllVars.MaxCompNumber; j++) {
-        if(AllVars.NormMassFact==0) gal->comp_mass_frac[i] = gal->comp_mass_frac[i]/effective_mass_factor;
-    }
 
     // No problems detected
     return 0;
@@ -1926,7 +1965,7 @@ void allocate_stream_storage_variable(stream *st, int size) {
 // galaxy component.
 int set_galaxy_coords(galaxy *gal) {
     int i,j,n,hydro_eq_sum;
-    double exclude[3];
+    double exclude[3], cut_dens;
 
     printf("/////\tComputing coordinates\n");
     fflush(stdout);
@@ -1946,7 +1985,9 @@ int set_galaxy_coords(galaxy *gal) {
         printf("/////\t--------------------------------------------------\n");
         printf("/////\tTargeting gas azimuthal hydrostatic equilibrium\n");
         // Allow to use pseudo density functions
-        for(i = 0; i<AllVars.Nthreads; i++) gal->pseudo[i] = 1;
+        for(i = 0; i<AllVars.Nthreads; i++) {
+	    gal->pseudo[i] = 1;
+	}
         for(j = 0; j<gal->hydro_eq_niter; j++) {
             printf("/////\t\tIteration [%2d/%2d][evaluating potential]\n",j+1,gal->hydro_eq_niter);
             // Compute the full potential.
@@ -1968,13 +2009,25 @@ int set_galaxy_coords(galaxy *gal) {
                     }
                 }
             }
-            // Compute midplane density
-            fill_midplane_dens_grid(gal);
             // Recompute particle position
             for(i = 0; i<AllVars.MaxCompNumber; i++) {
                 if((gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)&(gal->comp_hydro_eq[i]==1)) {
-                    printf("/////\t\t\t- Component %2d [%s][Vertical hydrostatic equilibrium]",i+1,gal->comp_profile_name[i]);
+		    // Only apply the density cut for the last iteration
+	    	    if(j<gal->hydro_eq_niter-1) {
+		        cut_dens = gal->comp_cut_dens[i];
+		        gal->comp_cut_dens[i] = 0.;
+		    }
+		    // Compute the gas surface density grid size
+            	    gal->boxsize_dens = 2.5*(gal->comp_cut[i]+3*gal->comp_scale_length[i]*gal->comp_sigma_cut[i]);
+    		    gal->dx_dens = gal->boxsize_dens/((double)gal->ngrid_dens[0]);
+            	    // Compute midplane density
+                    fill_midplane_dens_grid(gal);
+                    printf("/////\t\t\t- Component %2d [%s]",i+1,gal->comp_profile_name[i]);
                     mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]); 
+		    // Restore density cut
+	    	    if(j<gal->hydro_eq_niter-1) {
+		        gal->comp_cut_dens[i] = cut_dens;
+		    }
                 }
             }
         }
@@ -2036,18 +2089,20 @@ int set_galaxy_velocity(galaxy *gal) {
     J_sum = 0.;
     maxrad = 0.;
     maxrad_gas = 0.;
-    interval = 0.05;
+    interval = gal->comp_scale_length[0];
 
     for (i = 0; i<gal->ntot_part_pot; ++i) {
         if(gal->r_sph[i]>maxrad) maxrad = gal->r_sph[i];
     }
     for(j = 0; j<AllVars.MaxCompNumber; j++) {
+	if(gal->comp_scale_length[i]<interval) gal->comp_scale_length[i];
         if(gal->comp_type[j]==0) {
             for (i = gal->comp_start_part[j]; i<gal->comp_start_part[j]+gal->comp_npart_pot[j]; ++i) {
 	        if(gal->r_sph[i]>maxrad_gas) maxrad_gas = gal->r_sph[i];
 	    }
         }
     }
+    interval /= 50.;
 
     // Warning init
     warning1 = 0;
@@ -2161,11 +2216,14 @@ int set_galaxy_velocity(galaxy *gal) {
                 fill_jeans_mixed_grid(gal,j);
             }
         }
-
+	
+        if(gal->comp_npart[j]>1) {
+            printf("/////\t\t- Component %2d ",j+1);
+	    if(gal->comp_compute_vel[j]==0) printf("[ skipping ]\n");
+	}
         // Particle velocities
         if(gal->comp_npart[j]>1 && gal->comp_compute_vel[j]==1) {
 
-            printf("/////\t\t- Component %2d ",j+1);
 
 	    if(gal->comp_thermal_eq[j]==1) {
                 // Setting a minimum thermal energy
@@ -2423,7 +2481,6 @@ int set_galaxy_velocity(galaxy *gal) {
                         gal->vel_z[i] = vel_z;
                     }
                 }
-		//gal->comp_angmom_frac[j] = J_comp/gal->J200;
 		if(gal->comp_type[j]==0) {
 		    // Christodoulou+1995
 		    eps_m = 0.9;
@@ -2437,8 +2494,7 @@ int set_galaxy_velocity(galaxy *gal) {
 		J_sum += J_comp;
 #pragma omp barrier
                 printf("[J=%4.2le  Msol.%s.%s]",J_comp*unit_mass/solarmass,AllVars.UnitLengthName,AllVars.UnitVelocityName);
-                if(gal->comp_type[j] != 0) printf("[    max vx=%4.2le vy=%4.2le vz=%4.2le  %s    ]",maxvel_x,maxvel_y,maxvel_z,AllVars.UnitVelocityName);
-                if(gal->comp_type[j] == 0) printf("[            v_stream_max = %4.2le %s             ]",v_stream_max,AllVars.UnitVelocityName);
+                if(gal->comp_type[j] != 0) printf("[    max vx=%4.2le vy=%4.2le vz=%4.2le  %s    ][ v_st_max = %4.2le %s ]",maxvel_x,maxvel_y,maxvel_z,AllVars.UnitVelocityName,v_stream_max,AllVars.UnitVelocityName);
                 if(gal->comp_epicycle[j]==1) {
 		    printf("\n/////\t\t---------------[  Q_min=%5.2lf  ][  Q_bar=%5.2lf  ]",gal->comp_Q_min[j],gal->comp_Q_bar[j]);
 		    //if(lamda_crit>gal->lambda*gal->comp_angmom_frac[j]/gal->comp_mass_frac[j]) printf()
@@ -2552,7 +2608,7 @@ int set_galaxy_velocity(galaxy *gal) {
     // Loop over components
     nt = 0;
     for(k = 0; k<AllVars.MaxCompNumber; k++) {
-        if(gal->comp_turb_sigma[k]>0. && gal->comp_npart[k]>1) {
+        if(gal->comp_turb_sigma[k]>0. && gal->comp_npart[k]>1 && gal->comp_compute_vel[k]==1) {
             nt++;
             if(nt==1) {
     	        printf("/////\t--------------------------------------------------\n");
@@ -2775,6 +2831,8 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_stream_scale);
     free(gal->comp_stream_method);
     free(gal->comp_angmom_frac);
+    free(gal->comp_dens_min);
+    free(gal->comp_dens_max);
     // Deallocate the potential grid to be really nice to the memory.
     if(gal->potential_defined == 1) {
         for (n = 0; n < gal->nlevel; n++) {

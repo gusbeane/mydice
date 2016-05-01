@@ -93,7 +93,7 @@
 #define unit_time               (unit_length/unit_velocity)
 #define unit_energy             (unit_mass*(unit_length*unit_length)/(unit_time*unit_time))
 #define unit_dens               (unit_mass/(unit_length*unit_length*unit_length))
-#define unit_nh                 (hydrogen_massfrac/protonmass*unit_dens)
+#define unit_nh                 ((hydrogen_massfrac/protonmass)*unit_dens)
 #define G                       G_cgs*unit_mass/(unit_length*unit_velocity*unit_velocity)
 
 
@@ -118,6 +118,8 @@ typedef struct {
     double m_d;
     // Total mass of the galactic model
     double total_mass;
+    // Total mass of the galactic model within R200
+    double total_mass_r200;
     // Density fluctuation dispersion
     double dens_gauss_sigma;
     // Density fluctuation scale
@@ -220,6 +222,8 @@ typedef struct {
     double              *comp_stream_scale;
     int              	*comp_stream_method;
     double              *comp_angmom_frac;
+    double              *comp_dens_min;
+    double              *comp_dens_max;
     // Virial quantities
     double v200;
     double r200;
