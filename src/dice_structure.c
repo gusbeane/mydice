@@ -764,8 +764,6 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 gal->phi_sph[i] = prop_phi_sph[selected];
                 gal->z[i] = prop_z[selected];
                 gal->rho[i] = pi_y[selected]/dv_y[selected];
-		if(gal->rho[i]>gal->comp_dens_max[component]) gal->comp_dens_max[component] = gal->rho[i];
-		if(gal->rho[i]<gal->comp_dens_min[component]) gal->comp_dens_min[component] = gal->rho[i];
                 acceptance += 1.0;
                 // Proposal rejected, the particle keeps the same postion
             } else {
@@ -784,6 +782,8 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 }
                 gal->rho[i] = pi_x[gal->mcmc_ntry-1]/dv_x[gal->mcmc_ntry-1];
             }
+	    if(gal->rho[i]>gal->comp_dens_max[component]) gal->comp_dens_max[component] = gal->rho[i];
+	    if(gal->rho[i]<gal->comp_dens_min[component] && gal->rho[i]>0.0) gal->comp_dens_min[component] = gal->rho[i];
             // Temporary assign metallicity to local density value
             if(gal->comp_metal_gradient[component]) {
                 gal->metal[i] = gal->rho[i];

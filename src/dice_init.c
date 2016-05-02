@@ -1326,7 +1326,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         // Set the start index for each component
         if(i>0) gal->comp_start_part[i] = gal->comp_start_part[i-1]+gal->comp_npart_pot[i-1];
         // Set scalelength according to concentration parameter if defined
-        if(gal->comp_scale_length[i]==0. && gal->comp_type[i]!=1 && gal->comp_flatz[i]<0.4 && gal->comp_npart[i]>0) {
+        if(gal->comp_scale_length[i]==0. && gal->comp_type[i]!=1 && gal->comp_flatz[i]<0.4 && (gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.)) {
 	    gal->comp_scale_length[i] = disk_scale_length_func(gal,gal->comp_concentration[gal->index_halo],i);
 	}
         if(gal->comp_concentration[i]>0.) {
@@ -2424,12 +2424,14 @@ int set_galaxy_velocity(galaxy *gal) {
                         v_z = gsl_ran_gaussian(r[tid],sqrt(v2a_z+pow(0.01*gal->v200,2)));
                         // Escape velocity
                         // Work with private omp variables
-                        int vesc_index = (int)(gal->r_sph[i]/interval);
                         double vmax;
                         if(gal->comp_vmax[j]>0.) {
                             vmax = gal->comp_vmax[j]*v_cmax;
                         } else {
-                            vmax = fabs(gal->comp_vmax[j])*vesc[vesc_index];
+                            int index1 = (int)(gal->r_sph[i]/interval);
+		            if(index1>=nbin-2) index1 = nbin-2;
+                            int index2 = index1+1;
+		            vmax = fabs(gal->comp_vmax[j])*interpol((index1+0.5)*interval,(index2+0.5)*interval,gal->r_sph[i],vesc[index1],vesc[index2]);
                         }
 
                         // Let's ensure that the particle velocity is lower than gal->comp_vmax times the escape velocity
