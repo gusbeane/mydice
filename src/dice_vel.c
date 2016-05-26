@@ -652,8 +652,8 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 // A wrapper for the gas density function.
 double gas_density_wrapper_func(double radius, void *params) {
 
+    int i, tid, component;
     double theta, rho, x, y, sigma, smooth_in_factor, smooth_out_factor;
-    int tid, component;
     galaxy *gal = (galaxy *) params;
 
 #if USE_THREADS == 1
@@ -666,10 +666,15 @@ double gas_density_wrapper_func(double radius, void *params) {
     x = radius*cos(gal->theta_cyl[gal->index[tid]]);
     y = radius*sin(gal->theta_cyl[gal->index[tid]]);
 
-    if(gal->pseudo[tid]) {
-        rho = pseudo_density_gas_func(gal,fabs(radius),gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid],gal->comp_spherical_hydro_eq[component]);
-    } else {
-        rho = density_functions_pool(gal,fabs(radius),gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    rho = 0.0;
+    for(i=0; i<AllVars.MaxCompNumber; i++) {
+	if(gal->comp_type[i]==0) {
+            if(gal->pseudo[tid]) {
+                rho += pseudo_density_gas_func(gal,fabs(radius),gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid],gal->comp_spherical_hydro_eq[component]);
+            } else {
+                rho += density_functions_pool(gal,fabs(radius),gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+            }
+	}
     }
 
     return rho;

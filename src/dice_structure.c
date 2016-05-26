@@ -402,7 +402,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         max_step_z = gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
     }
 
-    if(gal->comp_npart[component]>0) {
+    if(gal->comp_npart[component]>1) {
         // Use the Metropolis algorithm to place the disk particles.
         // We start the Monte Carlo Markov Chain with a realistic particle position
         i = gal->comp_start_part[component];
@@ -838,6 +838,16 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 
         }
         if(AllVars.MeanPartDist) printf("/////\t\t\tMean inter-particle distance -> %lf [kpc]\n",mean_interparticle_distance(gal,component));
+    } else {
+        gal->x[i] = 0.;
+        gal->y[i] = 0.;
+        gal->z[i] = 0.;
+        gal->r_cyl[i] = 0.;
+        gal->theta_cyl[i] = 0.;
+        gal->r_sph[i] = 0.;
+        gal->theta_sph[i] = 0.;
+        gal->phi_sph[i] = 0.;
+        printf("\n");
     }
     free(prop_x);
     free(prop_y);

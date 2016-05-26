@@ -1262,6 +1262,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     effective_mass_factor = 0.;
     gal->index_halo = -1;
     gal->index_disk = -1;
+    gal->index_gasdisk = -1;
     dens_gauss = 0;
 
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
@@ -1274,8 +1275,10 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         // Find the main halo
         if(gal->comp_type[i]==1 && gal->index_halo==-1) gal->index_halo = i;
         if(gal->comp_type[i]==2 && gal->comp_flatz[i]<0.4 &&gal->index_disk==-1) gal->index_disk = i;
+        if(gal->comp_type[i]==0 && gal->comp_flatz[i]<0.4 &&gal->index_gasdisk==-1) gal->index_gasdisk = i;
         if(gal->index_halo>-1) if(gal->comp_type[i]==1 && gal->comp_mass_frac[gal->index_halo]>gal->comp_mass_frac[i]) gal->index_halo = i;
         if(gal->index_disk>-1) if(gal->comp_type[i]==2 && gal->comp_flatz[i]<0.4 && gal->comp_mass_frac[gal->index_disk]>gal->comp_mass_frac[i]) gal->index_disk = i;
+        if(gal->index_gasdisk>-1) if(gal->comp_type[i]==0 && gal->comp_flatz[i]<0.4 && gal->comp_mass_frac[gal->index_gasdisk]>gal->comp_mass_frac[i]) gal->index_gasdisk = i;
     }
     // Default halo cut is r200 
     if(gal->index_halo>-1) if(gal->comp_cut[gal->index_halo]<=0.) gal->comp_cut[gal->index_halo] = gal->r200;
@@ -1973,7 +1976,11 @@ int set_galaxy_coords(galaxy *gal) {
 
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
         if(gal->comp_npart[i]>0) {
-            printf("/////\t\t- Component %2d [%s]",i+1,gal->comp_profile_name[i]);
+	    if(gal->comp_npart[i]>1) {
+                printf("/////\t\t- Component %2d [%s]",i+1,gal->comp_profile_name[i]);
+	    } else {
+                printf("/////\t\t- Component %2d",i+1);
+	    }
             fflush(stdout);
             mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]);
         }
@@ -2022,7 +2029,7 @@ int set_galaxy_coords(galaxy *gal) {
     		    gal->dx_dens = gal->boxsize_dens/((double)gal->ngrid_dens[0]);
             	    // Compute midplane density
                     fill_midplane_dens_grid(gal);
-                    printf("/////\t\t\t- Component %2d [%s]",i+1,gal->comp_profile_name[i]);
+		    printf("/////\t\t\t- Component %2d [%s]",i+1,gal->comp_profile_name[i]);
                     mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]); 
 		    // Restore density cut
 	    	    if(j<gal->hydro_eq_niter-1) {
@@ -2383,6 +2390,9 @@ int set_galaxy_velocity(galaxy *gal) {
                                 gal->u[i] = u_min;
                                 warning2 = 1;
                             }
+			    // TEST - protect the disk from planar ram pressure
+			    // Using a out of quilibirum temperature increase
+			    //gal->u[i] += 4*gal->u[i]*exp(-pow(gal->z[i],2)/(2*pow(max(gal->r_cyl[i],11.0)*0.05,2)));
                         }
 		    	if(va_theta>v_stream_max) v_stream_max = va_theta; 
                         //Make sure to divide by 1.0E5 to put the velocities in km/s.
@@ -2520,12 +2530,11 @@ int set_galaxy_velocity(galaxy *gal) {
         }
         if(warning1) printf("/////\t\t---------------[         Warning         ][           Streaming velocity > <v2_theta>           ]\n");
         warning1 = 0;
-        if(warning2) printf("/////\t\t---------------[         Warning         ][ Gaseous halo unstable -> Lower streaming_fraction%d ]\n",j+1);
+        if(warning2) printf("/////\t\t---------------[         Warning         ][ Gaseous halo unstable -> Lower streaming_fraction%d  ]\n",j+1);
         warning2 = 0;
 
         // Writing density curve to ascii file
         if(AllVars.OutputRho==1) {
-            //printf("/////\tWriting density curve \t\t\t[%s.rho]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
             if(gal->comp_npart[j]>0) {
                 gal->selected_comp[0] = j;
                 strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
@@ -2536,7 +2545,6 @@ int set_galaxy_velocity(galaxy *gal) {
 
         // Writing Toomre paramter curve to ascii file
         if(AllVars.OutputToomre==1) {
-            //printf("/////\tWriting Toomre criterion curve \t\t[%s.toomre]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
             if(gal->comp_npart[j]>0) {
                 gal->selected_comp[0] = j;
                 strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
@@ -2547,10 +2555,6 @@ int set_galaxy_velocity(galaxy *gal) {
 
         // Writing dispersion curves to ascii file
         if(AllVars.OutputSigma==1) {
-            /*printf("/////\tWriting 1D dispersion curve \t\t[%s.sigma]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-              printf("/////\tWriting vz dispersion curve \t\t[%s.sigma_z]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-              printf("/////\tWriting vtheta dispersion curve \t[%s.sigma_theta]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-              printf("/////\tWriting vr dispersion curve \t\t[%s.sigma_r]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);*/
             if(gal->comp_npart[j]>0) {
                 gal->selected_comp[0] = j;
 
@@ -2585,7 +2589,7 @@ int set_galaxy_velocity(galaxy *gal) {
         write_galaxy_rotation_curve(gal,maxrad,strcat(buffer,".rc"),interval);
     }
     // Writing gas rotation curve to ascii file
-    if(AllVars.OutputGasRc==1) {
+    if(AllVars.OutputGasRc==1 && gal->index_gasdisk!=-1) {
         strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
         //printf("/////\tWriting gas rotation curve \t\t[%s.gasrc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
         write_galaxy_gas_rotation_curve(gal,maxrad_gas,strcat(buffer,".gasrc"),interval);

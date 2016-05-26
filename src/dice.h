@@ -331,6 +331,8 @@ typedef struct {
     int index_halo;
     // Main disk compoenent index
     int index_disk;
+    // Main gas disk compoenent index
+    int index_gasdisk;
 } galaxy;
 
 // This is a type definition of a stream. The thought here is to create streams

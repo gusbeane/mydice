@@ -358,131 +358,96 @@ double galaxy_potential_func(galaxy *gal, double ***potential, double dx, int *n
                     t_x*d_y*t_z*pot7 + t_x*t_y*t_z*pot8;
             }
         }
-        }
-        return pot;
     }
+    return pot;
+}
 
-    // A wrapper for the galaxy potential function using the cylindrical radius.
-    double galaxyr_potential_wrapper_func(double radius, void *params) {
+// A wrapper for the galaxy potential function using the cylindrical radius.
+double galaxyr_potential_wrapper_func(double radius, void *params) {
 
-        double x, y, z, pot;
-        int tid;
+    double x, y, z, pot;
+    int tid;
 
 #if USE_THREADS == 1
-        tid = omp_get_thread_num();
+    tid = omp_get_thread_num();
 #else
-        tid = 0;
+    tid = 0;
 #endif
 
-        galaxy *gal = (galaxy *) params;
+    galaxy *gal = (galaxy *) params;
 
-        x = radius*cos(gal->theta_cyl[gal->index[tid]]);
-        y = radius*sin(gal->theta_cyl[gal->index[tid]]);
-        z = gal->z[gal->index[tid]];
+    x = radius*cos(gal->theta_cyl[gal->index[tid]]);
+    y = radius*sin(gal->theta_cyl[gal->index[tid]]);
+    z = gal->z[gal->index[tid]];
 
-        pot = galaxy_total_potential(gal,x,y,z,0,0);
+    pot = galaxy_total_potential(gal,x,y,z,0,0);
 
-        return pot;
-    }
+    return pot;
+}
 
-    // A wrapper for the galaxy potential function using the spherical radius.
-    double galaxyrsph_potential_wrapper_func(double r_sph, void *params) {
+// A wrapper for the galaxy potential function using the spherical radius.
+double galaxyrsph_potential_wrapper_func(double r_sph, void *params) {
 
-        double x, y, z, r_cyl, pot;
-        int tid;
+    double x, y, z, r_cyl, pot;
+    int tid;
 
 #if USE_THREADS == 1
-        tid = omp_get_thread_num();
+    tid = omp_get_thread_num();
 #else
-        tid = 0;
+    tid = 0;
 #endif
 
-        galaxy *gal = (galaxy *) params;
+    galaxy *gal = (galaxy *) params;
 
-        z = cos(gal->phi_sph[gal->index[tid]])*r_sph;
-        r_cyl = sqrt(r_sph*r_sph-z*z);
-        x = r_cyl*cos(gal->theta_cyl[gal->index[tid]]);
-        y = r_cyl*sin(gal->theta_cyl[gal->index[tid]]);
+    z = cos(gal->phi_sph[gal->index[tid]])*r_sph;
+    r_cyl = sqrt(r_sph*r_sph-z*z);
+    x = r_cyl*cos(gal->theta_cyl[gal->index[tid]]);
+    y = r_cyl*sin(gal->theta_cyl[gal->index[tid]]);
 
-        pot = galaxy_total_potential(gal,x,y,z,0,0);
+    pot = galaxy_total_potential(gal,x,y,z,0,0);
 
-        return pot;
-    }
+    return pot;
+}
 
-    // A wrapper for the galaxy potential function using the cartesian coordinate z.
-    double galaxyz_potential_wrapper_func(double z, void *params) {
+// A wrapper for the galaxy potential function using the cartesian coordinate z.
+double galaxyz_potential_wrapper_func(double z, void *params) {
 
-        int tid;
-        double pot;
+    int tid;
+    double pot;
 
 #if USE_THREADS == 1
-        tid = omp_get_thread_num();
+    tid = omp_get_thread_num();
 #else
-        tid = 0;
+    tid = 0;
 #endif
 
-        galaxy *gal = (galaxy *) params;
+    galaxy *gal = (galaxy *) params;
 
-        if(gal->pseudo[tid]) {
-            pot = galaxy_total_potential(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0,0);
-        } else {
-            pot = galaxy_total_potential(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,1,0);
-        }
-
-        return pot;
+    if(gal->pseudo[tid]) {
+        pot = galaxy_total_potential(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,0,0);
+    } else {
+        pot = galaxy_total_potential(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]],z,1,0);
     }
 
-    // This function obtain the potential from the coarse and zoomed grids and combine it together
-    double galaxy_total_potential(galaxy *gal, double x, double y, double z, int circular, int coarse) {
-        int i,j;
-        double pot, pot_fine, pot_ext, r_sph;
-        double sigma,transition_factor1,transition_factor2;
-        double transition_factor1x,transition_factor1y,transition_factor1z;
+    return pot;
+}
 
-        r_sph = sqrt(x*x+y*y+z*z);
-        // Coarse  potential
-        pot = galaxy_potential_func(gal,gal->potential[0],gal->dx[0],gal->ngrid[0],x,y,z,1);
-        // Finer potential grids
-        if(coarse!=1) {
-            for (i = 1; i < gal->nlevel; i++) {
-                sigma = 1.0*gal->dx[i];
-                if(circular==1) {
-                    transition_factor1 = 0.5*(1+erf((r_sph-(0.45*gal->boxsize[i]))/(sigma*sqrt(2))));
-                } else {
-                    transition_factor1x = 0.5*(1+erf((sqrt(x*x)-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
-                    transition_factor1y = 0.5*(1+erf((sqrt(y*y)-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
-                    transition_factor1z = 0.5*(1+erf((sqrt(z*z)-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
-                    transition_factor1 = max(transition_factor1x,max(transition_factor1y,transition_factor1z));
-                }
-                transition_factor2 = 1-transition_factor1;
+// This function obtain the potential from the coarse and zoomed grids and combine it together
+double galaxy_total_potential(galaxy *gal, double x, double y, double z, int circular, int coarse) {
+    int i,j;
+    double pot, pot_fine, pot_ext, r_sph;
+    double sigma,transition_factor1,transition_factor2;
+    double transition_factor1x,transition_factor1y,transition_factor1z;
 
-                pot_ext = 0.;
-                for(j = 0; j<i; j++) {
-                    pot_ext += galaxy_potential_func(gal,gal->potential_ext[j],gal->dx[j],gal->ngrid[j],x,y,z,0);
-                }
-                pot_fine = galaxy_potential_func(gal,gal->potential[i],gal->dx[i],gal->ngrid[i],x,y,z,0);
-
-                pot = transition_factor1*pot+(pot_ext+pot_fine)*transition_factor2;
-            }
-        }
-        return pot;
-    }
-
-
-    double get_h_value(galaxy *gal, double x, double y, double z, int circular, int coarse) {
-        int i;
-        double h, r_sph, scale;
-        double sigma,transition_factor1,transition_factor2;
-        double transition_factor1x,transition_factor1y,transition_factor1z;
-
-        scale = 1.0;
-        r_sph = sqrt(x*x+y*y+z*z);
-        h = scale*gal->dx[0];
-        // Check finer levels
+    r_sph = sqrt(x*x+y*y+z*z);
+    // Coarse  potential
+    pot = galaxy_potential_func(gal,gal->potential[0],gal->dx[0],gal->ngrid[0],x,y,z,1);
+    // Finer potential grids
+    if(coarse!=1) {
         for (i = 1; i < gal->nlevel; i++) {
-            sigma = 2.0*gal->dx[i];
+            sigma = 1.0*gal->dx[i];
             if(circular==1) {
-                transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
+                transition_factor1 = 0.5*(1+erf((r_sph-(0.45*gal->boxsize[i]))/(sigma*sqrt(2))));
             } else {
                 transition_factor1x = 0.5*(1+erf((sqrt(x*x)-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
                 transition_factor1y = 0.5*(1+erf((sqrt(y*y)-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
@@ -491,41 +456,76 @@ double galaxy_potential_func(galaxy *gal, double ***potential, double dx, int *n
             }
             transition_factor2 = 1-transition_factor1;
 
-            h = transition_factor1*h+scale*gal->dx[i]*transition_factor2;
+            pot_ext = 0.;
+            for(j = 0; j<i; j++) {
+                pot_ext += galaxy_potential_func(gal,gal->potential_ext[j],gal->dx[j],gal->ngrid[j],x,y,z,0);
+            }
+            pot_fine = galaxy_potential_func(gal,gal->potential[i],gal->dx[i],gal->ngrid[i],x,y,z,0);
+
+            pot = transition_factor1*pot+(pot_ext+pot_fine)*transition_factor2;
         }
-        return h;
     }
+    return pot;
+}
 
-    // A wrapper for the second order derivative of the potential function.
-    double potential_deriv_wrapper_func(double radius, void *params) {
 
-        galaxy *gal = (galaxy *) params;
+double get_h_value(galaxy *gal, double x, double y, double z, int circular, int coarse) {
+    int i;
+    double h, r_sph, scale;
+    double sigma,transition_factor1,transition_factor2;
+    double transition_factor1x,transition_factor1y,transition_factor1z;
 
-        if(radius==0.) {
-            return 0.;
+    scale = 1.0;
+    r_sph = sqrt(x*x+y*y+z*z);
+    h = scale*gal->dx[0];
+    // Check finer levels
+    for (i = 1; i < gal->nlevel; i++) {
+        sigma = 2.0*gal->dx[i];
+        if(circular==1) {
+            transition_factor1 = 0.5*(1+erf((r_sph-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
         } else {
-            return (pow(v_c_func(gal,radius),2.0))/(radius);
+            transition_factor1x = 0.5*(1+erf((sqrt(x*x)-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
+            transition_factor1y = 0.5*(1+erf((sqrt(y*y)-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
+            transition_factor1z = 0.5*(1+erf((sqrt(z*z)-(0.5*gal->boxsize[i]))/(sigma*sqrt(2))));
+            transition_factor1 = max(transition_factor1x,max(transition_factor1y,transition_factor1z));
         }
+        transition_factor2 = 1-transition_factor1;
+
+        h = transition_factor1*h+scale*gal->dx[i]*transition_factor2;
     }
+    return h;
+}
 
-    // This function copies one galaxy to another.
-    void copy_potential(galaxy *gal_1, galaxy *gal_2, int info) {
+// A wrapper for the second order derivative of the potential function.
+double potential_deriv_wrapper_func(double radius, void *params) {
 
-        int n, i, j, k;
+    galaxy *gal = (galaxy *) params;
 
-        if(info == 1) printf("/////\tCopying potential grid \n");
-        // Copy all the coordinate information.
-        for (n = 0; n < gal_1->nlevel; ++n) {
-            for (i = 0; i < gal_1->ngrid[n][0]*2; ++i) {
-                for (j = 0; j < gal_1->ngrid[n][2]*2; ++j) {
-                    for(k = 0; k < gal_1->ngrid[n][2]*2; ++k) {
-                        gal_2->potential[n][i][j][k] = gal_1->potential[n][i][j][k];
-                    }
+    if(radius==0.) {
+        return 0.;
+    } else {
+        return (pow(v_c_func(gal,radius),2.0))/(radius);
+    }
+}
+
+// This function copies one galaxy to another.
+void copy_potential(galaxy *gal_1, galaxy *gal_2, int info) {
+
+    int n, i, j, k;
+
+    if(info == 1) printf("/////\tCopying potential grid \n");
+    // Copy all the coordinate information.
+    for (n = 0; n < gal_1->nlevel; ++n) {
+        for (i = 0; i < gal_1->ngrid[n][0]*2; ++i) {
+            for (j = 0; j < gal_1->ngrid[n][2]*2; ++j) {
+                for(k = 0; k < gal_1->ngrid[n][2]*2; ++k) {
+                    gal_2->potential[n][i][j][k] = gal_1->potential[n][i][j][k];
                 }
             }
         }
-        gal_2->potential_defined = 1;
-        if(info == 1) printf("/////\tPotential grid copied \n");
-        return;
     }
+    gal_2->potential_defined = 1;
+    if(info == 1) printf("/////\tPotential grid copied \n");
+    return;
+}
 

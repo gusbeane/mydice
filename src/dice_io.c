@@ -2222,7 +2222,7 @@ void write_galaxy_gas_rotation_curve(galaxy *gal, double rmax, char *fname, doub
 
     for (i = 0; i < (int)(rmax/interval); ++i) {
         radius = i*interval;
-        v_c = sqrt(v2_theta_gas_func(gal,radius,0.0,2));
+        v_c = sqrt(v2_theta_gas_func(gal,radius,0.0,gal->index_gasdisk));
         // Write the radius and circular velocity of the gas to file in kpc and km/s respectively.
         fprintf(fp1,"%lf %lf\n",radius,v_c);
     }
