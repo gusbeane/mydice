@@ -428,7 +428,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 79*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 81*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -1282,6 +1282,22 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
+
+        n = sprintf(temp_tag,"gamma_poly%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_gamma_poly[j];
+        gal->comp_gamma_poly[j] = 1.0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"dens_init%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_dens_init[j];
+        gal->comp_dens_init[j] = 1.0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
     }
 
     if((fd = fopen(fname, "r"))) {

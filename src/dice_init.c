@@ -419,6 +419,18 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_dens_max array\n");
         return -1;
     }
+    if (!(gal->comp_gamma_poly = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_gamma_poly array\n");
+        return -1;
+    }
+    if (!(gal->comp_k_poly = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_k_poly array\n");
+        return -1;
+    }
+    if (!(gal->comp_dens_init = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_dens_init array\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -1226,7 +1238,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     if(gal->softening==0.0) gal->softening = gal->dx[gal->nlevel-1];
 
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
-        if(gal->comp_type[i]==0 && gal->comp_npart[i]>0 && gal->comp_hydro_eq[i]>0 && gal->hydro_eq_niter>0) {
+        if(gal->comp_type[i]==0 && gal->comp_npart[i]>0 && gal->comp_spherical_hydro_eq[i]==0 && gal->comp_hydro_eq[i]>0 && gal->hydro_eq_niter>0) {
             if(allocate_galaxy_midplane_dens(gal)!=0) {
                 fprintf(stderr,"[Error] Unable to allocate midplane gas density grid\n");
                 return -1;
@@ -1393,15 +1405,25 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         } else gal->comp_bool[i] = 0;
 
         if(gal->comp_type[i]==0) {
+            if(gal->comp_thermal_eq[i]==1 && gal->comp_hydro_eq[i]==1) {
+                fprintf(stderr,"[Error] hydro_eq%d and thermal_eq%d cannot be both equal to 1\n",i);
+		return -1;
+	    }
             // Set the gas specific internal energy
             // We assume the gas is in an isothermal state
             gal->comp_u_init[i] = (boltzmann / protonmass) * gal->comp_t_init[i];
             gal->comp_u_init[i] *= unit_mass / unit_energy;
             gal->comp_u_init[i] *= (1.0 / gamma_minus1);
             gal->comp_u_init[i] /= mu_mol;
-            // Computing isothermal sound speed
-            gal->comp_cs_init[i] = sqrt(gamma_minus1*gal->comp_u_init[i]);
-            if(gal->comp_hydro_eq[i]) gal->hydro_eq += gal->comp_hydro_eq[i];
+            if(gal->comp_gamma_poly[i]<1.0) {
+                fprintf(stderr,"[Error] gamma_poly%d<1.0\n",i);
+		return -1;
+	    }
+            if(gal->comp_hydro_eq[i]) gal->hydro_eq += gal->comp_hydro_eq[i]*gal->comp_bool[i];
+	    // Polytropic EoS case
+	    // The normalisation factor K is computed for T_init and dens_init
+	    gal->comp_k_poly[i] = gal->comp_u_init[i]*pow(gal->comp_dens_init[i]/unit_nh,1.0-gal->comp_gamma_poly[i])*gamma_minus1;  
+            gal->comp_cs_init[i] = sqrt(gal->comp_k_poly[i]*gal->comp_gamma_poly[i]*pow(gal->comp_dens_init[i],gal->comp_gamma_poly[i]-1.0));
         }
 
         // Computing the mass of the component after cuts
@@ -1576,7 +1598,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     	printf("/////\t\t- Softening \t\t\t[%7.1lf 1e-3 %s]\n",gal->softening*1e3,AllVars.UnitLengthName);
     	printf("/////\t\t------------------------------------------\n");
         for(i = 0; i<AllVars.MaxCompNumber; i++) {
-            if(gal->comp_hydro_eq[i]>0 && gal->comp_npart[i]>0) {
+            if(gal->comp_hydro_eq[i]>0 && gal->comp_spherical_hydro_eq[i]==0 && gal->comp_npart[i]>0) {
                 printf("/////\t\t- Midplane gas density \t\t[   %4d,%4d    ]\n",(int)pow(2,gal->level_grid_dens),(int)pow(2,gal->level_grid_dens));
                 break;
             }
@@ -1631,6 +1653,8 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             }
             if(gal->comp_type[j]==0 && gal->comp_hydro_eq[j]>0) {
                 printf("/////\t\t-> T_init   = %6.2le [K]\n",gal->comp_t_init[j]);
+                printf("/////\t\t-> rho_init = %6.2le [H/cc]\n",gal->comp_dens_init[j]);
+                printf("/////\t\t-> gamma    = %6.2le \n",gal->comp_gamma_poly[j]);
                 printf("/////\t\t-> cs       = %6.2le [%s]\n",gal->comp_cs_init[j],AllVars.UnitVelocityName);
             }
             if(gal->comp_type[j]>1) {
@@ -1645,7 +1669,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
             gal->mass[k] = gal->comp_mass[j]/gal->comp_npart_pot[j];
             gal->id[k] = k;
-            gal->u[k] = gal->comp_u_init[j];
             gal->metal[k] = gal->comp_metal[j];
             // Age is actually stored as time of formation
             // ICs are generated for t=0 therefore formation time is negative
@@ -1967,7 +1990,7 @@ void allocate_stream_storage_variable(stream *st, int size) {
 // to allocate particle positions from the distribution functions of each
 // galaxy component.
 int set_galaxy_coords(galaxy *gal) {
-    int i,j,n,hydro_eq_sum;
+    int i,j,n;
     double exclude[3], cut_dens;
 
     printf("/////\tComputing coordinates\n");
@@ -1985,10 +2008,7 @@ int set_galaxy_coords(galaxy *gal) {
             mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]);
         }
     }
-
-    hydro_eq_sum = 0;
-    for(i = 0; i<AllVars.MaxCompNumber; i++) hydro_eq_sum+=gal->comp_hydro_eq[i]*gal->comp_npart[i];
-    if(gal->hydro_eq>0 && hydro_eq_sum>0 && gal->hydro_eq_niter>0) {
+    if(gal->hydro_eq>0 && gal->hydro_eq_niter>0) {
         printf("/////\t--------------------------------------------------\n");
         printf("/////\tTargeting gas azimuthal hydrostatic equilibrium\n");
         // Allow to use pseudo density functions
@@ -2028,7 +2048,7 @@ int set_galaxy_coords(galaxy *gal) {
             	    gal->boxsize_dens = 2.5*(gal->comp_cut[i]+3*gal->comp_scale_length[i]*gal->comp_sigma_cut[i]);
     		    gal->dx_dens = gal->boxsize_dens/((double)gal->ngrid_dens[0]);
             	    // Compute midplane density
-                    fill_midplane_dens_grid(gal);
+                    if(gal->comp_spherical_hydro_eq[i]==0) fill_midplane_dens_grid(gal);
 		    printf("/////\t\t\t- Component %2d [%s]",i+1,gal->comp_profile_name[i]);
                     mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]); 
 		    // Restore density cut
@@ -2840,6 +2860,9 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_angmom_frac);
     free(gal->comp_dens_min);
     free(gal->comp_dens_max);
+    free(gal->comp_gamma_poly);
+    free(gal->comp_k_poly);
+    free(gal->comp_dens_init);
     // Deallocate the potential grid to be really nice to the memory.
     if(gal->potential_defined == 1) {
         for (n = 0; n < gal->nlevel; n++) {

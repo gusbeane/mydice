@@ -4,7 +4,7 @@ project (DICE)
 
 # Set the version number
 set (DICE_VERSION_MAJOR 4)
-set (DICE_VERSION_MINOR 4)
+set (DICE_VERSION_MINOR 5)
 set (DICE_VERSION "${DICE_VERSION_MAJOR}.${DICE_VERSION_MINOR}")
 
 # Say hello
