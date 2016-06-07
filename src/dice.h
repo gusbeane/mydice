@@ -227,6 +227,8 @@ typedef struct {
     double              *comp_gamma_poly;
     double              *comp_k_poly;
     double              *comp_dens_init;
+    double              *comp_accept_min;
+    double              *comp_accept_max;
     // Virial quantities
     double v200;
     double r200;

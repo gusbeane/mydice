@@ -428,7 +428,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 81*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 83*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -1295,6 +1295,22 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_dens_init[j];
         gal->comp_dens_init[j] = 1.0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"accept_min%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_accept_min[j];
+        gal->comp_accept_min[j] = 0.80;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"accept_max%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_accept_max[j];
+        gal->comp_accept_max[j] = 0.95;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
@@ -2685,10 +2701,9 @@ void write_galaxy_density_curve(galaxy *gal, double rmax, char *fname, double in
     gal->x[gal->index[tid]] = 0.;
     gal->y[gal->index[tid]] = 0.;
     gal->z[gal->index[tid]] = 0.;
-
     for (i = 0; i < (int)(rmax/interval); ++i) {
         radius = i*interval;
-        if(gal->pseudo[tid]) {
+        if(gal->comp_hydro_eq[gal->selected_comp[0]]>0) {
             rho = pseudo_density_gas_func(gal,radius,0.,0.,1,gal->comp_model[gal->selected_comp[0]],gal->selected_comp[0],gal->comp_spherical_hydro_eq[gal->selected_comp[0]]);
         } else {
             rho = density_functions_pool(gal,radius,0.,0.,1,gal->comp_model[gal->selected_comp[0]],gal->selected_comp[0]);

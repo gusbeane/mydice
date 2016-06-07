@@ -228,9 +228,9 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     }
     // Cutting the density
     if(cut==1) {
-        if(density<gal->comp_cut_dens[component]/unit_nh) density = 0.;
+        //if(density<gal->comp_cut_dens[component]/unit_nh) density = 0.;
         density *= smooth_factor1;
-        if(density<gal->comp_cut_dens[component]/unit_nh) density = 0.;
+        //if(density<gal->comp_cut_dens[component]/unit_nh) density = 0.;
         if(gal->comp_cut_in[component]>0.) density *= smooth_factor2;
     }
 
@@ -432,8 +432,8 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
             gal->x[i] = 0.;
             gal->y[i] = 0;
         } else {
-            gal->x[i] = (1.01*gal->comp_cut_in[component]+0.1*gal->comp_scale_length[component])*cos(theta);
-            gal->y[i] = (1.01*gal->comp_cut_in[component]+0.1*gal->comp_scale_length[component])*sin(theta);
+            gal->x[i] = (1.01*gal->comp_cut_in[component]+0.01*gal->comp_cut[component])*cos(theta);
+            gal->y[i] = (1.01*gal->comp_cut_in[component]+0.01*gal->comp_cut[component])*sin(theta);
         }
         gal->z[i] = 0.;
         gal->r_cyl[i] = sqrt(gal->x[i]*gal->x[i]+gal->y[i]*gal->y[i]);
@@ -865,36 +865,36 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         }
         acceptance /= gal->comp_npart_pot[component];
         printf("[  acceptance=%.2lf  ]",acceptance);
-        // Recursive calls if acceptance is outside the range [0.80,0.95]
-        if(acceptance<0.80) {
+        // Recursive calls if acceptance is outside the range [accept_min,accept_max]
+        if(acceptance<gal->comp_accept_min[component]) {
             if(gal->pseudo[0]==1) {
                 gal->comp_mcmc_step_hydro[component] /= 2.0;
                 printf("\n/////\t\t\t---------------[         Warning         ][ Low acceptance->mcmc_hydro_step%d=%.2le ]\n",
 		    component+1,gal->comp_mcmc_step_hydro[component]);
-                printf("/////\t\t\t- Component %2d [%s]",component+1,gal->comp_profile_name[component]);
+                printf("/////\t\t\t- Component %2d [       recomputing       ]",component+1,gal->comp_profile_name[component]);
             } else {
                 gal->comp_mcmc_step[component] /= 2.0;
                 printf("\n/////\t\t---------------[         Warning         ][ Low MCMC acceptance->mcmc_step%d=%.2le  ]\n",component+1,gal->comp_mcmc_step[component]);
-                printf("/////\t\t- Component %2d [%s]",component+1,gal->comp_profile_name[component]);
+                printf("/////\t\t- Component %2d [       recomputing       ]",component+1,gal->comp_profile_name[component]);
             }
             fflush(stdout);
             mcmc_metropolis_hasting_ntry(gal,component,gal->comp_model[component]);
         }
-        if(acceptance>0.95) {
+        if(acceptance>gal->comp_accept_max[component]) {
             if(gal->pseudo[0]==1) {
                 gal->comp_mcmc_step_hydro[component] *= 2.0;
                 printf("\n/////\t\t\t---------------[         Warning         ][ High acceptance->mcmc_step_hydro%d=%.2le]\n",
 		    component+1,gal->comp_mcmc_step_hydro[component]);
-                printf("/////\t\t\t- Component %2d [%s]",component+1,gal->comp_profile_name[component]);
+                printf("/////\t\t\t- Component %2d [       recomputing       ]",component+1,gal->comp_profile_name[component]);
             } else {
                 gal->comp_mcmc_step[component] *= 2.0;
                 printf("\n/////\t\t---------------[         Warning         ][ High MCMC acceptance->mcmc_step%d=%.2le ]\n",component+1,gal->comp_mcmc_step[component]);
-                printf("/////\t\t- Component %2d [%s]",component+1,gal->comp_profile_name[component]);
+                printf("/////\t\t- Component %2d [       recomputing       ]",component+1,gal->comp_profile_name[component]);
             }
             fflush(stdout);
             mcmc_metropolis_hasting_ntry(gal,component,gal->comp_model[component]);
         }
-        if(acceptance<0.95 && acceptance>0.80) {
+        if(acceptance<gal->comp_accept_max[component] && acceptance>gal->comp_accept_min[component]) {
             printf("[rho_min=%4.2le rho_max=%4.2le H/cc]",gal->comp_dens_min[component]*unit_nh,gal->comp_dens_max[component]*unit_nh);
 	    if(gal->comp_type[component]==0) {
 	        printf("[Tmax=%4.2le K]",Tmax);
@@ -1114,7 +1114,11 @@ static double integrand_density_func(double z, void *params) {
     cut = gal->storage[2][tid];
 
     // This function should not be used with the pseudo-density function
-    rho = density_functions_pool(gal,r_temp,theta_temp,z,cut,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    if(gal->pseudo[tid]) {
+        rho = pseudo_density_gas_func(gal,r_temp,theta_temp,z,cut,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid],gal->comp_spherical_hydro_eq[gal->selected_comp[tid]]);
+    } else {
+        rho = density_functions_pool(gal,r_temp,theta_temp,z,cut,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    }
 
     return rho;
 }
@@ -1307,7 +1311,7 @@ static double d_cumulative_mass_func_stream(double r, void *params) {
 double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, int cut, int density_model, int component, int spherical) {
 
     int tid;
-    double density, delta_pot, rho_0, save1, save2, rsph, x ,y, cs2, gamma_poly;
+    double density, delta_pot, rho_0, save1, save2, rsph, x ,y, cs2, gamma_poly, base;
     double sigma1, sigma2, smooth_factor1, smooth_factor2, smooth_factor3, hx, hy, hz, n, m;
 
 #if USE_THREADS == 1
@@ -1334,7 +1338,7 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
 	}
         delta_pot = galaxyrsph_potential_wrapper_func(rsph,gal)-galaxyrsph_potential_wrapper_func(0.,gal);
         // Central density
-        rho_0 = density_functions_pool(gal,0.,0.,0.,1,density_model,component);
+	rho_0 = gal->comp_dens_init[component]/unit_nh;
         n = sqrt(pow(x/hx,2.0)+pow(y/hy,2.0)+pow(z/hz,2.0));
         gal->theta_cyl[gal->index[tid]] = save1;
         gal->phi_sph[gal->index[tid]] = save2;
@@ -1356,7 +1360,8 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
     // Hydrostatic equilibrium requires the following density
     cs2 = gal->comp_k_poly[component]*gal->comp_gamma_poly[component]*pow(rho_0,gal->comp_gamma_poly[component]-1.0);
     gamma_poly = max(gal->comp_gamma_poly[component],1.00001);
-    density = rho_0*pow(1.0-(gamma_poly-1.0)/cs2*delta_pot,1.0/(gamma_poly-1.0));
+    base = 1.0-((gamma_poly-1.0)/cs2)*delta_pot;
+    density = rho_0*pow(max(base,0.0),1.0/(gamma_poly-1.0));
 
     if(cut==1) {
         sigma1 = gal->comp_sigma_cut[component];
@@ -1366,7 +1371,7 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
         smooth_factor3 = 1-0.5*(1+erf((m-1.0)/(sigma1*sqrt(2))));
         if(spherical){
             density *= smooth_factor1;
-            if(r<gal->comp_cut_in[component]) density *= smooth_factor2;
+            if(fabs(r)<gal->comp_cut_in[component]) density *= smooth_factor2;
         } else {
             if(r>gal->comp_cut[component]) density = 0.;
             density *= smooth_factor3;

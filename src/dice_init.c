@@ -431,6 +431,14 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_dens_init array\n");
         return -1;
     }
+    if (!(gal->comp_accept_min = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_accept_min array\n");
+        return -1;
+    }
+    if (!(gal->comp_accept_max = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_accept_max array\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -1363,6 +1371,10 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             fprintf(stderr,"[Error] Component %d scale not properly defined\n",i+1);
             exit(0);
         }
+	if(gal->comp_accept_min[i]>gal->comp_accept_max[i]) {
+            fprintf(stderr,"[Error] accept_min%d>accept_max%d\n",i+1,i+1);
+            exit(0);
+	}
 	if(gal->comp_cut[i]<=0.) gal->comp_cut[i] = gal->r200;
         // Default cut shape follows the galaxy component shape
         if(gal->comp_flatx_cut[i]==-1.0) gal->comp_flatx_cut[i] = gal->comp_flatx[i];
@@ -1991,6 +2003,7 @@ void allocate_stream_storage_variable(stream *st, int size) {
 // galaxy component.
 int set_galaxy_coords(galaxy *gal) {
     int i,j,n;
+    unsigned long int k;
     double exclude[3], cut_dens;
 
     printf("/////\tComputing coordinates\n");
@@ -2015,6 +2028,7 @@ int set_galaxy_coords(galaxy *gal) {
         for(i = 0; i<AllVars.Nthreads; i++) {
 	    gal->pseudo[i] = 1;
 	}
+	// No need to iterate if the potential is kept constant
         for(j = 0; j<gal->hydro_eq_niter; j++) {
             printf("/////\t\tIteration [%2d/%2d][evaluating potential]\n",j+1,gal->hydro_eq_niter);
             // Compute the full potential.
@@ -2040,19 +2054,25 @@ int set_galaxy_coords(galaxy *gal) {
             for(i = 0; i<AllVars.MaxCompNumber; i++) {
                 if((gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)&(gal->comp_hydro_eq[i]==1)) {
 		    // Only apply the density cut for the last iteration
-	    	    if(j<gal->hydro_eq_niter-1) {
+	    	    if(j<gal->hydro_eq_niter-1 && gal->comp_spherical_hydro_eq[i]==0) {
 		        cut_dens = gal->comp_cut_dens[i];
 		        gal->comp_cut_dens[i] = 0.;
+		    }
+	    	    if(gal->comp_spherical_hydro_eq[i]==1) {
+		        gal->comp_mass[i] = cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
+        		for (k = gal->comp_start_part[i]; k < gal->comp_start_part[i] + gal->comp_npart_pot[i]; k++) {
+            		    gal->mass[k] = gal->comp_mass[i]/gal->comp_npart_pot[i];
+			}
 		    }
 		    // Compute the gas surface density grid size
             	    gal->boxsize_dens = 2.5*(gal->comp_cut[i]+3*gal->comp_scale_length[i]*gal->comp_sigma_cut[i]);
     		    gal->dx_dens = gal->boxsize_dens/((double)gal->ngrid_dens[0]);
             	    // Compute midplane density
                     if(gal->comp_spherical_hydro_eq[i]==0) fill_midplane_dens_grid(gal);
-		    printf("/////\t\t\t- Component %2d [%s]",i+1,gal->comp_profile_name[i]);
+		    printf("/////\t\t\t- Component %2d [   m_tot=%4.2le Msol   ]",i+1,gal->comp_mass[i]*unit_mass/solarmass);
                     mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]); 
 		    // Restore density cut
-	    	    if(j<gal->hydro_eq_niter-1) {
+	    	    if(j<gal->hydro_eq_niter-1 && gal->comp_spherical_hydro_eq[i]==0) {
 		        gal->comp_cut_dens[i] = cut_dens;
 		    }
                 }
@@ -2559,7 +2579,7 @@ int set_galaxy_velocity(galaxy *gal) {
                 gal->selected_comp[0] = j;
                 strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
                 sprintf(ext,".rho%d",j+1);
-                write_galaxy_density_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,ext),interval);
+                write_galaxy_density_curve(gal,2.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,ext),interval);
             }
         }
 
@@ -2619,18 +2639,6 @@ int set_galaxy_velocity(galaxy *gal) {
         strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
         //printf("/////\tWriting potential curve \t\t[%s.pot]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
         write_galaxy_potential_curve(gal,maxrad,strcat(buffer,".pot"),interval);
-    }
-    // Writing gas density curve to ascii file
-    if(AllVars.OutputRho==1) {
-        //printf("/////\tWriting density curve \t\t\t[%s.rho]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-        for(j = 0; j<AllVars.MaxCompNumber; j++) {
-            if(gal->comp_npart[j]>0) {
-                gal->selected_comp[0] = j;
-                strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-                sprintf(ext,".rho%d",j+1);
-                write_galaxy_density_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,ext),interval);
-            }
-        }
     }
     // Loop over components
     nt = 0;
@@ -2863,6 +2871,8 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_gamma_poly);
     free(gal->comp_k_poly);
     free(gal->comp_dens_init);
+    free(gal->comp_accept_min);
+    free(gal->comp_accept_max);
     // Deallocate the potential grid to be really nice to the memory.
     if(gal->potential_defined == 1) {
         for (n = 0; n < gal->nlevel; n++) {
