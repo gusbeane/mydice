@@ -197,6 +197,7 @@ typedef struct {
     double              *comp_cut_in;
     int                 *comp_thermal_eq;
     double              *comp_part_mass;
+    double              *comp_part_mass_pot;
     int                 *comp_jeans_mass_cut;
     int                 *comp_epicycle;
     int                 *comp_metal_gradient;
@@ -338,6 +339,8 @@ typedef struct {
     int index_disk;
     // Main gas disk compoenent index
     int index_gasdisk;
+    // Copy tag
+    int copy;
 } galaxy;
 
 // This is a type definition of a stream. The thought here is to create streams
@@ -448,6 +451,7 @@ struct io_header_1 {
 //Gadget2-style particle data structure.
 struct particle_data {
     int Type;
+    int Id;
     float Pos[3];
     float Vel[3];
     float Mass;

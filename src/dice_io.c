@@ -428,7 +428,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 83*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 84*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -501,15 +501,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
             fprintf(stderr,"[Error] '%s' -> '%s' not specified\n",fname,tag[i]);
             return -1;
         }
-    }
-
-    sum = 0;
-    for(j = 0; j<AllVars.MaxCompNumber; j++) {
-        sum += gal->comp_npart[j];
-    }
-    if(sum==0) {
-            fprintf(stderr,"[Error] 0 particles\n");
-            return -1;
     }
 
     nt = 0;
@@ -1123,6 +1114,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
+        n = sprintf(temp_tag,"part_mass_pot%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_part_mass_pot[j];
+        gal->comp_part_mass_pot[j] = 0.;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
         n = sprintf(temp_tag,"jeans_mass_cut%d",j+1);
         strcpy(tag[nt], temp_tag);
         gal->comp_jeans_mass_cut[j] = 1;
@@ -1674,7 +1673,6 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
     unsigned long int i, j, k;
     int t,n,off,pc,pc_new,pc_sph;
     int files = 1;
-    int *Ids;
     char buf[200];
 #define SKIP2 fwrite(&dummy, sizeof(dummy), 1, fp1);
 
@@ -1719,11 +1717,6 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
     header1.OmegaLambda = 0.0;
     header1.HubbleParam = 1.0;
 
-    if (!(Ids = malloc(gal->ntot_part*sizeof(int)))) {
-        fprintf(stderr,"Unable to create particle Ids structure in memory.");
-        exit(0);
-    }
-
     if (!(P = malloc(gal->ntot_part*sizeof(struct particle_data)))) {
         fprintf(stderr,"Unable to create particle data structure in memory.");
         exit(0);
@@ -1750,6 +1743,7 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
                     P[j].Type = gal->comp_type[k];
                     P[j].Metal = gal->metal[i];
                     P[j].Age = gal->age[i];
+                    P[j].Id = j;
                     ++j;
                 }
             }
@@ -1800,8 +1794,7 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
         SKIP2;
         for(k = 0,pc_new = pc; k<6; k++) {
             for(n = 0; n<header1.npart[k]; n++) {
-                Ids[pc_new] = pc_new;
-                fwrite(&Ids[pc_new], sizeof(int), 1, fp1);
+                fwrite(&P[pc_new].Id, sizeof(int), 1, fp1);
                 pc_new++;
             }
         }
@@ -1813,7 +1806,6 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
         }
         for(k = 0, pc_new = pc; k<6; k++) {
             for(n = 0; n<header1.npart[k]; n++) {
-                P[pc_new].Type = k;
                 if(header1.mass[k]==0) fwrite(&P[pc_new].Mass, sizeof(float), 1, fp1);
                 else P[pc_new].Mass = header1.mass[k];
                 pc_new++;
@@ -1865,7 +1857,6 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
     }
     P++;
     free(P);
-    free(Ids);
     fclose(fp1);
     return 0;
 }
@@ -1881,7 +1872,6 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
     unsigned long int i, j, k;
     int t,n,off,pc,pc_new,pc_sph;
     int files = 1;
-    int *Ids;
     char buf[200];
 #define SKIP2 fwrite(&dummy, sizeof(dummy), 1, fp1);
 
@@ -1926,11 +1916,6 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
     header1.OmegaLambda = 0.0;
     header1.HubbleParam = 1.0;
 
-    if (!(Ids = malloc(gal->ntot_part*sizeof(int)))) {
-        fprintf(stderr,"Unable to create particle Ids structure in memory.");
-        exit(0);
-    }
-
     if (!(P = malloc(gal->ntot_part*sizeof(struct particle_data)))) {
         fprintf(stderr,"Unable to create particle data structure in memory.");
         exit(0);
@@ -1957,6 +1942,7 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
                     P[j].Type = gal->comp_type[k];
                     P[j].Metal = gal->metal[i];
                     P[j].Age = gal->age[i];
+                    P[j].Id = j;
                     P[j].Hsml = 0.1;
                     ++j;
                 }
@@ -2042,8 +2028,7 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
         SKIP2;
         for(k = 0,pc_new = pc; k<6; k++) {
             for(n = 0; n<header1.npart[k]; n++) {
-                Ids[pc_new] = pc_new;
-                fwrite(&Ids[pc_new], sizeof(int), 1, fp1);
+                fwrite(&P[pc_new].Id, sizeof(int), 1, fp1);
                 pc_new++;
             }
         }
@@ -2062,7 +2047,6 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
         SKIP2;
         for(k = 0, pc_new = pc; k<6; k++) {
             for(n = 0; n<header1.npart[k]; n++) {
-                P[pc_new].Type = k;
                 fwrite(&P[pc_new].Mass, sizeof(float), 1, fp1);
                 pc_new++;
             }
@@ -2162,11 +2146,11 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
             }
             SKIP2;
         }
+    	fclose(fp1);
     }
     P++;
     free(P);
-    free(Ids);
-    fclose(fp1);
+    //free(Ids);
     return 0;
 }
 

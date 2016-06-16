@@ -494,6 +494,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 break;
         }
         fflush(stdout);
+	i = i+1;
         // Burning period
         for(j = 1; j<(int)(0.1*gal->comp_npart_pot[component]); ++j) {
             step_x = hx+gal->comp_mcmc_step_slope[component]*gal->x[i-1]/gal->comp_scale_length[component];
@@ -896,7 +897,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         }
         if(acceptance<gal->comp_accept_max[component] && acceptance>gal->comp_accept_min[component]) {
             printf("[rho_min=%4.2le rho_max=%4.2le H/cc]",gal->comp_dens_min[component]*unit_nh,gal->comp_dens_max[component]*unit_nh);
-	    if(gal->comp_type[component]==0) {
+	    if(gal->comp_type[component]==0 && gal->comp_hydro_eq[component]==1) {
 	        printf("[Tmax=%4.2le K]",Tmax);
 	    }
 	    printf("\n");
@@ -1350,7 +1351,11 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
         gal->y[gal->index[tid]] = r*sin(theta);
         delta_pot = galaxyz_potential_wrapper_func(z,gal)-galaxyz_potential_wrapper_func(0.,gal);
         // Density in the xy-plane
-        rho_0 = get_midplane_density(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
+        if(gal->comp_gamma_poly[component]<1.00001) {
+            rho_0 = get_midplane_density(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
+	} else {
+            rho_0 = density_functions_pool(gal,r,theta,0.,1,gal->comp_model[component],component);
+	}
         n = sqrt(pow(gal->x[gal->index[tid]]/hx,2.0)+pow(gal->y[gal->index[tid]]/hy,2.0));
         m = sqrt(pow(z/hz,2.0));
         gal->x[gal->index[tid]] = save1;
