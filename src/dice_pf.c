@@ -504,7 +504,7 @@ double potential_deriv_wrapper_func(double radius, void *params) {
     if(radius==0.) {
         return 0.;
     } else {
-        return (pow(v_c_func(gal,radius),2.0))/(radius);
+        return (pow(v_c_func(gal,fabs(radius)),2.0))/(fabs(radius));
     }
 }
 

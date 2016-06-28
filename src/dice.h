@@ -230,6 +230,7 @@ typedef struct {
     double              *comp_dens_init;
     double              *comp_accept_min;
     double              *comp_accept_max;
+    double              *comp_rcore;
     // Virial quantities
     double v200;
     double r200;

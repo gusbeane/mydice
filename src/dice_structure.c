@@ -44,9 +44,9 @@
 double density_functions_pool(galaxy *gal, double radius, double theta, double z, int cut, int model, int component) {
     double h, hx, hy, hz, h_cut, hx_cut, hy_cut, hz_cut, hx_cut_in, hy_cut_in, hz_cut_in;
     double density, w, k, l, m, n, o, r, s, alpha, beta, smooth_factor1, smooth_factor2, sigma1, sigma2, r_sph;
-    double x, y, flatx, flaty, flatz, rmin;
+    double x, y, flatx, flaty, flatz;
 
-    rmin = gal->comp_scale_length[component]*1e-3;
+    radius = (fabs(radius)/radius)*max(gal->comp_rcore[component],fabs(radius));
     double theta_shift, theta_out, A, B, CEDF, tanh_func;
     double z_shift;
 

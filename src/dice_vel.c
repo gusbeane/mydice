@@ -603,6 +603,8 @@ double sigma2_theta_epicycle_func(galaxy *gal, double radius, double v2a_r) {
     force = potential_deriv_wrapper_func(radius,gal);
     dforcedr = deriv_central2(gal,radius,h,potential_deriv_wrapper_func);
 
+    if(force==0.) return 0.0;
+
     kappa_sqrd = 3.0*force/(radius)+dforcedr;
     gamma_sqrd = 4.0*force/(kappa_sqrd*radius);
 
@@ -693,11 +695,8 @@ double v_c_func(galaxy *gal, double radius) {
 #endif
 
     if(radius <= 0.0) return 0.;
-    //gal->z[gal->index[tid]] = 0.;
-    //save = gal->z[gal->index[tid]];
     rforce = galaxy_rforce_func(gal,radius);
     v_c = sqrt(radius*rforce);
-    //gal->z[gal->index[tid]] = save;
 
     if(rforce<0) return 0.;
     else return v_c;

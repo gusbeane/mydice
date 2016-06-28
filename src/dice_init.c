@@ -443,6 +443,10 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_accept_max array\n");
         return -1;
     }
+    if (!(gal->comp_rcore = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_rcore array\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -1583,19 +1587,19 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	if(gal->total_mass>1.01*gal->total_mass_r200) {
             printf("/////\t\t- Total(r<R200) mass \t-> %10.2le Msol\n",gal->total_mass_r200*unit_mass/solarmass);
 	}
-        printf("/////\t\t- Halo          mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_halo_mass*unit_mass/solarmass,100.*cutted_halo_mass/gal->total_mass_r200);
+        printf("/////\t\t- Halo          mass \t-> %10.2le Msol [%5.2lf%%]\n",cutted_halo_mass*unit_mass/solarmass,100.*cutted_halo_mass/gal->total_mass_r200);
 	if(cutted_halo_mass>1.01*cutted_halo_mass_r200) {
-            printf("/////\t\t- Halo(r<R200)  mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_halo_mass_r200*unit_mass/solarmass,100.*cutted_halo_mass_r200/gal->total_mass_r200);
+            printf("/////\t\t- Halo(r<R200)  mass \t-> %10.2le Msol [%5.2lf%%]\n",cutted_halo_mass_r200*unit_mass/solarmass,100.*cutted_halo_mass_r200/gal->total_mass_r200);
 	}
-        printf("/////\t\t- Disk          mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_disk_mass*unit_mass/solarmass,100.*cutted_disk_mass/gal->total_mass_r200);
-        printf("/////\t\t- Gas           mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_gas_mass*unit_mass/solarmass,100.*cutted_gas_mass/gal->total_mass_r200);
+        printf("/////\t\t- Disk          mass \t-> %10.2le Msol [%5.2lf%%]\n",cutted_disk_mass*unit_mass/solarmass,100.*cutted_disk_mass/gal->total_mass_r200);
+        printf("/////\t\t- Gas           mass \t-> %10.2le Msol [%5.2lf%%]\n",cutted_gas_mass*unit_mass/solarmass,100.*cutted_gas_mass/gal->total_mass_r200);
 	if(cutted_gas_mass>1.01*cutted_gas_mass_r200) {
-            printf("/////\t\t- Gas(r<R200)   mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_gas_mass_r200*unit_mass/solarmass,100.*cutted_gas_mass_r200/gal->total_mass_r200);
+            printf("/////\t\t- Gas(r<R200)   mass \t-> %10.2le Msol [%5.2lf%%]\n",cutted_gas_mass_r200*unit_mass/solarmass,100.*cutted_gas_mass_r200/gal->total_mass_r200);
 	}
-        printf("/////\t\t- Bulge         mass \t-> %10.2le Msol [%4.1lf%%]\n",cutted_bulge_mass*unit_mass/solarmass,100.*cutted_bulge_mass/gal->total_mass_r200);
-        printf("/////\t\t- Stellar       mass \t-> %10.2le Msol [%4.1lf%%] \n",
+        printf("/////\t\t- Bulge         mass \t-> %10.2le Msol [%5.2lf%%]\n",cutted_bulge_mass*unit_mass/solarmass,100.*cutted_bulge_mass/gal->total_mass_r200);
+        printf("/////\t\t- Stellar       mass \t-> %10.2le Msol [%5.2lf%%] \n",
 	    (cutted_bulge_mass+cutted_disk_mass)*unit_mass/solarmass,100.*(cutted_bulge_mass+cutted_disk_mass)/gal->total_mass_r200);
-        printf("/////\t\t- Abundance matching \t-> %10.2le Msol [%4.1lf%%] \n",
+        printf("/////\t\t- Abundance matching \t-> %10.2le Msol [%5.2lf%%] \n",
 	    halo_abundance(gal->m200,gal->redshift)*unit_mass/solarmass,100.*halo_abundance(gal->m200,gal->redshift)/gal->total_mass_r200);
 
     	printf("/////\t--------------------------------------------------\n");
@@ -2265,7 +2269,6 @@ int set_galaxy_velocity(galaxy *gal) {
             gal->y[gal->index[tid]] = save5;
         }
 
-
         maxvel_x = 0.;
         maxvel_y = 0.;
         maxvel_z = 0.;
@@ -2287,6 +2290,7 @@ int set_galaxy_velocity(galaxy *gal) {
         if(gal->comp_npart[j]>1) {
             printf("/////\t\t- Component %2d ",j+1);
 	    if(gal->comp_compute_vel[j]==0) printf("[ skipping ]\n");
+	    fflush(stdout);
 	}
         // Particle velocities
         if(gal->comp_npart[j]>1 && gal->comp_compute_vel[j]==1) {
@@ -2508,7 +2512,6 @@ int set_galaxy_velocity(galaxy *gal) {
 
                         // Let's ensure that the particle velocity is lower than gal->comp_vmax times the escape velocity
                         int ct = 0;
-
                         while(fabs(v_r) > vmax) {
                             if(ct >= AllVars.GaussianRejectIter) {
                                 v_r = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
@@ -2549,7 +2552,12 @@ int set_galaxy_velocity(galaxy *gal) {
                         if(fabs(vel_x)>maxvel_x) maxvel_x = fabs(vel_x);
                         if(fabs(vel_y)>maxvel_y) maxvel_y = fabs(vel_y);
                         if(fabs(vel_z)>maxvel_z) maxvel_z = fabs(vel_z);
-
+	
+			if(vel_x!=vel_x || vel_y!=vel_y || vel_z!=vel_z) {
+			    fprintf(stderr,"[Error] particle produced a NaN velocity\n");
+			    exit(0);
+			}
+	
                         gal->vel_x[i] = vel_x;
                         gal->vel_y[i] = vel_y;
                         gal->vel_z[i] = vel_z;
@@ -2900,6 +2908,7 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_dens_init);
     free(gal->comp_accept_min);
     free(gal->comp_accept_max);
+    free(gal->comp_rcore);
     // Deallocate the potential grid to be really nice to the memory.
     if(gal->potential_defined == 1) {
         for (n = 0; n < gal->nlevel; n++) {

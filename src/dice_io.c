@@ -428,7 +428,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 84*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 85*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -1310,6 +1310,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_accept_max[j];
         gal->comp_accept_max[j] = 0.95;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"rcore%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_rcore[j];
+        gal->comp_rcore[j] = 0.0;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;

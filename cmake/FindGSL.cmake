@@ -5,12 +5,12 @@
 SET(GSL_FOUND FALSE)
 
 if ( GSL_PATH ) # user configure cmake with variable -DGSL_PATH="/gsl/path"
-	find_library(GSL_LIB NAMES gsl PATHS ${GSL_PATH}/lib)
+	find_library(GSL_LIB NAMES gsl PATHS ${GSL_PATH}/lib NO_DEFAULT_PATH)
 	if (GSL_LIB)
 		MESSAGE(STATUS "Found GSL_LIB: " ${GSL_LIB})
 		SET(GSL_FOUND TRUE)
 	endif()
-	find_library(GSLCBLAS_LIB NAMES gslcblas PATHS ${GSL_PATH}/lib)
+	find_library(GSLCBLAS_LIB NAMES gslcblas PATHS ${GSL_PATH}/lib NO_DEFAULT_PATH)
 	if (GSLCBLAS_LIB)
 		MESSAGE(STATUS "Found GSLCBLASLIB: " ${GSLCBLAS_LIB})
 		SET(GSLCBLAS_FOUND TRUE)
