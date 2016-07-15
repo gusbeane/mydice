@@ -196,13 +196,6 @@ int parse_config_file(char *fname) {
     mandatory[nt] = 0;
     id[nt++] = INT;
 
-    strcpy(tag[nt], "OutputRc");
-    AllVars.OutputRc = 0;
-    addr[nt] = &AllVars.OutputRc;
-    read[nt] = 0;
-    mandatory[nt] = 0;
-    id[nt++] = INT;
-
     strcpy(tag[nt], "OutputGasRc");
     AllVars.OutputGasRc = 0;
     addr[nt] = &AllVars.OutputGasRc;
@@ -210,28 +203,7 @@ int parse_config_file(char *fname) {
     mandatory[nt] = 0;
     id[nt++] = INT;
 
-    strcpy(tag[nt], "OutputPot");
-    AllVars.OutputPot = 0;
-    addr[nt] = &AllVars.OutputPot;
-    read[nt] = 0;
-    mandatory[nt] = 0;
-    id[nt++] = INT;
-
-    strcpy(tag[nt], "OutputRho");
-    AllVars.OutputRho = 0;
-    addr[nt] = &AllVars.OutputRho;
-    read[nt] = 0;
-    mandatory[nt] = 0;
-    id[nt++] = INT;
-
-    strcpy(tag[nt], "OutputToomre");
-    AllVars.OutputToomre = 0;
-    addr[nt] = &AllVars.OutputToomre;
-    read[nt] = 0;
-    mandatory[nt] = 0;
-    id[nt++] = INT;
-
-    strcpy(tag[nt], "OutputSigma");
+    strcpy(tag[nt], "OutputRz");
     AllVars.OutputSigma = 0;
     addr[nt] = &AllVars.OutputSigma;
     read[nt] = 0;
@@ -364,7 +336,6 @@ int parse_config_file(char *fname) {
     mandatory[nt] = 0;
     id[nt++] = STRING;
 
-
     if((fd = fopen(fname, "r"))) {
         while(!feof(fd)) {
             *buf = 0;
@@ -428,7 +399,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 85*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 89*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -543,9 +514,9 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     mandatory[nt] = 0;
     id[nt++] = INT;
 
-    strcpy(tag[nt], "level_grid_jeans_mixed");
-    addr[nt] = &gal->level_grid_jeans_mixed;
-    gal->level_grid_jeans_mixed = 7;
+    strcpy(tag[nt], "level_grid_jeans_3D");
+    addr[nt] = &gal->level_grid_jeans_3D;
+    gal->level_grid_jeans_3D = 8;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = INT;
@@ -604,13 +575,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = LONG;
-
-    strcpy(tag[nt], "softening");
-    addr[nt] = &gal->softening;
-    gal->softening = 0.0;
-    read[nt] = 0;
-    mandatory[nt] = 0;
-    id[nt++] = DOUBLE;
 
     strcpy(tag[nt], "mcmc_ntry");
     addr[nt] = &gal->mcmc_ntry;
@@ -1085,7 +1049,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         n = sprintf(temp_tag,"cut_in%d",j+1);
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_cut_in[j];
-        gal->comp_cut_in[j] = 0.;
+        gal->comp_cut_in[j] = 0.0;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
@@ -1205,7 +1169,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         n = sprintf(temp_tag,"sigmar_model%d",j+1);
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_sigmar_model[j];
-        gal->comp_sigmar_model[j] = -1;
+        gal->comp_sigmar_model[j] = 0;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
@@ -1213,7 +1177,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         n = sprintf(temp_tag,"sigmaz_model%d",j+1);
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_sigmaz_model[j];
-        gal->comp_sigmaz_model[j] = -1;
+        gal->comp_sigmaz_model[j] = 0;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
@@ -1250,10 +1214,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-        n = sprintf(temp_tag,"f_sigma%d",j+1);
+        n = sprintf(temp_tag,"jeans_f_sigma%d",j+1);
         strcpy(tag[nt], temp_tag);
-        addr[nt] = &gal->comp_f_sigma[j];
-        gal->comp_f_sigma[j] = 2.0;
+        addr[nt] = &gal->comp_jeans_f_sigma[j];
+        gal->comp_jeans_f_sigma[j] = 2.0;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
@@ -1321,6 +1285,38 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"gennormdist_exp%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_gennormdist_exp[j];
+        gal->comp_gennormdist_exp[j] = 2.0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"softening%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_softening[j];
+        gal->comp_softening[j] = 0.0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"jeans_dim%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_jeans_dim[j];
+        gal->comp_jeans_dim[j] = 2;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+
+	n = sprintf(temp_tag,"jeans_anisotropy_model%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_jeans_anisotropy_model[j];
+        gal->comp_jeans_anisotropy_model[j] = 2;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
     }
 
     if((fd = fopen(fname, "r"))) {
@@ -2162,549 +2158,200 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
     return 0;
 }
 
-// This function calculates and writes the rotation curve for a particular galaxy.
-// The circular velocity is calculated out to the virial radius.
-//
-// Unlike some of the other output functions, this function writes the output to
-// a set of files -- rcurve.dat, rcurve_disk.dat, rcurve_halo.dat -- These files
-// can be plotted in gnuplot with the command
-//
-//    plot 'rcurve.dat','rcurve_disk.dat','rcurve_halo.dat'
-//
-// to produce a cumulative rotation curve and its parts on the same graph.
-void write_galaxy_rotation_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, v_c, save1, save2;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->z[gal->index[tid]];
-    save2 = gal->theta_cyl[gal->index[tid]];
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        v_c = v_c_func(gal,radius);
-        // Write the radius and circular velocity to file in kpc and km/s respectively.
-        fprintf(fp1,"%lf %lf\n",radius,v_c);
-    }
-    gal->z[gal->index[tid]] = save1;
-    gal->theta_cyl[gal->index[tid]] = save2;
-    fclose(fp1);
-
-    return;
-}
-
-// This function calculates and writes the rotation curve for a particular galaxy.
-// The circular velocity is calculated out to the virial radius.
-//
-// Unlike some of the other output functions, this function writes the output to
-// a set of files -- rcurve.dat, rcurve_disk.dat, rcurve_halo.dat -- These files
-// can be plotted in gnuplot with the command
-//
-//    plot 'rcurve.dat','rcurve_disk.dat','rcurve_halo.dat'
-//
-// to produce a cumulative rotation curve and its parts on the same graph.
-void write_galaxy_gas_rotation_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, v_c, save1, save2;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->z[gal->index[tid]];
-    save2 = gal->theta_cyl[gal->index[tid]];
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-
-
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        v_c = sqrt(v2_theta_gas_func(gal,radius,0.0,gal->index_gasdisk));
-        // Write the radius and circular velocity of the gas to file in kpc and km/s respectively.
-        fprintf(fp1,"%lf %lf\n",radius,v_c);
-    }
-    gal->z[gal->index[tid]] = save1;
-    gal->theta_cyl[gal->index[tid]] = save2;
-    fclose(fp1);
-
-    return;
-}
-
-
-void write_galaxy_sigma_1D_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, v2a, sigma, save1, save2, save3, save4, save5;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->z[gal->index[tid]];
-    save2 = gal->theta_cyl[gal->index[tid]];
-    save3 = gal->r_cyl[gal->index[tid]];
-    save4 = gal->x[gal->index[tid]];
-    save5 = gal->y[gal->index[tid]];
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        gal->r_cyl[gal->index[tid]] = radius;
-        gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
-        gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
-        v2a = v2a_1D_func(gal,w[tid],gal->selected_comp[0]);
-        sigma = (v2a>0. ? sqrt(v2a) : 0.);
-        // Write the radius and sigma z to file in kpc and km2/s2 respectively.
-        fprintf(fp1,"%lf %le\n",radius,sigma);
-    }
-    gal->z[gal->index[tid]] = save1;
-    gal->theta_cyl[gal->index[tid]] = save2;
-    gal->r_cyl[gal->index[tid]] = save3;
-    gal->x[gal->index[tid]] = save4;
-    gal->y[gal->index[tid]] = save5;
-    fclose(fp1);
-
-    return;
-}
-
-
-void write_galaxy_sigma_r_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, v2ar, sigma_r, save1, save2, save3, save4, save5;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 100;
-    save1 = gal->z[gal->index[tid]];
-    save2 = gal->theta_cyl[gal->index[tid]];
-    save3 = gal->r_cyl[gal->index[tid]];
-    save4 = gal->x[gal->index[tid]];
-    save5 = gal->y[gal->index[tid]];
-
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-    gal->r_cyl[gal->index[tid]] = gal->comp_sigmar_radius[gal->selected_comp[0]];
-    gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
-    gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
-
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        gal->r_cyl[gal->index[tid]] = radius;
-        gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
-        gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
-        v2ar = v2a_r_func(gal,w[tid],gal->selected_comp[0]);
-        // Enforce Q>Q_min
-        if(gal->comp_Q_lim[gal->selected_comp[0]]>0 || gal->comp_Q_fixed[gal->selected_comp[0]]>0 || gal->comp_Q_boost[gal->selected_comp[0]]>0) {
-            double v2ar_new = v2a_r_toomre(gal,radius,v2ar,gal->selected_comp[0]);
-            v2ar = v2ar_new;
-        }
-        sigma_r = (v2ar>0. ? sqrt(v2ar) : 0.);
-        // Write the radius and sigma z to file in kpc and km2/s2 respectively.
-        fprintf(fp1,"%lf %le\n",radius,sigma_r);
-    }
-    gal->z[gal->index[tid]] = save1;
-    gal->theta_cyl[gal->index[tid]] = save2;
-    gal->r_cyl[gal->index[tid]] = save3;
-    gal->x[gal->index[tid]] = save4;
-    gal->y[gal->index[tid]] = save5;
-    fclose(fp1);
-
-    return;
-}
-
-void write_galaxy_sigma_z_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, v2az, sigma_z, save1, save2, save3, save4, save5;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->z[gal->index[tid]];
-    save2 = gal->theta_cyl[gal->index[tid]];
-    save3 = gal->r_cyl[gal->index[tid]];
-    save4 = gal->x[gal->index[tid]];
-    save5 = gal->y[gal->index[tid]];
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        gal->r_cyl[gal->index[tid]] = radius;
-        gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
-        gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
-        v2az = v2a_z_func(gal,w[tid],gal->selected_comp[0]);
-        sigma_z = (v2az>0. ? sqrt(v2az) : 0.);
-        // Write the radius and sigma z to file in kpc and km2/s2 respectively.
-        fprintf(fp1,"%lf %le\n",radius,sigma_z);
-    }
-    gal->z[gal->index[tid]] = save1;
-    gal->theta_cyl[gal->index[tid]] = save2;
-    gal->r_cyl[gal->index[tid]] = save3;
-    gal->x[gal->index[tid]] = save4;
-    gal->y[gal->index[tid]] = save5;
-    fclose(fp1);
-
-    return;
-}
-
-void write_galaxy_v2a_theta_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, vc, v2ar, v2az, v2at, vat, sigma_theta, save1, save2, save3, save4, save5;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->z[gal->index[tid]];
-    save2 = gal->theta_cyl[gal->index[tid]];
-    save3 = gal->r_cyl[gal->index[tid]];
-    save4 = gal->x[gal->index[tid]];
-    save5 = gal->y[gal->index[tid]];
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        gal->r_cyl[gal->index[tid]] = radius;
-        gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
-        gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
-        v2ar = v2a_r_func(gal,w[tid],gal->selected_comp[0]);
-        v2az = v2a_z_func(gal,w[tid],gal->selected_comp[0]);
-        vc = v_c_func(gal,radius);
-        // Enforce Q>Q_min
-        if(gal->comp_Q_lim[gal->selected_comp[0]]>0) {
-            v2ar = v2a_r_toomre(gal,radius,v2ar,gal->selected_comp[0]);
-        }
-        v2at = v2a_theta_func(gal,radius,v2ar,vc,gal->selected_comp[0]);
-        // Write the radius and sigma theta to file in kpc and km/s respectively.
-        fprintf(fp1,"%lf %le\n",radius,v2at);
-    }
-    gal->z[gal->index[tid]] = save1;
-    gal->theta_cyl[gal->index[tid]] = save2;
-    gal->r_cyl[gal->index[tid]] = save3;
-    gal->x[gal->index[tid]] = save4;
-    gal->y[gal->index[tid]] = save5;
-    fclose(fp1);
-
-    return;
-}
-
-
-void write_galaxy_sigma_theta_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, vc, v2ar, v2az, v2at, vat, sigma2_theta, save1, save2, save3, save4, save5;
+// This function writes various component quantities in the rz plane
+void write_galaxy_rz_quantities(galaxy *gal, double rmax, char *fname, double interval) {
+    unsigned long int ii;
+    int i, j, n, k, tid, nbin, save;
+    double radius, z, theta, vc, vcg, v2a, v2ar, v2az, v2at, vat, sigma2_theta, pot, rho, Q, h;
+    double save1, save2, save3, save4, save5, save6;
     double k_stream, kmax_stream;
     char filename[200];
     FILE *fp1;
 
-    // Total rotation curve
+    // Open file
     sprintf(filename,fname);
     fp1 = fopen(filename, "w");
     if (fp1 == NULL) {
         printf("[Warning] Cannot open %s\n",fname);
         return;
     }
+    // Write header
+    fprintf(fp1,"#r   z   rho   sqrt(v2ar)   sqrt(v2az)   sqrt(sigma2_theta)   vat   sqrt(v2a)   vc   vc_gas   pot   Q   h\n");
+    // Get thread ID
 #if USE_THREADS == 1
     tid = omp_get_thread_num();
 #else
     tid = 0;
 #endif
-    gal->index[tid] = 0;
-    save1 = gal->z[gal->index[tid]];
-    save2 = gal->theta_cyl[gal->index[tid]];
-    save3 = gal->r_cyl[gal->index[tid]];
-    save4 = gal->x[gal->index[tid]];
-    save5 = gal->y[gal->index[tid]];
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
+    k = gal->selected_comp[0];
+    // Compute interval for 1D arrays
+    interval = 0.2501*gal->dx[gal->nlevel-1];
+    nbin = (int)(gal->maxrad/interval);
+    double cmass[nbin],vcirc[nbin];
 
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        gal->r_cyl[gal->index[tid]] = radius;
-        gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
-        gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
-        v2ar = v2a_r_func(gal,w[tid],gal->selected_comp[0]);
-        v2az = v2a_z_func(gal,w[tid],gal->selected_comp[0]);
-        vc = v_c_func(gal,radius);
-        // Enforce Q>Q_min
-        if(gal->comp_Q_lim[gal->selected_comp[0]]>0) {
-            v2ar = v2a_r_toomre(gal,radius,v2ar,gal->selected_comp[0]);
+    // Initialize the cumulative mass array
+    for (n = 0; n < nbin; n++) {
+        cmass[n] = 0.;
+    }
+    // Compute the cumulative mass array
+    for (i = gal->comp_start_part[k]; i<gal->comp_start_part[k]+gal->comp_npart_pot[k]; ++i) {
+        for (n = (int)floor(gal->r_sph[i]/interval); n<nbin; n++) {
+            cmass[n] += gal->mass[i];
         }
-        v2at = v2a_theta_func(gal,radius,v2ar,vc,gal->selected_comp[0]);
-        // Using epicyclic approximation (Binney & Tremaine 1987)
-        if(gal->comp_epicycle[gal->selected_comp[0]]==1) {
-            sigma2_theta = sigma2_theta_epicycle_func(gal,radius,v2ar);
-            vat = v2at>=sigma2_theta?sqrt(v2at-sigma2_theta):0.;
-        } else {
-            if(gal->comp_k_stream[gal->selected_comp[0]]==-1){
-                vat = gal->comp_stream_frac[gal->selected_comp[0]]*vc;
+    }
+    // Compute the circular velocity array
+    for (n = 0; n < nbin; n++) {
+        vcirc[n] = sqrt(G*cmass[n]/((n+0.5)*interval));
+    }
+
+    // Select a particle and reset its coordinates
+    gal->index[tid] = 0;
+    ii = gal->index[tid];
+    save1 = gal->z[ii];
+    save2 = gal->theta_cyl[ii];
+    save3 = gal->r_cyl[ii];
+    save4 = gal->x[ii];
+    save5 = gal->y[ii];
+    save6 = gal->r_sph[ii];
+    gal->theta_cyl[ii] = 0.;
+    gal->y[ii] = 0.;
+    // Maximum radius and log plot properties
+    rmax = log10(rmax);
+    double loginterval = 0.01;
+    double rmin = log10(gal->dx[gal->nlevel-1]/2.0);
+
+    // Loop in the xz plane
+    for (i = -1; i < (int)((rmax-rmin)/loginterval); ++i) {
+        for (j = -1; j < (int)((rmax-rmin)/loginterval); ++j) {
+	    // Compute radius and elevation
+	    if(i==-1) {
+	        radius = 0.;
+	    } else {
+                radius = pow(10.,rmin+i*loginterval);
+	    }
+	    if(j==-1) {
+	        z = 0.;
+	    } else {
+                z = pow(10.,rmin+j*loginterval);
+	    }
+	    // Update test particle coordinates
+            gal->r_cyl[ii] = radius;
+            gal->x[ii] = gal->r_cyl[ii]*cos(gal->theta_cyl[ii]);
+            gal->y[ii] = gal->r_cyl[ii]*sin(gal->theta_cyl[ii]);
+            gal->z[ii] = z;
+            gal->r_sph[ii] = sqrt(radius*radius+z*z);
+	    // Compute density
+            if(gal->comp_hydro_eq[k]>0) {
+                rho = pseudo_density_gas_func(gal,radius,0.,z,1,gal->comp_model[k],k,gal->comp_spherical_hydro_eq[k]);
             } else {
-                kmax_stream = v2at/(v2at-v2ar);
-                k_stream = gal->comp_k_stream[gal->selected_comp[0]]>kmax_stream?kmax_stream:gal->comp_k_stream[gal->selected_comp[0]];
-                vat = v2at>=v2ar?k_stream*sqrt(v2at-v2ar):0.;
+                rho = density_functions_pool(gal,radius,0.,z,1,gal->comp_model[k],k);
             }
-            sigma2_theta = (v2at>=pow(vat,2.0)) ? (v2at-pow(vat,2.0)) : 0.;
+	    // Velocity dispersions
+	    switch(gal->comp_jeans_dim[k]) {
+		// Jeans equations with 2 integrals of motion
+	        case 2:
+                    v2ar = v2a_r_2D_func(gal,w[tid],k);
+		    v2az = v2ar;
+                    v2at = v2a_theta_2D_func(gal,fabs(gal->r_cyl[ii]),v2ar,vc,k);
+		    break;
+		// Jeans equations with 3 integrals of motion
+	        case 3:
+                    v2ar = v2a_r_3D_func(gal);
+                    v2az = v2a_z_3D_func(gal);
+                    v2at = v2a_theta_3D_func(gal);
+		    break;
+		// No Jeans equations
+	        case 0:
+                    // Dispersion from Isothermal sheet
+                    if(gal->comp_sigmar_model[k]==0) {
+                        v2ar = pi*G*surface_density_func(gal,gal->r_cyl[ii],gal->theta_cyl[ii],1,k)*gal->comp_scale_length[k]*gal->comp_flatz[k];
+                    // Dispersion proportional to surface density
+                    } else if (gal->comp_sigmar_model[k]>0) {
+                        save = gal->comp_model[k];
+                        gal->comp_model[k] = gal->comp_sigmar_model[k];
+                        v2ar = gal->comp_sigmar_scale[k]*surface_density_func(gal,gal->r_cyl[ii],gal->theta_cyl[ii],1,k);
+                        gal->comp_model[k] = save;
+                    }
+                    // Dispersion from Isothermal sheet
+                    if(gal->comp_sigmaz_model[k]==0) {
+                        v2az = pi*G*surface_density_func(gal,gal->r_cyl[ii],gal->theta_cyl[ii],1,k)*gal->comp_scale_length[k]*gal->comp_flatz[k];
+                    // Dispersion proportional to surface density
+                    } else if (gal->comp_sigmar_model[k]>0) {
+                        save = gal->comp_model[k];
+                        gal->comp_model[k] = gal->comp_sigmaz_model[k];
+                        v2az = gal->comp_sigmaz_scale[k]*surface_density_func(gal,gal->r_cyl[ii],gal->theta_cyl[ii],1,k);
+                        gal->comp_model[k] = save;
+                    }
+                    v2at = v2a_theta_2D_func(gal,fabs(gal->r_cyl[ii]),v2ar,vc,k);
+		    break;
+	    }
+            v2a = v2a_r_1D_func(gal,w[tid],k);
+	    // Circular velocity
+            vc = v_c_func(gal,radius);
+	    // Gas circular velocitty
+            if(gal->comp_type[k]==0) {
+	        vcg = sqrt(v2_theta_gas_func(gal,radius,z,k));
+            } else {
+	        vcg = 0.;
+	    }
+            // Enforce Q>Q_min
+            if(gal->comp_Q_lim[k]>0. || gal->comp_Q_fixed[k]>0. || gal->comp_Q_boost[k]>0.) {
+                v2ar = v2a_r_toomre(gal,radius,v2ar,k);
+            }
+            // Toomre parameter
+            Q = toomre(gal,radius,v2ar,k);
+	    // Derivative scale
+            h = get_h_value(gal,radius,0.,z,0,0);
+	    // Gravitational potential
+            pot = galaxyr_potential_wrapper_func(radius,gal);
+            // Interpolate 1D cumulative mass and circular velocity profiles
+            int index1 = (int)(gal->r_sph[ii]/interval);
+	    if(index1>=nbin-2) index1 = nbin-2;
+            int index2 = index1+1;
+	    double cmass_interp = interpol(index1*interval,index2*interval,gal->r_sph[ii],cmass[index1],cmass[index2]);
+	    double vcirc_interp = interpol((index1+0.5)*interval,(index2+0.5)*interval,gal->r_sph[ii],vcirc[index1],vcirc[index2]);
+	    // Compute streaming velocity from selected model
+	    switch(gal->comp_stream_method[k]) {
+	        case 1:
+	            // Bullock 2001 method: specific angular momentum follows the cumulative mass profile
+	            vat = gal->comp_stream_scale[k]*cmass_interp/max(gal->r_sph[ii],interval);
+	            break;
+	        case 2:
+	            // Springel 1999 method: the streaming velocity is a fixed fraction of the circular velocity
+	            vat = gal->comp_stream_scale[k]*vcirc_interp;
+	            break;
+	        case 3:
+	            // Solid body rotation
+	            vat = gal->comp_stream_scale[k]*gal->r_sph[ii];
+	            break;
+	        default:
+	            vat = gal->comp_stream_frac[k]*vcirc_interp;
+	            break;
+	    }
+            // Using epicyclic approximation for disks
+            if(gal->comp_epicycle[k]==1) {
+                sigma2_theta = sigma2_theta_epicycle_func(gal,radius,v2ar);
+                vat = v2at>=sigma2_theta?sqrt(v2at-sigma2_theta):0.;
+            } else {
+                if(gal->comp_k_stream[k]>0.){
+                    kmax_stream = v2at/(v2at-v2ar);
+                    k_stream = gal->comp_k_stream[k]>kmax_stream?kmax_stream:gal->comp_k_stream[k];
+                    vat = v2at>=v2ar?k_stream*sqrt(v2at-v2ar):0.;
+                }
+                sigma2_theta = (v2at>=pow(vat,2.0)) ? (v2at-pow(vat,2.0)) : 0.;
+            }
+            // Write quantities to the file
+            fprintf(fp1,"%lf %lf %le %le %le %le %le %le %le %le %le %le %le\n",radius,z,rho,sqrt(v2ar),sqrt(v2az),sqrt(sigma2_theta),vat,sqrt(v2a),vc,vcg,pot,Q,h);
         }
-        // Write the radius and sigma theta to file in kpc and km/s respectively.
-        fprintf(fp1,"%lf %le\n",radius,sqrt(sigma2_theta));
     }
-    gal->z[gal->index[tid]] = save1;
-    gal->theta_cyl[gal->index[tid]] = save2;
-    gal->r_cyl[gal->index[tid]] = save3;
-    gal->x[gal->index[tid]] = save4;
-    gal->y[gal->index[tid]] = save5;
-    fclose(fp1);
-
-    return;
-}
-
-void write_galaxy_toomre_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, v2ar, Q, save1, save2, save3, save4, save5;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->z[gal->index[tid]];
-    save2 = gal->theta_cyl[gal->index[tid]];
-    save3 = gal->r_cyl[gal->index[tid]];
-    save4 = gal->x[gal->index[tid]];
-    save5 = gal->y[gal->index[tid]];
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-
-    for (i = 1; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        gal->r_cyl[gal->index[tid]] = radius;
-        gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
-        gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
-        v2ar = v2a_r_func(gal,w[tid],gal->selected_comp[0]);
-        if(gal->comp_Q_lim[gal->selected_comp[0]]>0 || gal->comp_Q_fixed[gal->selected_comp[0]]>0 || gal->comp_Q_boost[gal->selected_comp[0]]>0) {
-            v2ar = v2a_r_toomre(gal,radius,v2ar,gal->selected_comp[0]);
-        }
-        Q = toomre(gal,radius,v2ar,gal->selected_comp[0]);
-        // Write the radius and Toomre criterion to file in kpc and km2/s2 respectively.
-        fprintf(fp1,"%lf %le\n",radius,Q);
-    }
-    gal->z[gal->index[tid]] = save1;
-    gal->theta_cyl[gal->index[tid]] = save2;
-    gal->r_cyl[gal->index[tid]] = save3;
-    gal->x[gal->index[tid]] = save4;
-    gal->y[gal->index[tid]] = save5;
-    fclose(fp1);
-
-    return;
-}
-
-void write_galaxy_potential_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, pot, save1, save2, save3, save4;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->x[gal->index[tid]];
-    save2 = gal->y[gal->index[tid]];
-    save3 = gal->z[gal->index[tid]];
-    save4 = gal->theta_cyl[gal->index[tid]];
-    gal->x[gal->index[tid]] = 0.;
-    gal->y[gal->index[tid]] = 0.;
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        pot = galaxyr_potential_wrapper_func(radius,gal);
-        // Write the radius and circular velocity to file in kpc and g*cm^2/s^2 respectively.
-        fprintf(fp1,"%lf %le\n",radius,pot);
-    }
-    gal->x[gal->index[tid]] = save1;
-    gal->y[gal->index[tid]] = save2;
-    gal->z[gal->index[tid]] = save3;
-    gal->theta_cyl[gal->index[tid]] = save4;
-    fclose(fp1);
-
-    return;
-}
-
-void write_galaxy_h_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, h, save1, save2, save3, save4;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->x[gal->index[tid]];
-    save2 = gal->y[gal->index[tid]];
-    save3 = gal->z[gal->index[tid]];
-    save4 = gal->theta_cyl[gal->index[tid]];
-    gal->x[gal->index[tid]] = 0.;
-    gal->y[gal->index[tid]] = 0.;
-    gal->z[gal->index[tid]] = 0.;
-    gal->theta_cyl[gal->index[tid]] = 0.;
-
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        h = get_h_value(gal,radius,0.,0.,0,0);
-        // Write the radius and circular velocity to file in kpc and g*cm^2/s^2 respectively.
-        fprintf(fp1,"%lf %le\n",radius,h);
-    }
-    gal->x[gal->index[tid]] = save1;
-    gal->y[gal->index[tid]] = save2;
-    gal->z[gal->index[tid]] = save3;
-    gal->theta_cyl[gal->index[tid]] = save4;
-    fclose(fp1);
-
-    return;
-}
-
-
-void write_galaxy_density_curve(galaxy *gal, double rmax, char *fname, double interval) {
-    int i,tid;
-    double radius, theta, rho, save1, save2, save3;
-    char filename[200];
-    FILE *fp1;
-
-    // Total rotation curve
-    sprintf(filename,fname);
-    fp1 = fopen(filename, "w");
-    if (fp1 == NULL) {
-        printf("[Warning] Cannot open %s\n",fname);
-        return;
-    }
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-    gal->index[tid] = 0;
-    save1 = gal->x[gal->index[tid]];
-    save2 = gal->y[gal->index[tid]];
-    save3 = gal->z[gal->index[tid]];
-    gal->x[gal->index[tid]] = 0.;
-    gal->y[gal->index[tid]] = 0.;
-    gal->z[gal->index[tid]] = 0.;
-    for (i = 0; i < (int)(rmax/interval); ++i) {
-        radius = i*interval;
-        if(gal->comp_hydro_eq[gal->selected_comp[0]]>0) {
-            rho = pseudo_density_gas_func(gal,radius,0.,0.,1,gal->comp_model[gal->selected_comp[0]],gal->selected_comp[0],gal->comp_spherical_hydro_eq[gal->selected_comp[0]]);
-        } else {
-            rho = density_functions_pool(gal,radius,0.,0.,1,gal->comp_model[gal->selected_comp[0]],gal->selected_comp[0]);
-        }
-        fprintf(fp1,"%lf %le\n",radius,rho);
-    }
-    gal->x[gal->index[tid]] = save1;
-    gal->y[gal->index[tid]] = save2;
-    gal->z[gal->index[tid]] = save3;
+    // Restore test particle coordinates
+    gal->z[ii] = save1;
+    gal->theta_cyl[ii] = save2;
+    gal->r_cyl[ii] = save3;
+    gal->x[ii] = save4;
+    gal->y[ii] = save5;
+    gal->r_sph[ii] = save6;
+    // Close file
     fclose(fp1);
 
     return;

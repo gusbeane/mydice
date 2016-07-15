@@ -131,6 +131,8 @@ typedef struct {
     int                 *selected_comp;
     int                 hydro_eq_niter;
     int                 hydro_eq;
+    double 		maxrad;
+    double		maxrad_gas;
     // Component quantities
     char                **comp_profile_name;
     unsigned long int   *comp_npart;
@@ -199,6 +201,7 @@ typedef struct {
     double              *comp_part_mass;
     double              *comp_part_mass_pot;
     int                 *comp_jeans_mass_cut;
+    int                 *comp_jeans_anisotropy_model;
     int                 *comp_epicycle;
     int                 *comp_metal_gradient;
     int                 *comp_excavate;
@@ -209,6 +212,7 @@ typedef struct {
     double              *comp_spiral_alpha;
     double              *comp_warp_scale;
     int                 *comp_warp_mode;
+    int                 *comp_jeans_dim;
     int                 *comp_sigmar_model;
     int                 *comp_sigmaz_model;
     double              *comp_sigmar;
@@ -217,7 +221,7 @@ typedef struct {
     double              *comp_sigmaz_radius;
     double              *comp_sigmar_scale;
     double              *comp_sigmaz_scale;
-    double              *comp_f_sigma;
+    double              *comp_jeans_f_sigma;
     double              *comp_k_stream;
     int			*comp_delete;
     double              *comp_stream_scale;
@@ -231,6 +235,9 @@ typedef struct {
     double              *comp_accept_min;
     double              *comp_accept_max;
     double              *comp_rcore;
+    double 		*comp_gennormdist_exp;
+    double 		*comp_softening;
+    int              	*comp_symmetry;
     // Virial quantities
     double v200;
     double r200;
@@ -244,7 +251,6 @@ typedef struct {
     double              *r_cyl;
     double              *theta_cyl;
     double              *r_sph;
-    double              *theta_sph;
     double              *phi_sph;
     // Velocities vectors
     double              *vel_x;
@@ -263,7 +269,6 @@ typedef struct {
     // Particle Mesh potential grid
     double              ****potential;
     double              ****potential_ext;
-    double		**vr2_mixed;
     double		**vr2_tilted_mixed;
     double		**vz2_tilted_mixed;
     double		**vtheta2_mixed;
@@ -294,7 +299,7 @@ typedef struct {
     int nlevel;
     // Level of refinement of the gas density grid
     int level_grid_dens;
-    int level_grid_jeans_mixed;
+    int level_grid_jeans_3D;
     // Level of refinement of the gas turbulence grid
     int level_grid_turb;
     // Level of refinement of the stars age grid
@@ -325,7 +330,7 @@ typedef struct {
     int midplane_dens_defined;
     // Boolean variable checking the computation of the gaussian field
     int gaussian_field_defined;
-    int jeans_mixed_defined;
+    int jeans_3D_defined;
     // Seed for random number generator
     long seed;
     // Pseudo density boolean
@@ -334,12 +339,14 @@ typedef struct {
     double softening;
     // MCMC multiple try parameter
     int mcmc_ntry;
-    // Main halo compoenent index
+    // Main halo component index
     int index_halo;
-    // Main disk compoenent index
+    // Main disk component index
     int index_disk;
-    // Main gas disk compoenent index
+    // Main gas disk component index
     int index_gasdisk;
+    // First valid component index
+    int index_first;
     // Copy tag
     int copy;
 } galaxy;
@@ -383,7 +390,6 @@ typedef struct {
     double              *r_cyl;
     double              *theta_cyl;
     double              *r_sph;
-    double              *theta_sph;
     double              *phi_sph;
     // Mass vector
     double              *mass;
@@ -472,6 +478,9 @@ struct GlobalVars {
     char StreamFiles[MAX_STREAM][MAXLEN_FILENAME];
     char Filename[MAXLEN_FILENAME];
     char ICformat[MAXLEN_FILENAME];
+    char UnitMassName[20];
+    char UnitVelocityName[20];
+    char UnitLengthName[20];
     int Kepler_Gal1[MAX_GAL];
     int Kepler_Gal2[MAX_GAL];
     int Kepler_GalCenter[MAX_GAL];
@@ -520,9 +529,6 @@ struct GlobalVars {
     double UnitMass;
     double UnitVelocity;
     double UnitLength;
-    char UnitMassName[20];
-    char UnitVelocityName[20];
-    char UnitLengthName[20];
 } AllVars;
 
 // ------------------------------------------
@@ -553,6 +559,7 @@ void trash_stream(stream *, int);
 int add_galaxy_to_system(galaxy *, galaxy *);
 int rotate_galaxy(galaxy *, int);
 int rotate_component(galaxy *, double, double, int);
+int rotate_all(galaxy *, double, double);
 int set_galaxy_trajectory(galaxy *, int);
 int copy_galaxy(galaxy *, galaxy *, int);
 void set_orbit_keplerian(int, int, double, double, double, double, double, int);
@@ -603,23 +610,23 @@ double galaxy_metallicity(double, double);
 
 // Velocity functions
 double v_c_func(galaxy *,double);
-double v_c_exp_disk_func(galaxy *,double);
-double v2a_r_func(galaxy *, gsl_integration_workspace *, int);
-double v2a_z_func(galaxy *, gsl_integration_workspace *, int);
-static double dv2a_z_func(double, void *);
-double v2a_1D_func(galaxy *, gsl_integration_workspace *, int);
-static double dv2a_1D_func(double, void *);
-void fill_jeans_mixed_grid (galaxy *, int);
-double get_jeans_array_cic(galaxy *, double, double, double **);
-double h_function(galaxy *, double, double, int);
-double h_over_r(galaxy *, double, double, int);
-double v2a_theta_func(galaxy *, double, double, double, int);
+double v2a_r_1D_func(galaxy *, gsl_integration_workspace *, int);
+double v2a_r_2D_func(galaxy *, gsl_integration_workspace *, int);
+double v2a_theta_2D_func(galaxy *, double, double, double, int);
+double rho_v2a_r_2D_func(double, void *);
+double v2a_r_3D_func(galaxy *);
+double v2a_z_3D_func(galaxy *);
+double v2a_theta_3D_func(galaxy *);
+static double dv2a_r_1D_func(double, void *);
+static double dv2a_r_2D_func(double, void *);
+void fill_jeans_3D_grid (galaxy *, int);
+double get_jeans_3D_cic(galaxy *, double, double, double **);
+double jeans_3D_h_func(galaxy *, double, double, int);
 double sigma2_theta_epicycle_func(galaxy *, double, double);
 double v2a_r_toomre(galaxy *, double, double, int);
 double toomre(galaxy *, double, double, int);
-double rho_v2a_r_func(double, void *);
 double v2_theta_gas_func(galaxy *, double, double, int);
-double gas_density_wrapper_func(double, void *);
+double density_wrapper_func(double, void *);
 int set_turbulent_grid(galaxy *, int);
 double galaxy_turbulence_func(galaxy *, double, double, double, int);
 double Jtot_func(galaxy *, int);
@@ -637,24 +644,14 @@ double potential_deriv_wrapper_func(double, void *);
 void copy_potential(galaxy *, galaxy *, int);
 double galaxy_total_potential(galaxy *, double, double, double, int, int);
 double get_h_value(galaxy *, double, double, double, int, int);
+double set_galaxy_potential_all(galaxy *, int);
 
 // Input, output, and manipulation functions
 void write_dice_version();
 int parse_config_file(char *);
 int parse_galaxy_file(galaxy *, char *);
 int parse_stream_file(stream *, char *);
-void write_galaxy_rotation_curve(galaxy *, double, char *, double);
-void write_galaxy_gas_rotation_curve(galaxy *, double, char *, double);
-void write_galaxy_potential_curve(galaxy *, double, char *, double);
-void write_galaxy_sigma_1D_curve(galaxy *, double, char *, double);
-void write_galaxy_sigma_z_curve(galaxy *, double, char *, double);
-void write_galaxy_sigma_r_curve(galaxy *, double, char *, double);
-void write_galaxy_sigma_theta_curve(galaxy *, double, char *, double);
-void write_galaxy_v2a_theta_curve(galaxy *, double, char *, double);
-void write_galaxy__curve(galaxy *, double, char *, double);
-void write_galaxy_potential_curve(galaxy *, double, char *, double);
-void write_galaxy_density_curve(galaxy *, double, char *, double);
-void write_galaxy_toomre_curve(galaxy *, double, char *, double);
+void write_galaxy_rz_quantities(galaxy *, double, char *, double);
 int write_gadget1_ics(galaxy *, char *);
 int write_gadget2_ics(galaxy *, char *);
 int load_snapshot(char *, int);
@@ -671,6 +668,8 @@ double deriv_central2(galaxy *, double, double, function_to_derivate);
 double deriv_central4(galaxy *, double, double, function_to_derivate);
 double deriv_forward(galaxy *, double, double, function_to_derivate);
 double interpol(double, double, double, double, double);
+double smooth_in(double, double, double);
+double smooth_out(double, double, double);
 int set_galaxy_gaussian_field_grid(galaxy *, double, long);
 int set_stream_gaussian_field_grid(stream *, double, long);
 double galaxy_gaussian_field_func(galaxy *, double, double, double);

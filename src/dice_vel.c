@@ -40,8 +40,96 @@
 
 #include "dice.h"
 
+// This function calculates the 1D velocity moment at a given spherical radius
+double v2a_r_1D_func(galaxy *gal, gsl_integration_workspace *w, int component) {
+
+    int status, tid;
+    double integral, error, v2a_r, rho, infinity, u, r_sph;
+    size_t neval;
+
+#if USE_THREADS == 1
+    tid = omp_get_thread_num();
+#else
+    tid = 0;
+#endif
+
+    gsl_function F;
+
+    F.function = &dv2a_r_1D_func;
+    F.params = gal;
+
+    gal->selected_comp[tid] = component;
+    infinity = 10.*gal->comp_cut[gal->selected_comp[tid]];
+    //gsl_integration_qag(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
+    gsl_integration_qng(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,&integral,&error,&neval);
+
+    rho = density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    r_sph = gal->r_sph[gal->index[tid]];
+
+    switch(gal->comp_jeans_anisotropy_model[gal->selected_comp[tid]]) {
+        case 0:
+	    // Beta = 0
+	    u = 1.0;
+	    break;
+        case 1:
+	    // Beta = 1
+	    u = (r_sph,2.0);
+	    break;
+        case 2:
+            // Separable differential equation term using Hansen & Moore 2006 definition for the anisotropy parameter
+            // beta = -0.15-0.2*dln(rho)/dln(r)
+            u = pow(r_sph,-0.3)*pow(rho,-0.4);
+	    break;
+    }
+    v2a_r = integral/(rho*u);
+    v2a_r = v2a_r>0.?v2a_r:0.;
+
+    return v2a_r;
+}
+
+// This is the integrand for the previous function. It is setup to work with
+// the GSL_qags structures.
+static double dv2a_r_1D_func(double r_sph, void *params) {
+
+    double integrand, r_cyl, z, theta_cyl, rho1, rho2, u;
+    int tid;
+    galaxy *gal = (galaxy *) params;
+
+#if USE_THREADS == 1
+    tid = omp_get_thread_num();
+#else
+    tid = 0;
+#endif
+
+    theta_cyl = gal->theta_cyl[gal->index[tid]];
+    z = cos(gal->phi_sph[gal->index[tid]])*r_sph;
+    r_cyl = sqrt(r_sph*r_sph-z*z);
+
+    rho1 = density_functions_pool(gal,r_cyl,theta_cyl,z,gal->comp_jeans_mass_cut[gal->selected_comp[tid]],gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    rho2 = density_functions_pool(gal,r_cyl,theta_cyl,z,0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+
+    switch(gal->comp_jeans_anisotropy_model[gal->selected_comp[tid]]) {
+        case 0:
+	    // Beta = 0
+	    u = 1.0;
+	    break;
+        case 1:
+	    // Beta = 1
+	    u = (r_sph,2.0);
+	    break;
+        case 2:
+            // Separable differential equation term using Hansen & Moore 2006 definition for the anisotropy parameter
+            // beta = -0.15-0.2*dln(rho)/dln(r)
+            u = pow(r_sph,-0.3)*pow(rho2,-0.4);
+	    break;
+    }
+    integrand = u*rho1*galaxy_rsphforce_func(gal,r_sph);
+
+    return integrand;
+}
+
 // This function calculates the z-axis velocity moment at a given radius
-double v2a_r_func(galaxy *gal, gsl_integration_workspace *w, int component) {
+double v2a_r_2D_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 
     int status, tid, save;
     double integral, error, res, rho, infinity, v2a_r;
@@ -54,108 +142,36 @@ double v2a_r_func(galaxy *gal, gsl_integration_workspace *w, int component) {
 #endif
 
     gsl_function F;
-    F.function = &dv2a_z_func;
+    F.function = &dv2a_r_2D_func;
     F.params = gal;
     gal->selected_comp[tid] = component;
 
-    // Dispersion from Jeans equation with non zero mixed moment <vr.vz>
-    if(gal->comp_sigmar_model[component]==-2) {
-        v2a_r = get_jeans_array_cic(gal,fabs(gal->r_cyl[gal->index[tid]]),fabs(gal->z[gal->index[tid]]),gal->vr2_tilted_mixed);
-        // Dispersion from Jeans equation
-    } else if(gal->comp_sigmar_model[component]==-1) {
-
-        infinity = gal->comp_cut[gal->selected_comp[tid]];
-        switch(AllVars.GslIntegrationScheme){
-            case 1:
-                gsl_integration_qag(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
-                break;
-            case 2:
-                gsl_integration_qagiu(&F,fabs(gal->z[gal->index[tid]]),epsabs,epsrel,AllVars.GslWorkspaceSize,w,&integral,&error);
-                break;
-            case 3:
-                gsl_integration_qng(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,&integral,&error,&neval);
-                break;
-            default:
-                fprintf(stderr,"[Error] gsl_integration_scheme=%d is not a valid value\n",AllVars.GslIntegrationScheme);
-                exit(0);
-        }
-        rho = density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
-        v2a_r = integral/rho;
-        v2a_r = (v2a_r>0. ? v2a_r : 0.);
-        // Dispersion from Isothermal sheet
-    } else if(gal->comp_sigmar_model[component]==0) {
-        v2a_r = pi*G*surface_density_func(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],1,component)*gal->comp_scale_length[component]*gal->comp_flatz[component];
-        // Dispersion proportional to surface density
-    } else if (gal->comp_sigmar_model[component]>0) {
-        save = gal->comp_model[gal->selected_comp[tid]];
-        gal->comp_model[gal->selected_comp[tid]] = gal->comp_sigmar_model[component];
-        v2a_r = gal->comp_sigmar_scale[component]*surface_density_func(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],1,gal->selected_comp[tid]);
-        gal->comp_model[gal->selected_comp[tid]] = save;
+    // Dispersion from Jeans equation
+    infinity = gal->comp_cut[gal->selected_comp[tid]];
+    switch(AllVars.GslIntegrationScheme){
+        case 1:
+            gsl_integration_qag(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
+            break;
+        case 2:
+            gsl_integration_qagiu(&F,fabs(gal->z[gal->index[tid]]),epsabs,epsrel,AllVars.GslWorkspaceSize,w,&integral,&error);
+            break;
+        case 3:
+            gsl_integration_qng(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,&integral,&error,&neval);
+            break;
+        default:
+            fprintf(stderr,"[Error] gsl_integration_scheme=%d is not a valid value\n",AllVars.GslIntegrationScheme);
+            exit(0);
     }
+    rho = density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
+    v2a_r = integral/rho;
+    v2a_r = (v2a_r>0. ? v2a_r : 0.);
 
     return v2a_r;
 }
 
-// This function calculates the z-axis velocity moment at a given radius
-double v2a_z_func(galaxy *gal, gsl_integration_workspace *w, int component) {
-
-    int status, tid, save;
-    double integral, error, res, rho, infinity, v2a_z;
-    size_t neval,limit;
-
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-
-    gsl_function F;
-    F.function = &dv2a_z_func;
-    F.params = gal;
-    gal->selected_comp[tid] = component;
-
-    // Dispersion from Jeans equation with non zero mixed moment <vr.vz>
-    if(gal->comp_sigmaz_model[component]==-2) {
-        v2a_z = get_jeans_array_cic(gal,fabs(gal->r_cyl[gal->index[tid]]),fabs(gal->z[gal->index[tid]]),gal->vz2_tilted_mixed);
-        // Dispersion from Jeans equation
-    } else if(gal->comp_sigmaz_model[component]==-1) {
-
-        infinity = gal->comp_cut[gal->selected_comp[tid]];
-        switch(AllVars.GslIntegrationScheme){
-            case 1:
-                gsl_integration_qag(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
-                break;
-            case 2:
-                gsl_integration_qagiu(&F,fabs(gal->z[gal->index[tid]]),epsabs,epsrel,AllVars.GslWorkspaceSize,w,&integral,&error);
-                break;
-            case 3:
-                gsl_integration_qng(&F,fabs(gal->z[gal->index[tid]]),fabs(gal->z[gal->index[tid]])+infinity,epsabs,epsrel,&integral,&error,&neval);
-                break;
-            default:
-                fprintf(stderr,"[Error] gsl_integration_scheme=%d is not a valid value\n",AllVars.GslIntegrationScheme);
-                exit(0);
-        }
-        rho = density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
-        v2a_z = integral/rho;
-        v2a_z = (v2a_z>0. ? v2a_z : 0.);
-        // Dispersion from Isothermal sheet
-    } else if(gal->comp_sigmaz_model[component]==0) {
-        v2a_z = pi*G*surface_density_func(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],1,component)*gal->comp_scale_length[component]*gal->comp_flatz[component];
-        // Dispersion proportional to surface density
-    } else if (gal->comp_sigmaz_model[component]>0) {
-        save = gal->comp_model[gal->selected_comp[tid]];
-        gal->comp_model[gal->selected_comp[tid]] = gal->comp_sigmaz_model[component];
-        v2a_z = gal->comp_sigmaz_scale[component]*surface_density_func(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],1,gal->selected_comp[tid]);
-        gal->comp_model[gal->selected_comp[tid]] = save;
-    }
-
-    return v2a_z;
-}
-
-
 // This is the integrand for the previous function. It is setup to work with
 // the GSL_qags structures.
-static double dv2a_z_func(double z, void *params) {
+static double dv2a_r_2D_func(double z, void *params) {
 
     double integrand, radius, theta, rho;
     int tid;
@@ -178,73 +194,10 @@ static double dv2a_z_func(double z, void *params) {
     return integrand;
 }
 
-// This function calculates the 1D velocity moment at a given spherical radius
-double v2a_1D_func(galaxy *gal, gsl_integration_workspace *w, int component) {
-
-    int status, tid;
-    double integral, error, v2a, rho, infinity;
-    size_t neval;
-
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-
-    gsl_function F;
-
-    F.function = &dv2a_1D_func;
-    F.params = gal;
-
-    gal->selected_comp[tid] = component;
-    infinity = 10.*gal->comp_cut[gal->selected_comp[tid]];
-    //gsl_integration_qag(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&integral,&error);
-    gsl_integration_qng(&F,fabs(gal->r_sph[gal->index[tid]]),fabs(gal->r_sph[gal->index[tid]])+infinity,epsabs,epsrel,&integral,&error,&neval);
-
-    rho = density_functions_pool(gal,gal->r_cyl[gal->index[tid]],gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],0,gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
-    v2a = integral/rho;
-    v2a = v2a>0.?v2a:0.;
-
-    return v2a;
-
-}
-
-// This is the integrand for the previous function. It is setup to work with
-// the GSL_qags structures.
-static double dv2a_1D_func(double r_sph, void *params) {
-
-    double integrand, r_cyl, z, theta_cyl, rho;
-    int tid;
-    galaxy *gal = (galaxy *) params;
-
-#if USE_THREADS == 1
-    tid = omp_get_thread_num();
-#else
-    tid = 0;
-#endif
-
-    theta_cyl = gal->theta_cyl[gal->index[tid]];
-    z = cos(gal->phi_sph[gal->index[tid]])*r_sph;
-    r_cyl = sqrt(r_sph*r_sph-z*z);
-
-    rho = density_functions_pool(gal,r_cyl,theta_cyl,z,gal->comp_jeans_mass_cut[gal->selected_comp[tid]],gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
-
-    integrand = rho*galaxy_rsphforce_func(gal,r_sph);
-
-    return integrand;
-}
-
 // This function calculates PART of the phi axis velocity moment. In
 // particular, it calculates the derivative of the radial velocity
 // moment, which is equal to the z-axis velocity moment.
-//
-// This function uses the galaxy storage variables a lot! If you have
-// edited the code to ill effect, check that the storage variables
-// properly reassigned after this function.
-//
-// The derivative is calculated in the x,y plane using the
-// 5-point stencil method.
-double v2a_theta_func(galaxy *gal, double radius, double v2a_r, double v_c, int component) {
+double v2a_theta_2D_func(galaxy *gal, double radius, double v2a_r, double v_c, int component) {
 
     double z, theta, h, v2a_theta, rho, abserr;
     double derivative, x, y;
@@ -257,19 +210,15 @@ double v2a_theta_func(galaxy *gal, double radius, double v2a_r, double v_c, int 
 #endif
 
     z = gal->z[gal->index[tid]];
-    if(gal->comp_sigmar_model[component]==0) {
-        v2a_theta = get_jeans_array_cic(gal,radius,z,gal->vtheta2_mixed);
-    } else {
-        x = radius*cos(gal->theta_cyl[gal->index[tid]]);
-        y = radius*sin(gal->theta_cyl[gal->index[tid]]);
-        // Set the derivative stepsize.
-        h = get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
-        theta = gal->theta_cyl[gal->index[tid]];
-        gal->selected_comp[tid] = component;
-        derivative = deriv_central2(gal,radius,h,rho_v2a_r_func);
-        rho = density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],z,0,gal->comp_model[component],component);
-        v2a_theta = derivative*radius/rho+v2a_r+pow(v_c,2.0);
-    }
+    x = radius*cos(gal->theta_cyl[gal->index[tid]]);
+    y = radius*sin(gal->theta_cyl[gal->index[tid]]);
+    // Set the derivative stepsize.
+    h = get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
+    theta = gal->theta_cyl[gal->index[tid]];
+    gal->selected_comp[tid] = component;
+    derivative = deriv_central2(gal,radius,h,rho_v2a_r_2D_func);
+    rho = density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],z,0,gal->comp_model[component],component);
+    v2a_theta = derivative*radius/rho+v2a_r+pow(v_c,2.0);
     // Reject complex values values
     v2a_theta = v2a_theta<0.?0.:v2a_theta;
 
@@ -278,7 +227,7 @@ double v2a_theta_func(galaxy *gal, double radius, double v2a_r, double v_c, int 
 
 // Function which should be derivated to obtain the phi axis velocity moment
 // Take a look to the part of the documentation explaining the velocity dispersion computation
-double rho_v2a_r_func(double radius, void *params) {
+double rho_v2a_r_2D_func(double radius, void *params) {
 
     galaxy *gal = (galaxy *) params;
     double rho, v2a_r;
@@ -294,13 +243,65 @@ double rho_v2a_r_func(double radius, void *params) {
     rho = density_functions_pool(gal,radius,gal->theta_cyl[gal->index[tid]],gal->z[gal->index[tid]],gal->comp_jeans_mass_cut[gal->selected_comp[tid]],gal->comp_model[gal->selected_comp[tid]],gal->selected_comp[tid]);
     save1 = gal->r_cyl[gal->index[tid]];
     gal->r_cyl[gal->index[tid]] = radius;
-    v2a_r = v2a_r_func(gal,w[tid],gal->selected_comp[tid]);
+    v2a_r = v2a_r_2D_func(gal,w[tid],gal->selected_comp[tid]);
     gal->r_cyl[gal->index[tid]] = save1;
 
     return rho*v2a_r;
 }
 
-void fill_jeans_mixed_grid (galaxy *gal, int component) {
+// This function calculates the r-axis velocity moment at a given radius
+double v2a_r_3D_func(galaxy *gal) {
+
+    int tid;
+    double v2a_r;
+
+#if USE_THREADS == 1
+    tid = omp_get_thread_num();
+#else
+    tid = 0;
+#endif
+
+    v2a_r = get_jeans_3D_cic(gal,fabs(gal->r_cyl[gal->index[tid]]),fabs(gal->z[gal->index[tid]]),gal->vr2_tilted_mixed);
+
+    return v2a_r;
+}
+
+// This function calculates the z-axis velocity moment at a given radius
+double v2a_z_3D_func(galaxy *gal) {
+
+    int tid;
+    double v2a_z;
+
+#if USE_THREADS == 1
+    tid = omp_get_thread_num();
+#else
+    tid = 0;
+#endif
+
+    v2a_z = get_jeans_3D_cic(gal,fabs(gal->r_cyl[gal->index[tid]]),fabs(gal->z[gal->index[tid]]),gal->vz2_tilted_mixed);
+
+    return v2a_z;
+}
+
+//
+double v2a_theta_3D_func(galaxy *gal) {
+
+    double z, theta, v2a_theta;
+    int tid;
+
+#if USE_THREADS == 1
+    tid = omp_get_thread_num();
+#else
+    tid = 0;
+#endif
+
+    v2a_theta = get_jeans_3D_cic(gal,fabs(gal->r_cyl[gal->index[tid]]),fabs(gal->z[gal->index[tid]]),gal->vtheta2_mixed);
+
+    return v2a_theta;
+}
+
+// This function solves the Jeans PDE using the method of lines (Yurin 2014)
+void fill_jeans_3D_grid (galaxy *gal, int component) {
     int i, j, k, n, nsteps, tid;
     double *qprev, alpha, h1, h2, r1, r2, dr, z1, z2, z, dz, rho, rho1, rho2, p, f, dqdr;
     double rmin,fac, save1, save2, save3, save4, save5;
@@ -327,7 +328,6 @@ void fill_jeans_mixed_grid (galaxy *gal, int component) {
     gal->z[gal->index[tid]] = 0.;
     gal->theta_cyl[gal->index[tid]] = 0.;
 
-
     for (k=gal->ngrid_jeans[0]-1; k>=0; k--) {
         if(k==gal->ngrid_jeans[0]-1) {
             for (j=0; j<gal->ngrid_jeans[1]; j++) {
@@ -349,7 +349,7 @@ void fill_jeans_mixed_grid (galaxy *gal, int component) {
                     gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
                     gal->z[gal->index[tid]] = z;
 
-                    h1 = h_function(gal,r1,z,component);
+                    h1 = jeans_3D_h_func(gal,r1,z,component);
                     rho = density_functions_pool(gal,r1,0.,z,gal->comp_jeans_mass_cut[component],gal->comp_model[component],component);
                     p = rho*galaxy_zforce_func(gal,z);
 
@@ -357,7 +357,7 @@ void fill_jeans_mixed_grid (galaxy *gal, int component) {
                         dqdr = 0.;
                     } else {
                         r2 = ((double)(j+1)+0.5)*gal->dx_jeans;
-                        h2 = h_function(gal,r2,z,component);
+                        h2 = jeans_3D_h_func(gal,r2,z,component);
                         dr = r2-r1;
                         dqdr = (h2*qprev[j+1]-h1*qprev[j])/dr+qprev[j]*h1/r1;
                     }
@@ -372,9 +372,9 @@ void fill_jeans_mixed_grid (galaxy *gal, int component) {
         for (j=0; j<gal->ngrid_jeans[1]; j++) {
             r1 = ((double)j+0.5)*gal->dx_jeans;
             z1 = ((double)k+0.5)*gal->dx_jeans;
-            alpha = atan(z1/r1);
-            f = gal->comp_f_sigma[component];
-            h1 = h_function(gal,r1,z1,component);
+            alpha = atan2(z1,r1);
+            f = gal->comp_jeans_f_sigma[component];
+            h1 = jeans_3D_h_func(gal,r1,z1,component);
             gal->r_cyl[gal->index[tid]] = r1;
             gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
             gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
@@ -383,16 +383,13 @@ void fill_jeans_mixed_grid (galaxy *gal, int component) {
             // sigma_z^2
             gal->vz2_tilted_mixed[k][j] = rho>0. ? gal->vz2_tilted_mixed[k][j]/rho : 0.;
             // <v_z.v_r>
-            vrvz = gal->vz2_tilted_mixed[k][j]*((f-1)/2*tan(2*alpha))/
-                (pow(cos(alpha),2)-f*pow(sin(alpha),2)+(1.0+f)/2.0*sin(2*alpha)*tan(2*alpha));
+            vrvz = h1*gal->vz2_tilted_mixed[k][j];
             // sigma_r^2
-            vr2 = gal->vz2_tilted_mixed[k][j]*(f*pow(cos(alpha),2)-pow(sin(alpha),2)+(1.0+f)/2.0*sin(2*alpha)*tan(2*alpha))/
-                (pow(cos(alpha),2)-f*pow(sin(alpha),2)+(1.0+f)/2.0*sin(2*alpha)*tan(2*alpha));
+            vr2 = (2.0*h1/tan(2.0*alpha)+1.0)*gal->vz2_tilted_mixed[k][j];
             // <v_r^2>
             vr2_tilted = vr2*pow(cos(alpha),2)+2*vrvz*sin(alpha)*cos(alpha)+gal->vz2_tilted_mixed[k][j]*pow(sin(alpha),2);
             // <v_z^2>
             vz2_tilted = vr2*pow(sin(alpha),2)-2*vrvz*sin(alpha)*cos(alpha)+gal->vz2_tilted_mixed[k][j]*pow(cos(alpha),2);
-            gal->vr2_mixed[k][j] = vr2;
             gal->vz2_tilted_mixed[k][j] = vz2_tilted;
             gal->vr2_tilted_mixed[k][j] = vr2_tilted;
         }
@@ -422,7 +419,7 @@ void fill_jeans_mixed_grid (galaxy *gal, int component) {
             if(rho1>0.) {
                 vtheta2 = gal->vr2_tilted_mixed[k][j]+r1*fz+
                     r1/rho1*(rho2*gal->vr2_tilted_mixed[k][j2]-rho1*gal->vr2_tilted_mixed[k][j])/(r2-r1)+
-                    r1/rho1*(rho2*h_function(gal,r2,z,component)*gal->vz2_tilted_mixed[k][j2]-rho1*h_function(gal,r1,z1,component)*gal->vz2_tilted_mixed[k][j])/(r2-r1);
+                    r1/rho1*(rho2*jeans_3D_h_func(gal,r2,z,component)*gal->vz2_tilted_mixed[k][j2]-rho1*jeans_3D_h_func(gal,r1,z1,component)*gal->vz2_tilted_mixed[k][j])/(r2-r1);
             }
             if(vtheta2>0) {
                 gal->vtheta2_mixed[k][j] = vtheta2;
@@ -440,7 +437,7 @@ void fill_jeans_mixed_grid (galaxy *gal, int component) {
     return;
 }
 
-double h_function(galaxy *gal, double r, double z, int component) {
+double jeans_3D_h_func(galaxy *gal, double r, double z, int component) {
     double f, alpha, h;
     int tid;
 
@@ -450,14 +447,14 @@ double h_function(galaxy *gal, double r, double z, int component) {
     tid = 0;
 #endif
 
-    alpha = atan(z/r);
-    f = gal->comp_f_sigma[component];
-    h = ((f-1)/2*tan (2*alpha))/(pow(cos(alpha),2)-f*pow(sin(alpha),2)+(1.0+f)/2.0*sin(2*alpha)*tan(2*alpha));
+    alpha = atan2(z,r);
+    f = gal->comp_jeans_f_sigma[component];
+    h = ((f-1.0)/2.0*tan(2*alpha))/(pow(cos(alpha),2)-f*pow(sin(alpha),2)+(1.0+f)/2.0*sin(2*alpha)*tan(2*alpha));
 
     return h;
 }
 
-double get_jeans_array_cic(galaxy *gal, double r, double z, double **array) {
+double get_jeans_3D_cic(galaxy *gal, double r, double z, double **array) {
     int node_r,node_z;
     double rtemp,ztemp,v1,v2,v3,v4,v_interp;
     double dr,dz,tr,tz;
@@ -470,24 +467,24 @@ double get_jeans_array_cic(galaxy *gal, double r, double z, double **array) {
 
     if(node_r>=0 && node_r<gal->ngrid_jeans[0]-1 && node_z>=0 && node_z<gal->ngrid_jeans[1]-1) {
         // Interpolation function to compute the potential.
-        v1 = array[node_r][node_z];
-        v2 = array[node_r+1][node_z];
-        v3 = array[node_r][node_z+1];
-        v4 = array[node_r+1][node_z+1];
+        v1 = array[node_z][node_r];
+        v2 = array[node_z+1][node_r];
+        v3 = array[node_z][node_r+1];
+        v4 = array[node_z+1][node_r+1];
         // CIC fractions
         dr = 1.0 - (rtemp - (double) node_r);
         dz = 1.0 - (ztemp - (double) node_z);
         tr = 1.0 - dr;
         tz = 1.0 - dz;
         // Return the interpolated potential.
-        v_interp = dr*dz*v1 + tr*dz*v2 + dr*tz*v3 + tr*tz*v4;
+        v_interp = dr*dz*v1 + dr*tz*v2 + tr*dz*v3 + tr*tz*v4;
     } else {
         v_interp = 0.;
     }
+    
     return v_interp;
 
 }
-
 
 // This function checks that the azimuthal velocity dispersion verifies
 // the lower limit of the Toomre stability cirterion imposed by the user
@@ -639,10 +636,10 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
     save = gal->z[gal->index[tid]];
     // Integrations done in the z=0 plane
     gal->z[gal->index[tid]] = 0.;
-    density_derivative = deriv_central2(gal,radius,h,gas_density_wrapper_func);
+    density_derivative = deriv_central2(gal,radius,h,density_wrapper_func);
     v_c2 = pow(v_c_func(gal,radius),2.0);
     //pressure_force = radius*kpc*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);
-    pressure_force = radius*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);
+    pressure_force = radius*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/density_wrapper_func(radius,gal);
     v2_theta_gas = v_c2 + pressure_force;
     if(v2_theta_gas<0) v2_theta_gas = 0.;
     // Restore z coordinate
@@ -652,10 +649,10 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
 }
 
 // A wrapper for the gas density function.
-double gas_density_wrapper_func(double radius, void *params) {
+double density_wrapper_func(double radius, void *params) {
 
     int i, tid, component;
-    double theta, rho, x, y, sigma, smooth_in_factor, smooth_out_factor;
+    double theta, rho, x, y, sigma;
     galaxy *gal = (galaxy *) params;
 
 #if USE_THREADS == 1

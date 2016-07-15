@@ -168,6 +168,7 @@ int set_galaxy_potential(galaxy *gal, double ***potential, double dx, int ngrid[
             }
         }
     }
+    
     // Define Green's function.
     // These are the grid points as measured from the center of Green's function
     // and the local value of the truncation function. The density is also packed into a
@@ -413,7 +414,7 @@ double galaxyrsph_potential_wrapper_func(double r_sph, void *params) {
 double galaxyz_potential_wrapper_func(double z, void *params) {
 
     int tid;
-    double pot;
+    double pot, x, y;
 
 #if USE_THREADS == 1
     tid = omp_get_thread_num();
@@ -528,4 +529,35 @@ void copy_potential(galaxy *gal_1, galaxy *gal_2, int info) {
     if(info == 1) printf("/////\tPotential grid copied \n");
     return;
 }
+
+// This function sets the gravitational potential on all the levels
+double set_galaxy_potential_all(galaxy *gal, int verbose) {
+    int n;
+    double exclude[3];
+
+    for (n = 0; n < gal->nlevel; n++) {
+        if(verbose==1) {
+	    printf("> %d ",n+gal->level_coarse);
+	}
+        fflush(stdout);
+        exclude[0] = 0.;
+        exclude[1] = 0.;
+        exclude[2] = 0.;
+        if(set_galaxy_potential(gal,gal->potential[n],gal->dx[n],gal->ngrid[n],0,exclude) != 0) {
+            fprintf(stderr,"\n[Error] Unable to set the potential for level %d\n",n+gal->level_coarse);
+            return -1;
+        }
+        if(n>0) {
+            exclude[0] = gal->boxsize[n]*gal->boxsize_flatx[n]/2.;
+            exclude[1] = gal->boxsize[n]*gal->boxsize_flaty[n]/2.;
+            exclude[2] = gal->boxsize[n]*gal->boxsize_flatz[n]/2.;
+            if(set_galaxy_potential(gal,gal->potential_ext[n-1],gal->dx[n-1],gal->ngrid[n-1],0,exclude) != 0) {
+                fprintf(stderr,"\n[Error] Unable to set the external potential for level %d\n",n+gal->level_coarse);
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
 

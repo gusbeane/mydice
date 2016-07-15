@@ -90,7 +90,6 @@ double deriv_central2(galaxy *gal, double x, double h, function_to_derivate F) {
     new_x = x-h;
     f2 = F(new_x,gal);
 
-    //derivative = (f1-f2)/(2.0*h*kpc);
     derivative = (f1-f2)/(2.0*h);
 
     return derivative;
@@ -103,7 +102,6 @@ double deriv_forward(galaxy *gal, double x, double h, function_to_derivate F) {
     f1 = F(x,gal);
     f2 = F(x+h,gal);
 
-    //derivative = (f2-f1)/(h*kpc);
     derivative = (f2-f1)/(h);
 
     return derivative;
@@ -112,6 +110,16 @@ double deriv_forward(galaxy *gal, double x, double h, function_to_derivate F) {
 // Linear interpolation between two points
 double interpol(double x0, double x1, double x, double y0, double y1) {
 	return y0+(y1-y0)*(x-x0)/(x1-x0);
+}
+
+// Smooth in to zero function
+double smooth_in(double x, double xc, double sigma) {
+    return 0.5*(1+erf((x/xc-1.0)/(sigma*sqrt(2))));
+}
+
+// Smooth out to zero function
+double smooth_out(double x, double xc, double sigma) {
+    return 1-0.5*(1+erf((x/xc-1.0)/(sigma*sqrt(2))));
 }
 
 // This function calculates the potential due to a galactic disk using Cloud-

@@ -391,8 +391,8 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_sigmaz_scale array\n");
         return -1;
     }
-    if (!(gal->comp_f_sigma = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-        fprintf(stderr,"[Error] Unable to allocate comp_f_sigma array\n");
+    if (!(gal->comp_jeans_f_sigma = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_jeans_f_sigma array\n");
         return -1;
     }
     if (!(gal->comp_k_stream = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -447,6 +447,26 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_rcore array\n");
         return -1;
     }
+    if (!(gal->comp_gennormdist_exp = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_gennormdist_exp array\n");
+        return -1;
+    }
+    if (!(gal->comp_softening = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_softening array\n");
+        return -1;
+    }
+    if (!(gal->comp_symmetry = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_symmetry array\n");
+        return -1;
+    }
+    if (!(gal->comp_jeans_dim = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_jeans_dim array\n");
+        return -1;
+    }
+    if (!(gal->comp_jeans_anisotropy_model = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_jeans_anisotropy array\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -491,12 +511,6 @@ int allocate_variable_arrays(galaxy *gal) {
 
     // Allocate spherical radius for all the particles.
     if (!(gal->r_sph = calloc(gal->ntot_part_pot,sizeof(double)))) {
-        fprintf(stderr,"[Error] Unable to allocate particle z coordinates.\n");
-        return -1;
-    }
-
-    // Allocate spherical azimuthal angle for all the particles.
-    if (!(gal->theta_sph = calloc(gal->ntot_part_pot,sizeof(double)))) {
         fprintf(stderr,"[Error] Unable to allocate particle z coordinates.\n");
         return -1;
     }
@@ -642,10 +656,6 @@ int allocate_galaxy_jeans_grid(galaxy *gal) {
     int i, j;
 
     // Allocate the midplane density grid, starting with x-axis
-    if (!(gal->vr2_mixed = calloc(gal->ngrid_jeans[0],sizeof(double *)))) {
-        fprintf(stderr,"[Error] Unable to create vr2_mixed x axis.\n");
-        return -1;
-    }
     if (!(gal->vz2_tilted_mixed = calloc(gal->ngrid_jeans[0],sizeof(double *)))) {
         fprintf(stderr,"[Error] Unable to create vz2_tilted_mixed x axis.\n");
         return -1;
@@ -661,10 +671,6 @@ int allocate_galaxy_jeans_grid(galaxy *gal) {
 
     for (i = 0; i < gal->ngrid_jeans[1]; ++i) {
         // y-axis
-        if (!(gal->vr2_mixed[i] = calloc(gal->ngrid_jeans[1],sizeof(double *)))) {
-            fprintf(stderr,"[Error] Unable to create vr2_mixed y axis.\n");
-            return -1;
-        }
         if (!(gal->vz2_tilted_mixed[i] = calloc(gal->ngrid_jeans[1],sizeof(double *)))) {
             fprintf(stderr,"[Error] Unable to create vz2_tilted_mixed y axis.\n");
             return -1;
@@ -679,7 +685,7 @@ int allocate_galaxy_jeans_grid(galaxy *gal) {
         }
 
     }
-    gal->jeans_mixed_defined = 1;
+    gal->jeans_3D_defined = 1;
     return 0;
 }
 
@@ -732,13 +738,6 @@ int reallocate_variable_arrays(galaxy *gal, unsigned long int npart) {
     gal->r_sph = (double *) realloc(gal->r_sph,npart*sizeof(double));
     if (gal->r_sph == NULL) {
         fprintf(stderr,"[Error] Unable to allocate particle r_sph coordinates.\n");
-        return -1;
-    }
-
-    // Allocate spherical azimuthal angle for all the particles.
-    gal->theta_sph = (double *) realloc(gal->theta_sph,npart*sizeof(double));
-    if (gal->theta_sph == NULL) {
-        fprintf(stderr,"[Error] Unable to allocate particle z coordinates.\n");
         return -1;
     }
 
@@ -964,12 +963,6 @@ int allocate_variable_arrays_stream(stream *st) {
         return -1;
     }
 
-    // Allocate spherical azimuthal angle for all the particles.
-    if (!(st->theta_sph = calloc(st->ntot_part,sizeof(double)))) {
-        fprintf(stderr,"[Error] Unable to allocate particle z coordinates.\n");
-        return -1;
-    }
-
     // Allocate spherical polar angle for all the particles.
     if (!(st->phi_sph = calloc(st->ntot_part,sizeof(double)))) {
         fprintf(stderr,"[Error] Unable to allocate particle z coordinates.\n");
@@ -1121,7 +1114,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     double effective_mass_factor;
     double rho_crit, delta_c, rho0_nfw, rho_scale_nfw, m_scale_nfw;
     double cut_dens, mean_dens;
-    double exclude[3];
 
     // Not a copy
     gal->copy = 0;
@@ -1205,8 +1197,8 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     // Midplane gas density grid
     gal->ngrid_dens[0] = pow(2,gal->level_grid_dens);
     gal->ngrid_dens[1] = pow(2,gal->level_grid_dens);
-    gal->ngrid_jeans[0] = pow(2,gal->level_grid_jeans_mixed);
-    gal->ngrid_jeans[1] = pow(2,gal->level_grid_jeans_mixed);
+    gal->ngrid_jeans[0] = pow(2,gal->level_grid_jeans_3D);
+    gal->ngrid_jeans[1] = pow(2,gal->level_grid_jeans_3D);
 
     // Create the random number generator environment
     for(i = 0; i<AllVars.Nthreads; i++) gsl_rng_set(r[i],gal->seed);
@@ -1256,7 +1248,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         gal->boxsize_flaty[n] = gal->ngrid[n][1]*gal->dx[n]/gal->boxsize[n];
         gal->boxsize_flatz[n] = gal->ngrid[n][2]*gal->dx[n]/gal->boxsize[n];
     }
-    if(gal->softening==0.0) gal->softening = gal->dx[gal->nlevel-1];
 
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
         if(gal->comp_type[i]==0 && gal->comp_npart[i]>0 && gal->comp_spherical_hydro_eq[i]==0 && gal->comp_hydro_eq[i]>0 && gal->hydro_eq_niter>0 && gal->comp_gamma_poly[i]<1.00001) {
@@ -1296,8 +1287,11 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     effective_mass_factor = 0.;
     gal->index_halo = -1;
     gal->index_disk = -1;
+    gal->index_first = -1;
     gal->index_gasdisk = -1;
     dens_gauss = 0;
+
+    
 
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
         // Checking for gaussian fluctuations bool
@@ -1349,6 +1343,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     // Set up component properties
     printf("/////\tSetting up components -> [");
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
+	fflush(stdout);
         strcpy(gal->comp_profile_name[i],"");
         gal->comp_scale_dens[i] = 1.0;
         // Total number of particules
@@ -1382,14 +1377,26 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             gal->comp_mass[i] = gal->m200*gal->comp_mass_frac[i];
         }
         if(gal->comp_npart[i]>0 && gal->comp_concentration[i]<=0. && gal->comp_scale_length[i]<=0.) {
-            fprintf(stderr,"[Error] Component %d scale not properly defined\n",i+1);
+            fprintf(stderr,"\n[Error] Component %d scale not properly defined\n",i+1);
             exit(0);
         }
 	if(gal->comp_accept_min[i]>gal->comp_accept_max[i]) {
-            fprintf(stderr,"[Error] accept_min%d>accept_max%d\n",i+1,i+1);
+            fprintf(stderr,"\n[Error] accept_min%d>accept_max%d\n",i+1,i+1);
             exit(0);
 	}
+	if(gal->comp_jeans_dim[i]<0 || gal->comp_jeans_dim[i]>3) {
+            fprintf(stderr,"\n[Error] Invalid value for jeans_dim%d (valid = [0,1,2,3])\n",i+1);
+            exit(0);
+	}
+	if(gal->comp_jeans_anisotropy_model[i]<0 || gal->comp_jeans_anisotropy_model[i]>2) {
+            fprintf(stderr,"\n[Error] Invalid value for jeans_anisotropy_model%d (valid = [0,1,2])\n",i+1);
+            exit(0);
+	}
+	// No anisotropy for gas component for the isotropic 1D Jeans equation
+	if(gal->comp_type[i]==0) gal->comp_jeans_anisotropy_model[i] = 0;
 	if(gal->comp_cut[i]<=0.) gal->comp_cut[i] = gal->r200;
+	// Define dfault gravitational softening
+        if(gal->comp_softening[i]==0.0) gal->comp_softening[i] = 0.05*gal->comp_scale_length[i];
         // Default cut shape follows the galaxy component shape
         if(gal->comp_flatx_cut[i]==-1.0) gal->comp_flatx_cut[i] = gal->comp_flatx[i];
         if(gal->comp_flaty_cut[i]==-1.0) gal->comp_flaty_cut[i] = gal->comp_flaty[i];
@@ -1506,11 +1513,11 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             // Recompute cutted mass
             gal->comp_mass[i] = cumulative_mass_func(gal,2.0*gal->comp_cut[i],i);
             gal->total_mass += gal->comp_mass_frac[i]*gal->m200;
-            if(gal->jeans_mixed_defined == 0) {
-                if(gal->comp_sigmar_model[i]==-2 || gal->comp_sigmar_model[i]==-2) {
+            if(gal->jeans_3D_defined == 0) {
+                if(gal->comp_jeans_dim[i]==3) {
                     gal->boxsize_jeans = 2*gal->r200;
                     gal->dx_jeans = gal->boxsize_jeans/gal->ngrid_jeans[0];
-                    if(gal->level_grid_jeans_mixed>0) {
+                    if(gal->level_grid_jeans_3D>0) {
                         if(allocate_galaxy_jeans_grid(gal)!=0) {
                             fprintf(stderr,"[Error] Unable to allocate jeans mixed grid\n");
                             return -1;
@@ -1566,6 +1573,14 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     // Total angular momentum of the halo assuming NFW profile
     gal->J200 = gal->lambda*sqrt(2.0*G*pow(gal->m200,3)*gal->r200/f_c_func(gal->comp_concentration[gal->index_halo]));
 
+    // First valid component
+    for(i = 0; i<AllVars.MaxCompNumber; i++) {
+        if(gal->comp_npart[i]>0 && gal->comp_mass[i]>0. && gal->comp_compute_vel[i]==1) {
+	    gal->index_first = i;
+	    break;
+	}
+    }
+
     printf("]\n");
     printf("/////\t--------------------------------------------------\n");
 
@@ -1619,12 +1634,11 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         if(gal->num_part[2]>0&&gal->num_part[3]>0) printf("/////\t\t- Bulge Disk fraction\t-> %10.3lf\n",BD_fraction);
         if(gal->num_part[2]>0&&gal->num_part[3]>0) printf("/////\t\t- Bulge Total fraction\t-> %10.3lf\n",BT_fraction);
     	printf("/////\t--------------------------------------------------\n");
-        printf("/////\tPM grids \n");
+        printf("/////\tGrids \n");
         for(i = 0; i<gal->nlevel; i++) {
-            printf("/////\t\t- Level %d \t\t\t[ %4d,%4d,%4d ][box=%6.1lf %s][dx=%6.1lf 1e-3 %s]\n",
-                i+gal->level_coarse,gal->ngrid[i][0],gal->ngrid[i][1],gal->ngrid[i][2],gal->boxsize[i],AllVars.UnitLengthName,gal->dx[i]*1E3,AllVars.UnitLengthName);
+            printf("/////\t\t- Level %d \t\t\t[ %4d,%4d,%4d ][box=%6.1lf %s][dx=%8.3le %s]\n",
+                i+gal->level_coarse,gal->ngrid[i][0],gal->ngrid[i][1],gal->ngrid[i][2],gal->boxsize[i],AllVars.UnitLengthName,gal->dx[i],AllVars.UnitLengthName);
         }
-    	printf("/////\t\t- Softening \t\t\t[%7.1lf 1e-3 %s]\n",gal->softening*1e3,AllVars.UnitLengthName);
     	printf("/////\t\t------------------------------------------\n");
         for(i = 0; i<AllVars.MaxCompNumber; i++) {
             if(gal->midplane_dens_defined==1) {
@@ -1643,8 +1657,8 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                 break;
             }
         }
-        if(gal->level_grid_jeans_mixed>0 && gal->jeans_mixed_defined) {
-            printf("/////\t\t- Jeans mixed moments \t[   %4d,%4d    ][box=%6.1lf %s][dx=%6.1lf 1e-3 %s]\n",
+        if(gal->level_grid_jeans_3D>0 && gal->jeans_3D_defined) {
+            printf("/////\t\t- Jeans mixed moments \t\t[   %4d,%4d    ][box=%6.1lf %s][dx=%8.3le %s]\n",
                     gal->ngrid_jeans[0],gal->ngrid_jeans[1],gal->boxsize_jeans,AllVars.UnitLengthName,gal->dx_jeans,AllVars.UnitLengthName);
         }
     }
@@ -1666,33 +1680,35 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             }
             if(gal->comp_sfr[j]!=0.) gal->comp_mean_age[j] = (gal->comp_mass[j]*(unit_mass/solarmass))/(gal->comp_sfr[j]*1e6)/2.0;
             printf("/////\t------------------ Component %2d ------------------\n",j+1);
-            printf("/////\t\t-> np       = %ld \n",gal->comp_npart[j]);
-            if(gal->comp_npart_pot[j]>gal->comp_npart[j]) printf("/////\t\t-> np_pot   = %ld \n",gal->comp_npart_pot[j]);
-            printf("/////\t\t-> m_tot    = %6.2le [Msol]\n",gal->comp_mass[j]*unit_mass/solarmass);
-            printf("/////\t\t-> mp       = %6.2le [Msol]\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]));
-            printf("/////\t\t-> mp_pot   = %6.2le [Msol]\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart_pot[j]));
-            printf("/////\t\t-> scale    = %6.2le [%s]\n",gal->comp_scale_length[j],AllVars.UnitLengthName);
-            printf("/////\t\t-> cut      = %6.2le [%s]\n",gal->comp_cut[j],AllVars.UnitLengthName);
-            if(gal->comp_cut_in[j]>0) printf("/////\t\t-> cut_in   = %6.2le [%s]\n",gal->comp_cut_in[j],AllVars.UnitLengthName);
+            printf("/////\t\t-> np        = %ld \n",gal->comp_npart[j]);
+            if(gal->comp_npart_pot[j]>gal->comp_npart[j]) printf("/////\t\t-> np_pot    = %ld \n",gal->comp_npart_pot[j]);
+            printf("/////\t\t-> m_tot     = %6.2le [Msol]\n",gal->comp_mass[j]*unit_mass/solarmass);
+            printf("/////\t\t-> mp        = %6.2le [Msol]\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]));
+            printf("/////\t\t-> mp_pot    = %6.2le [Msol]\n",(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart_pot[j]));
+            printf("/////\t\t-> scale     = %6.2le [%s]\n",gal->comp_scale_length[j],AllVars.UnitLengthName);
+            printf("/////\t\t-> cut       = %6.2le [%s]\n",gal->comp_cut[j],AllVars.UnitLengthName);
+            printf("/////\t\t-> softening = %6.2le [%s]\n",gal->comp_softening[j],AllVars.UnitLengthName);
+            if(gal->comp_jeans_dim[j]>0) printf("/////\t\t-> jeans dim = %d \n",gal->comp_jeans_dim[j]);
+            if(gal->comp_cut_in[j]>0) printf("/////\t\t-> cut_in    = %6.2le [%s]\n",gal->comp_cut_in[j],AllVars.UnitLengthName);
             if(gal->comp_type[j]==1) {
-                printf("/////\t\t-> c        = %6.2le\n",gal->comp_concentration[j]);
-                printf("/////\t\t-> lambda   = %6.3le\n",gal->lambda);
+                printf("/////\t\t-> c         = %6.2le\n",gal->comp_concentration[j]);
+                if(gal->comp_jeans_dim[j]>1)printf("/////\t\t-> lambda    = %6.3le\n",gal->lambda);
             	if(gal->comp_stream_method[j]==0) {
-                    printf("/////\t\t-> f_stream = %6.3le\n",gal->comp_stream_frac[j]);
+                    printf("/////\t\t-> f_stream  = %6.3le\n",gal->comp_stream_frac[j]);
 		}
             }
             if(gal->comp_type[j]==0 && gal->comp_hydro_eq[j]>0) {
-                printf("/////\t\t-> T_init   = %6.2le [K]\n",gal->comp_t_init[j]);
-                printf("/////\t\t-> rho_init = %6.2le [H/cc]\n",gal->comp_dens_init[j]);
-                printf("/////\t\t-> gamma    = %6.2le \n",gal->comp_gamma_poly[j]);
-                printf("/////\t\t-> cs       = %6.2le [%s]\n",gal->comp_cs_init[j],AllVars.UnitVelocityName);
+                printf("/////\t\t-> T_init    = %6.2le [K]\n",gal->comp_t_init[j]);
+                printf("/////\t\t-> rho_init  = %6.2le [H/cc]\n",gal->comp_dens_init[j]);
+                printf("/////\t\t-> gamma     = %6.2le \n",gal->comp_gamma_poly[j]);
+                printf("/////\t\t-> cs        = %6.2le [%s]\n",gal->comp_cs_init[j],AllVars.UnitVelocityName);
             }
             if(gal->comp_type[j]>1) {
-                printf("/////\t\t-> SFR      = %6.2le [Msol/yr]\n",gal->comp_sfr[j]);
-                printf("/////\t\t-> <age>    = %6.2le [Myr]\n",gal->comp_mean_age[j]);
+                printf("/////\t\t-> SFR       = %6.2le [Msol/yr]\n",gal->comp_sfr[j]);
+                printf("/////\t\t-> <age>     = %6.2le [Myr]\n",gal->comp_mean_age[j]);
             }
             if(gal->comp_metal[j]>0.) {
-                printf("/////\t\t-> <Z>      = %6.2le\n",gal->comp_metal[j]);
+                printf("/////\t\t-> <Z>       = %6.2le\n",gal->comp_metal[j]);
             }
         }
         // Filling the arrays of the &galaxy structure
@@ -1804,29 +1820,16 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             }
         }
     }
+    // Computing first gravitiational potential
+    gal->softening = gal->comp_softening[gal->index_first];
     printf("/////\t--------------------------------------------------\n");
     printf("/////\tComputing potential [%d FFT threads]\n",AllVars.Nthreads);
-    for (n = 0; n < gal->nlevel; n++) {
-        printf("/////\t\t- Level %d\n",n+gal->level_coarse);
-        fflush(stdout);
-        exclude[0] = 0.;
-        exclude[1] = 0.;
-        exclude[2] = 0.;
-        if(set_galaxy_potential(gal,gal->potential[n],gal->dx[n],gal->ngrid[n],0,exclude) != 0) {
-            fprintf(stderr,"\n[Error] Unable to set the potential\n");
-            exit(0);
-        }
-        if(n>0) {
-            exclude[0] = gal->boxsize[n]*gal->boxsize_flatx[n]/2.;
-            exclude[1] = gal->boxsize[n]*gal->boxsize_flaty[n]/2.;
-            exclude[2] = gal->boxsize[n]*gal->boxsize_flatz[n]/2.;
-            if(set_galaxy_potential(gal,gal->potential_ext[n-1],gal->dx[n-1],gal->ngrid[n-1],0,exclude) != 0) {
-                fprintf(stderr,"\n[Error] Unable to set the potential\n");
-                exit(0);
-            }
-        }
+    printf("/////\t\tLevel ");
+    if(set_galaxy_potential_all(gal,1) != 0) {
+        fprintf(stderr,"\n[Error] Unable to set the potential\n");
+        exit(0);
     }
-
+    printf("\n");
     printf("/////\t--------------------------------------------------\n");
     if(set_galaxy_velocity(gal) != 0) {
         printf("[Error] Unable to set the velocities\n");
@@ -2037,6 +2040,7 @@ int set_galaxy_coords(galaxy *gal) {
 	    }
             fflush(stdout);
             mcmc_metropolis_hasting_ntry(gal,i,gal->comp_model[i]);
+            rotate_component(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i],i);
         }
     }
     if(gal->hydro_eq>0 && gal->hydro_eq_niter>0) {
@@ -2051,29 +2055,16 @@ int set_galaxy_coords(galaxy *gal) {
             printf("/////\t\tIteration [%2d/%2d][evaluating potential]",j+1,gal->hydro_eq_niter);
             // Compute the full potential.
             printf("[ Level ");
-            for (n = 0; n < gal->nlevel; n++) {
-		printf("%2d ",n+gal->level_coarse);
-                exclude[0] = 0.;
-                exclude[1] = 0.;
-                exclude[2] = 0.;
-                if(set_galaxy_potential(gal,gal->potential[n],gal->dx[n],gal->ngrid[n],0,exclude) != 0) {
-                    fprintf(stderr,"\n[Error] Unable to set the potential\n");
-                    exit(0);
-                }
-                if(n>0) {
-                    exclude[0] = gal->boxsize[n]*gal->boxsize_flatx[n]/2.;
-                    exclude[1] = gal->boxsize[n]*gal->boxsize_flaty[n]/2.;
-                    exclude[2] = gal->boxsize[n]*gal->boxsize_flatz[n]/2.;
-                    if(set_galaxy_potential(gal,gal->potential_ext[n-1],gal->dx[n-1],gal->ngrid[n-1],0,exclude) != 0) {
-                        fprintf(stderr,"\n[Error] Unable to set the potential\n");
-                        exit(0);
-                    }
-                }
+            if(set_galaxy_potential_all(gal,1) != 0) {
+                fprintf(stderr,"\n[Error] Unable to set the potential\n");
+                exit(0);
             }
             printf("]\n");
             // Recompute particle position
             for(i = 0; i<AllVars.MaxCompNumber; i++) {
                 if((gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)&(gal->comp_hydro_eq[i]==1)) {
+		    // put the component in the xy plane
+                    rotate_all(gal,-gal->comp_theta_sph[i],-gal->comp_phi_sph[i]);
 		    // Only apply the density cut for the last iteration
 	    	    if(j<gal->hydro_eq_niter-1 && gal->comp_spherical_hydro_eq[i]==0) {
 		        cut_dens = gal->comp_cut_dens[i];
@@ -2098,6 +2089,8 @@ int set_galaxy_coords(galaxy *gal) {
 	    	    if(j<gal->hydro_eq_niter-1 && gal->comp_spherical_hydro_eq[i]==0) {
 		        gal->comp_cut_dens[i] = cut_dens;
 		    }
+		    // Restore original orientation
+                    rotate_all(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i]);
                 }
             }
         }
@@ -2144,36 +2137,34 @@ int set_stream_coords(stream *st) {
 // This computation is inspired from the work of Springel et al. 2005 & Hernquist 1993
 int set_galaxy_velocity(galaxy *gal) {
 
+    char buffer[MAXLEN_FILENAME], ext[20];
     unsigned long int i,nt;
-    int j,k,n,nbin;
+    int j, k, n, nbin, save;
     int status,warning1,warning2;
-    double v_c, v_r, v_theta, v_z, v_cmax, v_stream_max, Q, J_comp, J_sum, lambda_crit, eps_m;
+    int nrejected_vr,nrejected_vtheta,nrejected_vz;
+    int nrejected_vr_failed,nrejected_vtheta_failed,nrejected_vz_failed;
+    double v_c, v_r, v_theta, v_phi, v_z, v_cmax, v_stream_max, Q, J_comp, J_sum, lambda_crit, eps_m;
     double v2a_r, v2a_theta, v2_theta, v2a_z, va_theta, sigma2_theta, vel_x, vel_y, vel_z;
     double maxvel_x, maxvel_y, maxvel_z;
     double u_min, maxrad, maxrad_gas, k_stream, kmax_stream;
-    int nrejected_vr,nrejected_vtheta,nrejected_vz;
-    int nrejected_vr_failed,nrejected_vtheta_failed,nrejected_vz_failed;
     double radius, interval, save1, save2, save3, save4, save5;
-    char buffer[MAXLEN_FILENAME], ext[20];
 
     J_sum = 0.;
-    maxrad = 0.;
-    maxrad_gas = 0.;
-    interval = gal->comp_scale_length[0];
+    gal->maxrad = 0.;
+    gal->maxrad_gas = 0.;
 
     for (i = 0; i<gal->ntot_part_pot; ++i) {
-        if(gal->r_sph[i]>maxrad) maxrad = gal->r_sph[i];
+        if(fabs(gal->r_sph[i])>gal->maxrad) gal->maxrad = fabs(gal->r_sph[i]);
     }
     for(j = 0; j<AllVars.MaxCompNumber; j++) {
-        if(gal->comp_cut[j]>maxrad) maxrad = gal->comp_cut[i];
-	if(gal->comp_scale_length[i]<interval) gal->comp_scale_length[i];
+        if(gal->comp_cut[j]>gal->maxrad) gal->maxrad = gal->comp_cut[j];
         if(gal->comp_type[j]==0) {
             for (i = gal->comp_start_part[j]; i<gal->comp_start_part[j]+gal->comp_npart_pot[j]; ++i) {
-	        if(gal->r_sph[i]>maxrad_gas) maxrad_gas = gal->r_sph[i];
+	        if(fabs(gal->r_sph[i])>gal->maxrad_gas) gal->maxrad_gas = fabs(gal->r_sph[i]);
 	    }
         }
     }
-    interval /= 50.;
+
 
     // Warning init
     warning1 = 0;
@@ -2197,8 +2188,8 @@ int set_galaxy_velocity(galaxy *gal) {
     save2 = gal->theta_cyl[gal->index[tid]];
     gal->z[gal->index[tid]] = 0.;
     gal->theta_cyl[gal->index[tid]] = 0.;
-    interval = 0.5*gal->dx[gal->nlevel-1];
-    nbin = (int)(maxrad/interval);
+    interval = 0.251*gal->dx[gal->nlevel-1];
+    nbin = (int)(gal->maxrad/interval);
     for (n = 0; n < nbin; ++n) {
         radius = n*interval;
         v_c = v_c_func(gal,radius);
@@ -2236,18 +2227,20 @@ int set_galaxy_velocity(galaxy *gal) {
             save3 = gal->r_cyl[gal->index[tid]];
             save4 = gal->x[gal->index[tid]];
             save5 = gal->y[gal->index[tid]];
+            save = gal->comp_model[j];
             gal->z[gal->index[tid]] = 0.;
             gal->theta_cyl[gal->index[tid]] = 0.;
             gal->r_cyl[gal->index[tid]] = gal->comp_sigmar_radius[j];
             gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
             gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
-            gal->comp_sigmar_scale[j] = 1.0;
-            gal->comp_sigmar_scale[j] = pow(gal->comp_sigmar[j],2) / v2a_r_func(gal,w[tid],j);
+            gal->comp_model[j] = gal->comp_sigmar_model[j];
+            gal->comp_sigmar_scale[j] = pow(gal->comp_sigmar[j],2) / surface_density_func(gal,gal->r_cyl[i],gal->theta_cyl[i],1,j);
             gal->z[gal->index[tid]] = save1;
             gal->theta_cyl[gal->index[tid]] = save2;
             gal->r_cyl[gal->index[tid]] = save3;
             gal->x[gal->index[tid]] = save4;
             gal->y[gal->index[tid]] = save5;
+            gal->comp_model[j] = save;
         }
         if(gal->comp_sigmaz_model[j]>0) {
             save1 = gal->z[gal->index[tid]];
@@ -2255,18 +2248,20 @@ int set_galaxy_velocity(galaxy *gal) {
             save3 = gal->r_cyl[gal->index[tid]];
             save4 = gal->x[gal->index[tid]];
             save5 = gal->y[gal->index[tid]];
+            save = gal->comp_model[j];
             gal->z[gal->index[tid]] = 0.;
             gal->theta_cyl[gal->index[tid]] = 0.;
             gal->r_cyl[gal->index[tid]] = gal->comp_sigmaz_radius[j];
             gal->x[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*cos(gal->theta_cyl[gal->index[tid]]);
             gal->y[gal->index[tid]] = gal->r_cyl[gal->index[tid]]*sin(gal->theta_cyl[gal->index[tid]]);
-            gal->comp_sigmaz_scale[j] = 1.0;
-            gal->comp_sigmaz_scale[j] = pow(gal->comp_sigmaz[j],2) / v2a_z_func(gal,w[tid],j);
+            gal->comp_model[j] = gal->comp_sigmaz_model[j];
+            gal->comp_sigmaz_scale[j] = pow(gal->comp_sigmaz[j],2) / surface_density_func(gal,gal->r_cyl[i],gal->theta_cyl[i],1,j);
             gal->z[gal->index[tid]] = save1;
             gal->theta_cyl[gal->index[tid]] = save2;
             gal->r_cyl[gal->index[tid]] = save3;
             gal->x[gal->index[tid]] = save4;
             gal->y[gal->index[tid]] = save5;
+            gal->comp_model[j] = save;
         }
 
         maxvel_x = 0.;
@@ -2280,10 +2275,10 @@ int set_galaxy_velocity(galaxy *gal) {
         nrejected_vz_failed = 0;
 
         if(gal->comp_npart[j]>1 && gal->comp_compute_vel[j]==0) {
-            if(gal->comp_sigmar_model[j]==-2 || gal->comp_sigmar_model[j]==-2) {
-                printf("/////\t\t- Component %2d [Filling mixed moments grid]\n",j+1);
+            if(gal->comp_jeans_dim[j]==3) {
+                printf("/////\t\t- Component %2d [  Filling Jeans 3D grid  ]\n",j+1);
                 fflush(stdout);
-                fill_jeans_mixed_grid(gal,j);
+                fill_jeans_3D_grid(gal,j);
             }
         }
 	
@@ -2295,6 +2290,18 @@ int set_galaxy_velocity(galaxy *gal) {
         // Particle velocities
         if(gal->comp_npart[j]>1 && gal->comp_compute_vel[j]==1) {
 
+            if(gal->comp_theta_sph[j] != 0. || gal->comp_phi_sph[j] != 0.) rotate_all(gal,-gal->comp_theta_sph[j],-gal->comp_phi_sph[j]);
+	    if(j>gal->index_first && (gal->comp_softening[j] != gal->comp_softening[j-1] || gal->comp_theta_sph[j] != 0. || gal->comp_phi_sph[j] != 0.)) {
+    		gal->softening = gal->comp_softening[j];
+	        printf("[   computing potential   ]");
+                printf("[ Level ");
+                if(set_galaxy_potential_all(gal,1) != 0) {
+                    fprintf(stderr,"\n[Error] Unable to set the potential\n");
+                    exit(0);
+                }
+	        printf("]\n");
+                printf("/////\t\t- Component %2d ",j+1);
+	    }
 
 	    if(gal->comp_thermal_eq[j]==1) {
                 // Setting a minimum thermal energy
@@ -2386,10 +2393,10 @@ int set_galaxy_velocity(galaxy *gal) {
 	    if(gal->comp_stream_method[j]==2) gal->comp_stream_frac[j] = gal->comp_stream_scale[j];
             fflush(stdout);
 	    // Fill the mixed moments Jeans grid
-            if(gal->comp_sigmar_model[j]==-2 || gal->comp_sigmar_model[j]==-2) {
+            if(gal->comp_jeans_dim[j]==3) {
                 printf("[    mixed moments grid   ]");
                 fflush(stdout);
-                fill_jeans_mixed_grid(gal,j);
+                fill_jeans_3D_grid(gal,j);
             }
 	    // Initialze maximum streaming velocity storage variable
     	    v_stream_max = 0.;
@@ -2405,7 +2412,7 @@ int set_galaxy_velocity(galaxy *gal) {
                 gal->vel_y[0] = 0.;
                 gal->vel_z[0] = 0.;
             } else {
-#pragma omp parallel for private(v_c, v_r, v_theta, v_z, v2a_r, v2a_z, v2a_theta, v2_theta, va_theta, sigma2_theta, vel_x, vel_y, vel_z, Q) shared(j,gal) reduction(+:nrejected_vr,nrejected_vtheta,nrejected_vz,nrejected_vr_failed,nrejected_vtheta_failed,nrejected_vz_failed)
+#pragma omp parallel for private(v_c, v_r, v_theta, v_z, v2a_r, v2a_z, v2a_theta, v2_theta, va_theta, sigma2_theta, vel_x, vel_y, vel_z, Q, save) shared(j,gal) reduction(+:nrejected_vr,nrejected_vtheta,nrejected_vz,nrejected_vr_failed,nrejected_vtheta_failed,nrejected_vz_failed)
                 for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j]+gal->comp_npart[j]; ++i) {
                     // Get thread ID
 #if USE_THREADS == 1
@@ -2450,7 +2457,7 @@ int set_galaxy_velocity(galaxy *gal) {
 			// Case of a spherical pressure supported disitribution
                         // overrides the thermal energy to get equilibrium
                         if(gal->comp_thermal_eq[j]) {
-                            v2a_r = v2a_1D_func(gal,w[tid],j);
+                            v2a_r = v2a_r_1D_func(gal,w[tid],j);
 			    v_theta = va_theta;
                             gal->u[i] = v2a_r/(gamma_minus1);
                             // Correct for centrifugal force
@@ -2466,88 +2473,160 @@ int set_galaxy_velocity(galaxy *gal) {
                         gal->vel_y[i] = (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
                         gal->vel_z[i] = v_z;
                     } else {
-                        v_c = v_c_func(gal,fabs(gal->r_cyl[i]));
-                        v2a_r = v2a_r_func(gal,w[tid],j);
-                        if(gal->comp_sigmar_model[j]==-1 && gal->comp_sigmaz_model[j]==-1) {
-                            v2a_z = v2a_r;
-                        } else {
-                            v2a_z = v2a_z_func(gal,w[tid],j);
-                        }
-                        // Enforce Q>Q_min
-                        if(gal->comp_Q_lim[j]>0 || gal->comp_Q_fixed[j]>0 || gal->comp_Q_boost[j]>0) {
-                            double v2a_r_new = v2a_r_toomre(gal,fabs(gal->r_cyl[i]),v2a_r,j);
-                            v2a_r = v2a_r_new;
-                        }
-                        v2a_theta = v2a_theta_func(gal,fabs(gal->r_cyl[i]),v2a_r,v_c,j);
-                        // Using epicyclic approximation (Binney & Tremaine 1987)
-                        if(gal->comp_epicycle[j]==1) {
-                            sigma2_theta = sigma2_theta_epicycle_func(gal,fabs(gal->r_cyl[i]),v2a_r);
-                            va_theta = v2a_theta>=sigma2_theta?sqrt(v2a_theta-sigma2_theta):0.;
-                            Q = toomre(gal,fabs(gal->r_cyl[i]),v2a_r,j);
-                        } else {
-                            if(gal->comp_k_stream[j]>0.){
-                                kmax_stream = v2a_theta/(v2a_theta-v2a_r);
-                                k_stream = gal->comp_k_stream[j]>kmax_stream?kmax_stream:gal->comp_k_stream[j];
-                                va_theta = v2a_theta>=v2a_r?k_stream*sqrt(v2a_theta-v2a_r):0.;
+			// ------ Cylindrical coordinates ------
+		        if(gal->comp_jeans_dim[j]!=1) {
+		   	    // Computing circular velocity
+                            v_c = v_c_func(gal,fabs(gal->r_cyl[i]));
+			    // Computing velocity dispersions
+			    switch(gal->comp_jeans_dim[j]) {
+				// Jeans equations with 2 integrals of motion
+			        case 2:
+                                    v2a_r = v2a_r_2D_func(gal,w[tid],j);
+				    v2a_z = v2a_r;
+                                    v2a_theta = v2a_theta_2D_func(gal,fabs(gal->r_cyl[i]),v2a_r,v_c,j);
+				    break;
+				// Jeans equations with 3 integrals of motion
+			        case 3:
+                                    v2a_r = v2a_r_3D_func(gal);
+                                    v2a_z = v2a_z_3D_func(gal);
+                                    v2a_theta = v2a_theta_3D_func(gal);
+				    break;
+				// No Jeans equations
+			        case 0:
+                                    // Dispersion from Isothermal sheet
+                                    if(gal->comp_sigmar_model[j]==0) {
+                                        v2a_r = pi*G*surface_density_func(gal,gal->r_cyl[i],gal->theta_cyl[i],1,j)*gal->comp_scale_length[j]*gal->comp_flatz[j];
+                                    // Dispersion proportional to surface density
+                                    } else if (gal->comp_sigmar_model[j]>0) {
+                                        save = gal->comp_model[j];
+                                        gal->comp_model[j] = gal->comp_sigmar_model[j];
+                                        v2a_r = gal->comp_sigmar_scale[j]*surface_density_func(gal,gal->r_cyl[i],gal->theta_cyl[i],1,j);
+                                        gal->comp_model[j] = save;
+                                    }
+                                    // Dispersion from Isothermal sheet
+                                    if(gal->comp_sigmaz_model[j]==0) {
+                                        v2a_z = pi*G*surface_density_func(gal,gal->r_cyl[i],gal->theta_cyl[i],1,j)*gal->comp_scale_length[j]*gal->comp_flatz[j];
+                                    // Dispersion proportional to surface density
+                                    } else if (gal->comp_sigmar_model[j]>0) {
+                                        save = gal->comp_model[j];
+                                        gal->comp_model[j] = gal->comp_sigmaz_model[j];
+                                        v2a_z = gal->comp_sigmaz_scale[j]*surface_density_func(gal,gal->r_cyl[i],gal->theta_cyl[i],1,j);
+                                        gal->comp_model[j] = save;
+                                    }
+                                    v2a_theta = v2a_theta_2D_func(gal,fabs(gal->r_cyl[i]),v2a_r,v_c,j);
+				    break;
+			    }
+                            // Using epicyclic approximation (Binney & Tremaine 1987)
+                            if(gal->comp_epicycle[j]==1) {
+                                sigma2_theta = sigma2_theta_epicycle_func(gal,fabs(gal->r_cyl[i]),v2a_r);
+                                va_theta = v2a_theta>=sigma2_theta?sqrt(v2a_theta-sigma2_theta):0.;
+                                Q = toomre(gal,fabs(gal->r_cyl[i]),v2a_r,j);
+                            } else {
+                                if(gal->comp_k_stream[j]>0.){
+                                    kmax_stream = v2a_theta/(v2a_theta-v2a_r);
+                                    k_stream = gal->comp_k_stream[j]>kmax_stream?kmax_stream:gal->comp_k_stream[j];
+                                    va_theta = v2a_theta>=v2a_r?k_stream*sqrt(v2a_theta-v2a_r):0.;
+                                }
+                                // Check if the dispersion is a real or complex number
+                                sigma2_theta = (v2a_theta>=pow(va_theta,2.0)) ? (v2a_theta-pow(va_theta,2.0)) : 0.;
+			    }
+                            if(va_theta>v2a_theta) warning1 = 1;
+		    	    if(va_theta>v_stream_max) v_stream_max = va_theta; 
+                            // Enforce Q>Q_min
+                            if(gal->comp_Q_lim[j]>0 || gal->comp_Q_fixed[j]>0 || gal->comp_Q_boost[j]>0) {
+                                double v2a_r_new = v2a_r_toomre(gal,fabs(gal->r_cyl[i]),v2a_r,j);
+                                v2a_r = v2a_r_new;
                             }
-                            // Check if the dispersion is a real or complex number
-                            sigma2_theta = (v2a_theta>=pow(va_theta,2.0)) ? (v2a_theta-pow(va_theta,2.0)) : 0.;
-                        }
-                        if(va_theta>v2a_theta) warning1 = 1;
-		    	if(va_theta>v_stream_max) v_stream_max = va_theta; 
-                        v_r = gsl_ran_gaussian(r[tid],sqrt(v2a_r+pow(0.01*gal->v200,2)));
-                        v_theta = gsl_ran_gaussian(r[tid],sqrt(sigma2_theta+pow(0.01*gal->v200,2)))+va_theta;
-                        v_z = gsl_ran_gaussian(r[tid],sqrt(v2a_z+pow(0.01*gal->v200,2)));
-                        // Escape velocity
-                        // Work with private omp variables
-                        double vmax;
-                        if(gal->comp_vmax[j]>0.) {
-                            vmax = gal->comp_vmax[j]*v_cmax;
-                        } else {
-                            int index1 = (int)(gal->r_sph[i]/interval);
-		            if(index1>=nbin-2) index1 = nbin-2;
-                            int index2 = index1+1;
-		            vmax = fabs(gal->comp_vmax[j])*interpol((index1+0.5)*interval,(index2+0.5)*interval,gal->r_sph[i],vesc[index1],vesc[index2]);
-                        }
 
-                        // Let's ensure that the particle velocity is lower than gal->comp_vmax times the escape velocity
-                        int ct = 0;
-                        while(fabs(v_r) > vmax) {
-                            if(ct >= AllVars.GaussianRejectIter) {
-                                v_r = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
-                                nrejected_vr_failed += 1;
-                                break;
-                            }
-                            v_r = gsl_ran_gaussian(r[tid],sqrt(v2a_r));
-                            if(ct==0) nrejected_vr += 1;
-                            ct++;
-                        }
-                        ct = 0;
-                        while(fabs(v_theta-va_theta) > vmax) {
-                            if(ct >= AllVars.GaussianRejectIter) {
-                                v_theta = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5)+va_theta;
-                                nrejected_vtheta_failed += 1;
-                                break;
-                            }
-                            v_theta = gsl_ran_gaussian(r[tid],sqrt(sigma2_theta))+va_theta;
-                            if(ct==0) nrejected_vtheta += 1;
-                            ct++;
-                        }
-                        ct = 0;
-                        while(fabs(v_z) > vmax) {
-                            if(ct >= AllVars.GaussianRejectIter) {
-                                v_z = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
-                                nrejected_vz_failed += 1;
-                                break;
-                            }
-                            v_z = gsl_ran_gaussian(r[tid],sqrt(v2a_z));
-                            if(ct==0) nrejected_vz += 1;
-                            ct++;
-                        }
+			    // Drawing random velocities
+                            v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_gennormdist_exp[j]);
+                            v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*sigma2_theta),gal->comp_gennormdist_exp[j])+va_theta;
+                            v_z = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_z),gal->comp_gennormdist_exp[j]);
 
-                        vel_x = (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]));
-                        vel_y = (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
-                        vel_z = v_z;
+                            // Escape velocity
+                            // Work with private omp variables
+                            double vmax;
+                            if(gal->comp_vmax[j]>0.) {
+                                vmax = gal->comp_vmax[j]*v_cmax;
+                            } else {
+                                int index1 = (int)(gal->r_sph[i]/interval);
+		                if(index1>=nbin-2) index1 = nbin-2;
+                                int index2 = index1+1;
+		                vmax = fabs(gal->comp_vmax[j])*interpol((index1+0.5)*interval,(index2+0.5)*interval,gal->r_sph[i],vesc[index1],vesc[index2]);
+                            }
+
+                            // Let's ensure that the particle velocity is lower than gal->comp_vmax times the escape velocity
+                            int ct = 0;
+                            while(fabs(v_r) > vmax) {
+                                if(ct >= AllVars.GaussianRejectIter) {
+                                    v_r = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
+                                    nrejected_vr_failed += 1;
+                                    break;
+                                }
+                                v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_gennormdist_exp[j]);
+                                if(ct==0) nrejected_vr += 1;
+                                ct++;
+                            }
+                            ct = 0;
+                            while(fabs(v_theta-va_theta) > vmax) {
+                                if(ct >= AllVars.GaussianRejectIter) {
+                                    v_theta = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5)+va_theta;
+                                    nrejected_vtheta_failed += 1;
+                                    break;
+                                }
+                                v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*sigma2_theta),gal->comp_gennormdist_exp[j])+va_theta;
+                                if(ct==0) nrejected_vtheta += 1;
+                                ct++;
+                            }
+                            ct = 0;
+                            while(fabs(v_z) > vmax) {
+                                if(ct >= AllVars.GaussianRejectIter) {
+                                    v_z = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
+                                    nrejected_vz_failed += 1;
+                                    break;
+                                }
+                                v_z = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_z),gal->comp_gennormdist_exp[j]);
+                                if(ct==0) nrejected_vz += 1;
+                                ct++;
+                            }
+			    // Cylindrical to cartesian coordinates
+                            vel_x = (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]));
+                            vel_y = (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
+                            vel_z = v_z;
+			// ------ Spherical coordinates ------
+			} else {
+			    // Computing radial velocity dispersion
+                            v2a_r = v2a_r_1D_func(gal,w[tid],j);
+			    double beta,drhodr;
+			    // Computing tangential mean squared velocity
+			    switch(gal->comp_jeans_anisotropy_model[j]) {
+			        case 0:
+			            beta = 0.0;
+				    break;
+				case 1:
+				    beta = 1.0;
+				    break;
+				case 2:
+                                    drhodr = deriv_central2(gal,radius,0.01*gal->comp_scale_length[j],density_wrapper_func);
+			            beta = -0.15-0.2*(gal->rho[i]/gal->r_sph[i])*drhodr;
+				    break;
+			    }
+			    v2a_theta = (1.0-beta)*v2a_r;
+			    // Drawing random velocities
+			    // Radial velocity
+                            v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_gennormdist_exp[j]);
+			    // Tangential velocities (sigma2_theta = sigma2_phi)
+                            v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_theta),gal->comp_gennormdist_exp[j]);
+                            v_phi = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_theta),gal->comp_gennormdist_exp[j]);
+			    // Spherical to cartesian coordinates
+			    vel_x = sin(gal->phi_sph[i])*cos(gal->theta_cyl[i])*v_r
+			        -sin(gal->theta_cyl[i])*v_theta
+			        +cos(gal->phi_sph[i])*cos(gal->theta_cyl[i])*v_phi;
+			    vel_y = sin(gal->phi_sph[i])*sin(gal->theta_cyl[i])*v_r
+			        +cos(gal->theta_cyl[i])*v_theta
+			        +cos(gal->phi_sph[i])*sin(gal->theta_cyl[i])*v_phi;
+			    vel_z = cos(gal->phi_sph[i])*v_r-sin(gal->phi_sph[i])*v_phi;
+			}
 
                         if(fabs(vel_x)>maxvel_x) maxvel_x = fabs(vel_x);
                         if(fabs(vel_y)>maxvel_y) maxvel_y = fabs(vel_y);
@@ -2579,8 +2658,7 @@ int set_galaxy_velocity(galaxy *gal) {
                 if(gal->comp_type[j] != 0) printf("[    max vx=%4.2le vy=%4.2le vz=%4.2le  %s    ][ v_st_max = %4.2le %s ]",maxvel_x,maxvel_y,maxvel_z,AllVars.UnitVelocityName,v_stream_max,AllVars.UnitVelocityName);
                 if(gal->comp_epicycle[j]==1) {
 		    printf("\n/////\t\t---------------[  Q_min=%5.2lf  ][  Q_bar=%5.2lf  ]",gal->comp_Q_min[j],gal->comp_Q_bar[j]);
-		    //if(lamda_crit>gal->lambda*gal->comp_angmom_frac[j]/gal->comp_mass_frac[j]) printf()
-		    printf("[    lambda=%4.2le   lambda_crit=%4.2le    ]",gal->lambda*gal->comp_angmom_frac[j]/gal->comp_mass_frac[j],lambda_crit);
+		    if(gal->lambda>0.) printf("[    lambda=%4.2le   lambda_crit=%4.2le    ]",gal->lambda*gal->comp_angmom_frac[j]/gal->comp_mass_frac[j],lambda_crit);
 		}
 		if(gal->comp_thermal_eq[j]==1) printf("[   thermal equilibirum   ]");
                 if(gal->comp_type[j] == 0) printf("[ v_st_max = %4.2le %s ]",v_stream_max,AllVars.UnitVelocityName);
@@ -2594,8 +2672,8 @@ int set_galaxy_velocity(galaxy *gal) {
                         100.*nrejected_vtheta_failed/(double)gal->comp_npart[j],
                         100.*nrejected_vz/(double)gal->comp_npart[j],
                         100.*nrejected_vz_failed/(double)gal->comp_npart[j]);
-		    }
-
+                }
+                if(gal->comp_theta_sph[j] !=0. || gal->comp_phi_sph[j] !=0.) rotate_all(gal,gal->comp_theta_sph[j],gal->comp_phi_sph[j]);
             }
         }
         if(warning1) printf("/////\t\t---------------[         Warning         ][           Streaming velocity > <v2_theta>           ]\n");
@@ -2603,47 +2681,14 @@ int set_galaxy_velocity(galaxy *gal) {
         if(warning2) printf("/////\t\t---------------[         Warning         ][ Gaseous halo unstable -> Lower streaming_fraction%d  ]\n",j+1);
         warning2 = 0;
 
-        // Writing density curve to ascii file
-        if(AllVars.OutputRho==1) {
-            if(gal->comp_npart[j]>0) {
-                gal->selected_comp[0] = j;
-                strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-                sprintf(ext,".rho%d",j+1);
-                write_galaxy_density_curve(gal,2.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,ext),interval);
-            }
-        }
-
-        // Writing Toomre paramter curve to ascii file
-        if(AllVars.OutputToomre==1) {
-            if(gal->comp_npart[j]>0) {
-                gal->selected_comp[0] = j;
-                strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-                sprintf(ext,".toomre%d",j+1);
-                write_galaxy_toomre_curve(gal,1.1*gal->comp_cut[gal->selected_comp[0]],strcat(buffer,ext),interval);
-            }
-        }
-
-        // Writing dispersion curves to ascii file
+        // Writing rz quantities curves to ascii file
         if(AllVars.OutputSigma==1) {
             if(gal->comp_npart[j]>0) {
                 gal->selected_comp[0] = j;
-
                 strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-                sprintf(ext,".sigma%d",j+1);
-                write_galaxy_sigma_1D_curve(gal,min(2.0*gal->comp_cut[gal->selected_comp[0]],maxrad),strcat(buffer,ext),interval);
-
-                strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-                sprintf(ext,".sigma_z%d",j+1);
-                write_galaxy_sigma_z_curve(gal,min(2.0*gal->comp_cut[gal->selected_comp[0]],maxrad),strcat(buffer,ext),interval);
-
-                strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-                sprintf(ext,".sigma_theta%d",j+1);
-                write_galaxy_sigma_theta_curve(gal,min(2.0*gal->comp_cut[gal->selected_comp[0]],maxrad),strcat(buffer,ext),interval);
-
-                strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-                sprintf(ext,".sigma_r%d",j+1);
-                write_galaxy_sigma_r_curve(gal,min(2.0*gal->comp_cut[gal->selected_comp[0]],maxrad),strcat(buffer,ext),interval);
-            }
+                sprintf(ext,".rz%d",j+1);
+                write_galaxy_rz_quantities(gal,min(2.0*gal->comp_cut[gal->selected_comp[0]],gal->maxrad),strcat(buffer,ext),interval);
+	    }
         }
         gal->pseudo[tid] = 0;
     }
@@ -2652,24 +2697,6 @@ int set_galaxy_velocity(galaxy *gal) {
     printf("/////\t\t[   J_tot=%4.2le  J200=%4.2le Msol.%s.%s  ]\n",J_sum*unit_mass/solarmass,gal->J200*unit_mass/solarmass,AllVars.UnitLengthName,AllVars.UnitVelocityName);
     if(warning1) printf("/////\t\t[Warning] Potential derivative unstable -> Increase particule number\n");
 
-    // Writing rotation curve to ascii file
-    if(AllVars.OutputRc==1) {
-        strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-        //printf("/////\tWriting rotation curve \t\t\t[%s.rc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-        write_galaxy_rotation_curve(gal,maxrad,strcat(buffer,".rc"),interval);
-    }
-    // Writing gas rotation curve to ascii file
-    if(AllVars.OutputGasRc==1 && gal->index_gasdisk!=-1) {
-        strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-        //printf("/////\tWriting gas rotation curve \t\t[%s.gasrc]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-        write_galaxy_gas_rotation_curve(gal,maxrad_gas,strcat(buffer,".gasrc"),interval);
-    }
-    // Writing potential curve to ascii file
-    if(AllVars.OutputPot==1) {
-        strcpy(buffer,AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-        //printf("/////\tWriting potential curve \t\t[%s.pot]\n",AllVars.GalaxyFiles[AllVars.CurrentGalaxy]);
-        write_galaxy_potential_curve(gal,maxrad,strcat(buffer,".pot"),interval);
-    }
     // Loop over components
     nt = 0;
     for(k = 0; k<AllVars.MaxCompNumber; k++) {
@@ -2719,9 +2746,9 @@ int set_galaxy_velocity(galaxy *gal) {
         }
     }
     // Loop over components
-    for(k = 0; k<AllVars.MaxCompNumber; k++) {
-        rotate_component(gal,gal->comp_theta_sph[k],gal->comp_phi_sph[k],k);
-    }
+    //for(k = 0; k<AllVars.MaxCompNumber; k++) {
+    //    rotate_component(gal,gal->comp_theta_sph[k],gal->comp_phi_sph[k],k);
+    //}
 
     return 0;
 }
@@ -2895,7 +2922,7 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_sigmaz_radius);
     free(gal->comp_sigmar_scale);
     free(gal->comp_sigmaz_scale);
-    free(gal->comp_f_sigma);
+    free(gal->comp_jeans_f_sigma);
     free(gal->comp_k_stream);
     free(gal->comp_delete);
     free(gal->comp_stream_scale);
@@ -2909,6 +2936,11 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_accept_min);
     free(gal->comp_accept_max);
     free(gal->comp_rcore);
+    free(gal->comp_gennormdist_exp);
+    free(gal->comp_softening);
+    free(gal->comp_symmetry);
+    free(gal->comp_jeans_dim);
+    free(gal->comp_jeans_anisotropy_model);
     // Deallocate the potential grid to be really nice to the memory.
     if(gal->potential_defined == 1) {
         for (n = 0; n < gal->nlevel; n++) {
@@ -2932,14 +2964,12 @@ void trash_galaxy(galaxy *gal, int info) {
         }
         free(gal->midplane_dens);
     }
-    if(gal->jeans_mixed_defined == 1) {
+    if(gal->jeans_3D_defined == 1) {
         for (i = 0; i < gal->ngrid_jeans[1]; i++) {
-            free(gal->vr2_mixed[i]);
             free(gal->vz2_tilted_mixed[i]);
             free(gal->vr2_tilted_mixed[i]);
             free(gal->vtheta2_mixed[i]);
         }
-        free(gal->vr2_mixed);
         free(gal->vr2_tilted_mixed);
         free(gal->vz2_tilted_mixed);
         free(gal->vtheta2_mixed);
@@ -2969,7 +2999,6 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->r_cyl);
     free(gal->theta_cyl);
     free(gal->r_sph);
-    free(gal->theta_sph);
     free(gal->phi_sph);
     free(gal->u);
     free(gal->rho);
@@ -3031,7 +3060,6 @@ void trash_stream(stream *st, int info) {
     free(st->r_cyl);
     free(st->theta_cyl);
     free(st->r_sph);
-    free(st->theta_sph);
     free(st->phi_sph);
     free(st->u);
     free(st->rho);
@@ -3079,9 +3107,8 @@ int rotate_galaxy(galaxy *gal, int index) {
 }
 
 
-// This function intend to perform rotation onto a galaxy, in order to test
-// different combination of ICs for galaxy colision simulations.
-// The orientation angles should be specified in degrees.
+// This functions performs a rotation of all the particles contained in a single component
+// Angles should be specified in degrees
 int rotate_component(galaxy *gal, double alpha, double delta, int component) {
 
     unsigned long int i;
@@ -3113,6 +3140,42 @@ int rotate_component(galaxy *gal, double alpha, double delta, int component) {
     }
     return 0;
 }
+
+
+// This functions performs a rotation of all the particles contained in a galaxy
+// Angles should be specified in degrees
+int rotate_all(galaxy *gal, double alpha, double delta) {
+
+    unsigned long int i;
+    double x_temp, y_temp, z_temp;
+    double vx_temp, vy_temp, vz_temp;
+    // Alpha is the spin angle
+    // Delta is the inclination of the disk compare to the XY plane
+    alpha = alpha*pi/180.;
+    delta = delta*pi/180.;
+    for(i = 0; i<gal->ntot_part_pot; ++i) {
+        //Rotation around Y axis
+        x_temp = cos(delta)*gal->x[i]+sin(delta)*gal->z[i];
+        z_temp = cos(delta)*gal->z[i]-sin(delta)*gal->x[i];
+        vx_temp = cos(delta)*gal->vel_x[i]+sin(delta)*gal->vel_z[i];
+        vz_temp = cos(delta)*gal->vel_z[i]-sin(delta)*gal->vel_x[i];
+        gal->x[i] = x_temp;
+        gal->z[i] = z_temp;
+        gal->vel_x[i] = vx_temp;
+        gal->vel_z[i] = vz_temp;
+        //Rotation around Z axis
+        x_temp = cos(alpha)*gal->x[i]+sin(alpha)*gal->y[i];
+        y_temp = cos(alpha)*gal->y[i]-sin(alpha)*gal->x[i];
+        vx_temp = cos(alpha)*gal->vel_x[i]+sin(alpha)*gal->vel_y[i];
+        vy_temp = cos(alpha)*gal->vel_y[i]-sin(alpha)*gal->vel_x[i];
+        gal->x[i] = x_temp;
+        gal->y[i] = y_temp;
+        gal->vel_x[i] = vx_temp;
+        gal->vel_y[i] = vy_temp;
+    }
+    return 0;
+}
+
 
 // This function intend to perform rotation onto a galaxy, in order to test
 // different combination of ICs for galaxy colision simulations.
