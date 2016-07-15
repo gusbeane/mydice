@@ -447,8 +447,8 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_rcore array\n");
         return -1;
     }
-    if (!(gal->comp_gennormdist_exp = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-        fprintf(stderr,"[Error] Unable to allocate comp_gennormdist_exp array\n");
+    if (!(gal->comp_ggd_beta = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_ggd_beta array\n");
         return -1;
     }
     if (!(gal->comp_softening = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -2539,9 +2539,9 @@ int set_galaxy_velocity(galaxy *gal) {
                             }
 
 			    // Drawing random velocities
-                            v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_gennormdist_exp[j]);
-                            v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*sigma2_theta),gal->comp_gennormdist_exp[j])+va_theta;
-                            v_z = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_z),gal->comp_gennormdist_exp[j]);
+                            v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_ggd_beta[j]);
+                            v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*sigma2_theta),gal->comp_ggd_beta[j])+va_theta;
+                            v_z = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_z),gal->comp_ggd_beta[j]);
 
                             // Escape velocity
                             // Work with private omp variables
@@ -2563,7 +2563,7 @@ int set_galaxy_velocity(galaxy *gal) {
                                     nrejected_vr_failed += 1;
                                     break;
                                 }
-                                v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_gennormdist_exp[j]);
+                                v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_ggd_beta[j]);
                                 if(ct==0) nrejected_vr += 1;
                                 ct++;
                             }
@@ -2574,7 +2574,7 @@ int set_galaxy_velocity(galaxy *gal) {
                                     nrejected_vtheta_failed += 1;
                                     break;
                                 }
-                                v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*sigma2_theta),gal->comp_gennormdist_exp[j])+va_theta;
+                                v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*sigma2_theta),gal->comp_ggd_beta[j])+va_theta;
                                 if(ct==0) nrejected_vtheta += 1;
                                 ct++;
                             }
@@ -2585,7 +2585,7 @@ int set_galaxy_velocity(galaxy *gal) {
                                     nrejected_vz_failed += 1;
                                     break;
                                 }
-                                v_z = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_z),gal->comp_gennormdist_exp[j]);
+                                v_z = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_z),gal->comp_ggd_beta[j]);
                                 if(ct==0) nrejected_vz += 1;
                                 ct++;
                             }
@@ -2614,10 +2614,58 @@ int set_galaxy_velocity(galaxy *gal) {
 			    v2a_theta = (1.0-beta)*v2a_r;
 			    // Drawing random velocities
 			    // Radial velocity
-                            v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_gennormdist_exp[j]);
+                            v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_ggd_beta[j]);
 			    // Tangential velocities (sigma2_theta = sigma2_phi)
-                            v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_theta),gal->comp_gennormdist_exp[j]);
-                            v_phi = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_theta),gal->comp_gennormdist_exp[j]);
+                            v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_theta),gal->comp_ggd_beta[j]);
+                            v_phi = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_theta),gal->comp_ggd_beta[j]);
+
+                            // Escape velocity
+                            // Work with private omp variables
+                            double vmax;
+                            if(gal->comp_vmax[j]>0.) {
+                                vmax = gal->comp_vmax[j]*v_cmax;
+                            } else {
+                                int index1 = (int)(gal->r_sph[i]/interval);
+		                if(index1>=nbin-2) index1 = nbin-2;
+                                int index2 = index1+1;
+		                vmax = fabs(gal->comp_vmax[j])*interpol((index1+0.5)*interval,(index2+0.5)*interval,gal->r_sph[i],vesc[index1],vesc[index2]);
+                            }
+
+                            // Let's ensure that the particle velocity is lower than gal->comp_vmax times the escape velocity
+                            int ct = 0;
+                            while(fabs(v_r) > vmax) {
+                                if(ct >= AllVars.GaussianRejectIter) {
+                                    v_r = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
+                                    nrejected_vr_failed += 1;
+                                    break;
+                                }
+                                v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_ggd_beta[j]);
+                                if(ct==0) nrejected_vr += 1;
+                                ct++;
+                            }
+                            ct = 0;
+                            while(fabs(v_theta) > vmax) {
+                                if(ct >= AllVars.GaussianRejectIter) {
+                                    v_theta = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
+                                    nrejected_vtheta_failed += 1;
+                                    break;
+                                }
+                                v_theta = gsl_ran_exppow(r[tid],sqrt(2.0*v2_theta),gal->comp_ggd_beta[j]);
+                                if(ct==0) nrejected_vtheta += 1;
+                                ct++;
+                            }
+                            ct = 0;
+                            while(fabs(v_phi) > vmax) {
+                                if(ct >= AllVars.GaussianRejectIter) {
+                                    v_phi = 2.0*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
+                                    nrejected_vz_failed += 1;
+                                    break;
+                                }
+                                v_phi = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_theta),gal->comp_ggd_beta[j]);
+                                if(ct==0) nrejected_vz += 1;
+                                ct++;
+                            }
+
 			    // Spherical to cartesian coordinates
 			    vel_x = sin(gal->phi_sph[i])*cos(gal->theta_cyl[i])*v_r
 			        -sin(gal->theta_cyl[i])*v_theta
@@ -2665,13 +2713,23 @@ int set_galaxy_velocity(galaxy *gal) {
                 printf("\n");
         	if(J_sum>1.01*gal->J200) printf("/////\t\t---------------[         Warning         ][               sum(J_component) > J200               ]\n");
                 if(nrejected_vr>1e-3||nrejected_vtheta>1e-3||nrejected_vz>1e-3) {
-		    printf("/////\t\t---------------[         Warning         ][             reject vr=%4.1lf%%/%4.1lf%% vtheta=%4.1lf%%/%4.1lf%% vz=%4.1lf%%/%4.1lf%%             ]\n",
+		    if(gal->comp_jeans_dim[j]==1) {
+		        printf("/////\t\t---------------[         Warning         ][            reject vr=%4.1lf%%/%4.1lf%% vtheta=%4.1lf%%/%4.1lf%% vphi=%4.1lf%%/%4.1lf%%            ]\n",
                         100.*nrejected_vr/(double)gal->comp_npart[j],
                         100.*nrejected_vr_failed/(double)gal->comp_npart[j],
                         100.*nrejected_vtheta/(double)gal->comp_npart[j],
                         100.*nrejected_vtheta_failed/(double)gal->comp_npart[j],
                         100.*nrejected_vz/(double)gal->comp_npart[j],
                         100.*nrejected_vz_failed/(double)gal->comp_npart[j]);
+		    } else {
+		        printf("/////\t\t---------------[         Warning         ][             reject vr=%4.1lf%%/%4.1lf%% vtheta=%4.1lf%%/%4.1lf%% vz=%4.1lf%%/%4.1lf%%             ]\n",
+                        100.*nrejected_vr/(double)gal->comp_npart[j],
+                        100.*nrejected_vr_failed/(double)gal->comp_npart[j],
+                        100.*nrejected_vtheta/(double)gal->comp_npart[j],
+                        100.*nrejected_vtheta_failed/(double)gal->comp_npart[j],
+                        100.*nrejected_vz/(double)gal->comp_npart[j],
+                        100.*nrejected_vz_failed/(double)gal->comp_npart[j]);
+		    }
                 }
                 if(gal->comp_theta_sph[j] !=0. || gal->comp_phi_sph[j] !=0.) rotate_all(gal,gal->comp_theta_sph[j],gal->comp_phi_sph[j]);
             }
@@ -2936,7 +2994,7 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_accept_min);
     free(gal->comp_accept_max);
     free(gal->comp_rcore);
-    free(gal->comp_gennormdist_exp);
+    free(gal->comp_ggd_beta);
     free(gal->comp_softening);
     free(gal->comp_symmetry);
     free(gal->comp_jeans_dim);

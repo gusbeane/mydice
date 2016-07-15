@@ -235,7 +235,7 @@ typedef struct {
     double              *comp_accept_min;
     double              *comp_accept_max;
     double              *comp_rcore;
-    double 		*comp_gennormdist_exp;
+    double 		*comp_ggd_beta;
     double 		*comp_softening;
     int              	*comp_symmetry;
     // Virial quantities

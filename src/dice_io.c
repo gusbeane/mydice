@@ -1286,10 +1286,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-	n = sprintf(temp_tag,"gennormdist_exp%d",j+1);
+	n = sprintf(temp_tag,"ggd_beta%d",j+1);
         strcpy(tag[nt], temp_tag);
-        addr[nt] = &gal->comp_gennormdist_exp[j];
-        gal->comp_gennormdist_exp[j] = 2.0;
+        addr[nt] = &gal->comp_ggd_beta[j];
+        gal->comp_ggd_beta[j] = 2.0;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
