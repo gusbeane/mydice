@@ -28,9 +28,6 @@ dens_gauss_scale        	0.25
 seed			        1246
 # Switch to MCMC ntry algorithm to position particles for a value > 1
 mcmc_ntry		        1
-# Gravitational softening [kpc]
-# Default value is the size of the smallest grid element
-softening		        0.250
 # Number of iterations to reach hydrostatic equilibrium 
 hydro_eq_niter			6
 
@@ -198,17 +195,17 @@ mass_frac6		        0.01
 npart6			        10000000
 npart_pot6              	2000000
 model6			        8
+scale_length6			0.0
 concentration1		    	13.0
 cut6			        50.0
 flatz6			        1.00
 mcmc_step6		        0.50
 vmax6			        10.5
 type6			        0
-streaming_fraction3	    	1.00
+streaming_fraction6	    	1.00
 metal6                  	0.01
 turb_sigma6		        0.0
 turb_scale6		        1.0
-hydro_eq_niter6 	    	0
 # Method to compute the streaming velocity of the halo
 # 1: Bullock 2001 - specific angular momentum is proportional to the cumulative mass profile
 # 2: Springel 1999 - vstream is a fixed fraction of the circular velocity

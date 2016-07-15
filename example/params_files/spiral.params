@@ -31,9 +31,6 @@ dens_gauss_seed		    	1212
 seed			        1246
 # Switch to MCMC ntry algorithm to position particles for a value > 1
 mcmc_ntry		        1
-# Gravitational softening [kpc]
-# Default value is the size of the smallest grid element
-softening		        0.250
 # Number of iterations to reach hydrostatic equilibrium (zero to deactivate)
 hydro_eq_niter			6
 

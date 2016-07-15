@@ -25,9 +25,6 @@ dens_gauss_sigma        	0.35
 dens_gauss_scale        	1.00
 # Seed for the random number generator
 seed			        1246
-# Gravitational softening [kpc]
-# Default value is the size of the smallest grid element
-softening		        0.250
 
 #######################
 # Components parameters
@@ -89,7 +86,7 @@ stream_method1			1
 # Radius at which the density profile should have the exact same
 # value as the NFW profile with the previously defined concentration
 # and with a mass M200*mass_frac [kpc]
-radius_nfw1		        1.0
+radius_nfw1		        -1.0
 
 ###########################
 # Component 2: Gaseous halo
