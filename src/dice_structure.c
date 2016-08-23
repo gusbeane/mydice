@@ -100,10 +100,11 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     n = sqrt(pow(x/hx_cut,2.0)+pow(y/hy_cut,2.0)+pow(z/hz_cut,2.0));
     o = sqrt(pow(x/hx_cut,2.0)+pow(y/hy_cut,2.0));
     r = sqrt(pow(x*flatx,2.0)+pow(y*flaty,2.0));
-    s = sqrt(pow(x/hx_cut_in,2.0)+pow(y/hy_cut_in,2.0));
-    // We consider only positive values
-    //if(m<1e-3) m = 1e-3;
-    //if(l<1e-3) l = 1e-3;
+    if(gal->comp_symmetry[component]==1) {
+        s = sqrt(pow(x/hx_cut_in,2.0)+pow(y/hy_cut_in,2.0));
+    } else {
+        s = sqrt(pow(x/hx_cut_in,2.0)+pow(y/hy_cut_in,2.0)+pow(z/hz_cut_in,2.0));
+    }
 
     // Select a disk model
     switch(model) {
@@ -213,17 +214,13 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
             exit(0);
     }
     sigma1 = gal->comp_sigma_cut[component];
-    sigma2 = max(gal->comp_sigma_cut_in[component],0.1);
+    sigma2 = gal->comp_sigma_cut_in[component];
     smooth_factor1 = 1-0.5*(1+erf((n-1.0)/(sigma1*sqrt(2))));
     smooth_factor2 = 0.5*(1+erf((s-1.0)/(sigma2*sqrt(2))));
 
     if(gal->dens_gauss_sigma>0. && gal->comp_dens_gauss[component]==1 && gal->gaussian_field_defined) {
-        if(radius>gal->comp_cut[component]) {
-            density = 0.0;
-        } else {
-            density *= (galaxy_gaussian_field_func(gal,x,y,z)*gal->dens_gauss_sigma+1.0);
-            if(density<0.) density = 0.0;
-        }
+        density *= (galaxy_gaussian_field_func(gal,x,y,z)*gal->dens_gauss_sigma+1.0);
+        if(density<0.) density = 0.0;
     }
     if(gal->comp_excavate[component]>0 && gal->comp_npart[gal->comp_excavate[component]]>0) {
         double dens_target = density_functions_pool(gal,r,theta,z,1,gal->comp_model[gal->comp_excavate[component]-1],gal->comp_excavate[component]-1);
@@ -410,10 +407,10 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         max_step_z = gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
     }
 
+    i = gal->comp_start_part[component];
     if(gal->comp_npart[component]>1) {
         // Use the Metropolis algorithm to place the disk particles.
         // We start the Monte Carlo Markov Chain with a realistic particle position
-        i = gal->comp_start_part[component];
         step_x = hx;
         step_y = hy;
         step_z = hz;
@@ -431,8 +428,8 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         theta = 2.0*pi*gsl_rng_uniform_pos(r[0]);
         // Single particle always placed at the center
         if(gal->comp_npart[component]==1) {
-            gal->x[i] = 0.;
-            gal->y[i] = 0;
+            gal->x[i] = 0.0;
+            gal->y[i] = 0.0;
         } else {
             gal->x[i] = (1.01*gal->comp_cut_in[component]+0.01*gal->comp_cut[component])*cos(theta);
             gal->y[i] = (1.01*gal->comp_cut_in[component]+0.01*gal->comp_cut[component])*sin(theta);
@@ -673,7 +670,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 		    gal->u[i] = gal->comp_k_poly[component]*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
 		}
                 acceptance += 1.0;
-                // Proposal rejected, the particle keeps the same postion
+            // Proposal rejected, the particle keeps the same postion
             } else {
                 gal->r_cyl[i] = gal->r_cyl[i-1];
                 gal->z[i] = gal->z[i-1];

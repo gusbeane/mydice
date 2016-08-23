@@ -238,6 +238,13 @@ int parse_config_file(char *fname) {
     id[nt++] = STRING;
 
     // Default values for cosmological parameters is Planck15 cosmology
+    strcpy(tag[nt], "Redshift");
+    addr[nt] = &AllVars.redshift;
+    AllVars.redshift = 0.0;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = DOUBLE;
+
     strcpy(tag[nt], "H0");
     addr[nt] = &AllVars.H0;
     AllVars.H0 = 67.74;
@@ -488,13 +495,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = DOUBLE;
-
-    strcpy(tag[nt], "redshift");
-    addr[nt] = &gal->redshift;
-    read[nt] = 0;
-    mandatory[nt] = 1;
-    id[nt++] = DOUBLE;
-
+    
     strcpy(tag[nt], "lambda");
     addr[nt] = &gal->lambda;
     read[nt] = 0;
@@ -709,10 +710,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
         n = sprintf(temp_tag,"flatz%d",j+1);
         strcpy(tag[nt], temp_tag);
+	gal->comp_flatz[j] = 1.0;
         addr[nt] = &gal->comp_flatz[j];
         read[nt] = 0;
-        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
-        else mandatory[nt] = 0;
+        mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
         n = sprintf(temp_tag,"flatx_cut%d",j+1);
@@ -766,10 +767,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
         n = sprintf(temp_tag,"mcmc_step%d",j+1);
         strcpy(tag[nt], temp_tag);
+	gal->comp_mcmc_step[j] = 0.5;
         addr[nt] = &gal->comp_mcmc_step[j];
         read[nt] = 0;
-        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
-        else mandatory[nt] = 0;
+        mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
         n = sprintf(temp_tag,"mcmc_step_slope%d",j+1);
@@ -791,10 +792,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
         n = sprintf(temp_tag,"vmax%d",j+1);
         strcpy(tag[nt], temp_tag);
+        gal->comp_vmax[j] = 10.;
         addr[nt] = &gal->comp_vmax[j];
         read[nt] = 0;
-        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
-        else mandatory[nt] = 0;
+        mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
         n = sprintf(temp_tag,"npart%d",j+1);
@@ -831,11 +832,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
         n = sprintf(temp_tag,"streaming_fraction%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_stream_frac[j] = 0.;
+        gal->comp_stream_frac[j] = 1.0;
         addr[nt] = &gal->comp_stream_frac[j];
         read[nt] = 0;
-        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
-        else mandatory[nt] = 0;
+        mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
         n = sprintf(temp_tag,"theta_sph%d",j+1);
@@ -1241,7 +1241,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         n = sprintf(temp_tag,"stream_method%d",j+1);
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_stream_method[j];
-        gal->comp_stream_method[j] = 0;
+        gal->comp_stream_method[j] = 1;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
@@ -1710,16 +1710,16 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
     header1.npartTotal[1] = gal->num_part[1];
     header1.npartTotal[2] = gal->num_part[2];
     header1.npartTotal[3] = gal->num_part[3];
-    header1.time = 0.0;
-    header1.redshift = 0.0;
+    header1.time = 1.0/(1.0+AllVars.redshift);
+    header1.redshift = AllVars.redshift;
     header1.flag_sfr = 0.0;
     header1.flag_feedback = 0.0;
     header1.flag_cooling = 0.0;
     header1.num_files = 1;
     header1.BoxSize = 0.0;
-    header1.Omega0 = 0.0;
-    header1.OmegaLambda = 0.0;
-    header1.HubbleParam = 1.0;
+    header1.Omega0 = AllVars.Omega_m;
+    header1.OmegaLambda = AllVars.Omega_l;
+    header1.HubbleParam = AllVars.h;
 
     if (!(P = malloc(gal->ntot_part*sizeof(struct particle_data)))) {
         fprintf(stderr,"Unable to create particle data structure in memory.");
@@ -1910,15 +1910,15 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
     header1.npartTotal[2] = gal->num_part[2];
     header1.npartTotal[3] = gal->num_part[3];
     header1.time = 0.0;
-    header1.redshift = 0.0;
+    header1.redshift = AllVars.redshift;
     header1.flag_sfr = 0.0;
     header1.flag_feedback = 0.0;
     header1.flag_cooling = 0.0;
     header1.num_files = 1;
     header1.BoxSize = 0.0;
-    header1.Omega0 = 0.0;
-    header1.OmegaLambda = 0.0;
-    header1.HubbleParam = 1.0;
+    header1.Omega0 = AllVars.Omega_m;
+    header1.OmegaLambda = AllVars.Omega_l;
+    header1.HubbleParam = AllVars.h;
 
     if (!(P = malloc(gal->ntot_part*sizeof(struct particle_data)))) {
         fprintf(stderr,"Unable to create particle data structure in memory.");

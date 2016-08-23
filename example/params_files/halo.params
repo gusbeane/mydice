@@ -3,8 +3,6 @@
 ###################
 # Virial velocity of the galaxy [km/s]
 v200 			        200.0
-# Redshit of the galaxy
-redshift		        0.05
 # Halo spin parameter
 lambda		 	        0.04
 # Refinement level of the PM potential grid 

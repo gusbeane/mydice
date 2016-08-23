@@ -110,8 +110,6 @@ double cpu_time;
 // as objects and, hopefully, make the code extremely clean. It is essentially a
 // a collection of arrays and constants.
 typedef struct {
-    // Redshift of the galaxy
-    double redshift;
     // Spin parameter of the galaxy
     double lambda;
     // Baryonic mass fraction of the disk
@@ -520,6 +518,7 @@ struct GlobalVars {
     double Kepler_Rperi[MAX_GAL];
     double Kepler_OrbitPlaneTheta[MAX_GAL];
     double Kepler_OrbitPlanePhi[MAX_GAL];
+    double redshift;
     double H0;
     double H;
     double h;

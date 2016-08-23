@@ -2,7 +2,7 @@
 # Global parameters
 ###################
 # Virial velocity of the galaxy [km/s]
-v200 				100.0
+v200 				200.0
 # Virial mass of the galaxy [1e10 Msol]
 # Overrides the v200 parameter
 m200				0.
@@ -96,8 +96,6 @@ mcmc_step1		        0.50
 vmax1			        5.0
 # Particles type (GADGET format -- 0=Gas,1=Halo,2=Disk,3=Bulge,4=Stars)
 type1			        1
-# Streaming fraction of the component 1
-streaming_fraction1	    	0.00
 # Radius at which the density profile should have the exact same
 # value as the NFW profile with the previously defined concentration
 # and with a mass M200*mass_frac [kpc]
@@ -107,7 +105,7 @@ jeans_mass_cut1		    	1
 # Compute component velocity (debug option)
 compute_vel1		    	1
 # Number of integral of motion for the Jeans equations
-# 0 = Do not use Jeans equation for sigma_r and sigma_z
+# 0 = Do not use Jeans equation for sigma_r and sigma_z (model specidifed by sigmar_model and sigmaz_model)
 # 1 = Spherically symmetric Jeans equation
 # 2 = Jeans equations with 2 integrals of motion
 # 3 = Jeans equations with 3 integrals of motion (solved on a 2D grid in the r-z plane)
@@ -118,6 +116,8 @@ jeans_dim1			2
 # 2 = Springel 1999 - Streaming velocity profile following is a fixed fraction of the rotation curve 
 # 3 =               - Solid Body rotation
 stream_method1			1
+# Streaming fraction of the component 1 (only for steam_method=4)
+streaming_fraction1	    	0.00
 # Alpha coefficient for the generalized normal distribution [Gaussian=2.0]
 # for the random generation of velocities
 ggd_beta1                       2.0
@@ -126,13 +126,13 @@ ggd_beta1                       2.0
 # Component 2: Thin stellar disk
 ################################
 mass_frac2		        0.02
-npart2			        250000
-npart_pot2              	500000
+npart2			        500000
+npart_pot2              	1000000
 model2			        2
 # If the value is zero and the particle type is not 1 the size is determined using the spin conservation
 # (Fitting formula from Mo, Mao & White 1998)
 scale_length2		    	0.
-cut2			        4.5
+cut2			        9.0
 flatz2			        0.15
 mcmc_step2		        0.3
 vmax2			        2.0
@@ -160,14 +160,15 @@ jeans_mass_cut2		    	1
 compute_vel2		    	1
 
 ###########################
-# Component 3: Gaseous disk
+# Component 3: Outer Gaseous disk
 ###########################
 mass_frac3		        0.01
-npart3			        1500000
-npart_pot3              	3000000
+npart3			        3000000
+npart_pot3              	6000000
 model3			        1
 scale_length3		    	0.
-cut3			        4.5
+cut3			        9.0
+cut_in3				1.0
 flatz3			        0.25
 mcmc_step3		        0.15
 vmax3			        10.5
@@ -177,7 +178,7 @@ metal3                  	0.01
 # Metallicity follows density gradient
 metal_gradient3		    	1
 # Temperature of the gas particles [K]
-t_init3                 	1e5
+t_init3                 	1e4
 # Turbulent velocity dispersion [km/s]
 turb_sigma3		        0.0
 # Turbulence smoothing scale [kpc]
@@ -193,41 +194,43 @@ compute_vel3		    	1
 # Polytropic index for the gas (1 = isothermal)
 gamma_poly3			1.0
 
-############################
-# Component 4: Stellar bulge
-############################
-mass_frac4		        0.005
-npart4			        25000
-npart_pot4              	50000
-model4			        10
-scale_length4		    	2.0
-cut4			        4.0
-flatz4			        0.80
-mcmc_step4		        0.3
-vmax4			        4.0
-type4			        3
-streaming_fraction4	    	0.5
-min_age4                	50.
-metal4                  	0.001
-# Structural parameter specific to the Einasto density profile
-alpha5			        0.80
-compute_vel4		    	1
 
-###############################
-# Component 5: Stellar spheroid
-###############################
-mass_frac5		        0.010
-npart5			        250000
-npart_pot5              	500000
-model5			        4
-scale_length5		    	2.0
-cut5			        6.0
-flatz5			        0.40
-mcmc_step5		        0.3
-vmax5			        2.0
-type5			        2
-streaming_fraction5	    	1.00
-min_age5                	50.
-metal5                  	0.001
-Q_lim5			        1.5
-compute_vel5		    	1
+###########################
+# Component 4: Inner gaseous disk
+###########################
+mass_frac4		        0.01
+npart4			        3000000
+npart_pot4              	6000000
+model4			        1
+scale_length4		    	0.
+cut4			        1.0
+flatz4			        0.25
+phi_sph4			120.
+theta_sph4			45.
+mcmc_step4		        0.15
+vmax4			        10.5
+type4			        0
+streaming_fraction4	    	1.00
+metal4                  	0.01
+# Metallicity follows density gradient
+metal_gradient4		    	1
+# Temperature of the gas particles [K]
+t_init4                 	1e4
+# Turbulent velocity dispersion [km/s]
+turb_sigma4		        0.0
+# Turbulence smoothing scale [kpc]
+turb_scale4		        1.0
+# Seed for the turbulent gaussian field
+turb_seed4		        1234
+# Compute hydrostatic equilibrium
+hydro_eq4			1
+# Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm
+# within the hydro equilibrium algorithm
+mcmc_step_hydro4	    	0.3
+compute_vel4		    	1
+# Polytropic index for the gas (1 = isothermal)
+gamma_poly4			1.0
+
+
+
+

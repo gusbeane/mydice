@@ -5,9 +5,7 @@
 v200 			        200.0
 # Virial mass of the galaxy [1e10 Msol]
 # Overrides the v200 parameter
-#m200				100.
-# Redshit of the galaxy
-redshift		        0.05
+m200				0.
 # Halo spin parameter
 lambda		 	        0.04
 # Refinement level of the potential grid 

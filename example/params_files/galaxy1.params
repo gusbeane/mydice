@@ -6,8 +6,6 @@ v200 				200.0
 # Virial mass of the galaxy [1e10 Msol]
 # Overrides the v200 parameter
 m200				0.
-# Redshit of the galaxy
-redshift		        0.05
 # Halo spin parameter
 lambda		 	        0.04
 # Refinement level of the potential grid 
@@ -98,8 +96,6 @@ mcmc_step1		        0.50
 vmax1			        5.0
 # Particles type (GADGET format -- 0=Gas,1=Halo,2=Disk,3=Bulge,4=Stars)
 type1			        1
-# Streaming fraction of the component 1
-streaming_fraction1	    	0.00
 # Radius at which the density profile should have the exact same
 # value as the NFW profile with the previously defined concentration
 # and with a mass M200*mass_frac [kpc]
@@ -109,7 +105,7 @@ jeans_mass_cut1		    	1
 # Compute component velocity (debug option)
 compute_vel1		    	1
 # Number of integral of motion for the Jeans equations
-# 0 = Do not use Jeans equation for sigma_r and sigma_z
+# 0 = Do not use Jeans equation for sigma_r and sigma_z (model specidifed by sigmar_model and sigmaz_model)
 # 1 = Spherically symmetric Jeans equation
 # 2 = Jeans equations with 2 integrals of motion
 # 3 = Jeans equations with 3 integrals of motion (solved on a 2D grid in the r-z plane)
@@ -120,6 +116,8 @@ jeans_dim1			2
 # 2 = Springel 1999 - Streaming velocity profile following is a fixed fraction of the rotation curve 
 # 3 =               - Solid Body rotation
 stream_method1			1
+# Streaming fraction of the component 1 (only for steam_method=4)
+streaming_fraction1	    	0.00
 # Alpha coefficient for the generalized normal distribution [Gaussian=2.0]
 # for the random generation of velocities
 ggd_beta1                       2.0

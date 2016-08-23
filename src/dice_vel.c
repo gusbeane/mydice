@@ -631,14 +631,17 @@ double v2_theta_gas_func(galaxy *gal, double radius, double z, int component) {
     y = radius*sin(gal->theta_cyl[gal->index[tid]]);
     gal->selected_comp[tid] = component;
     // Set the derivative step
-    h = get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
+    if(gal->pseudo[tid]==1) {
+        h = get_h_value(gal,x,y,gal->z[gal->index[tid]],0,0);
+    } else {
+        h = 0.01*gal->comp_scale_length[component];
+    }
     // Save z coordinate
     save = gal->z[gal->index[tid]];
     // Integrations done in the z=0 plane
     gal->z[gal->index[tid]] = 0.;
     density_derivative = deriv_central2(gal,radius,h,density_wrapper_func);
     v_c2 = pow(v_c_func(gal,radius),2.0);
-    //pressure_force = radius*kpc*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/gas_density_wrapper_func(radius,gal);
     pressure_force = radius*(pow(gal->comp_cs_init[component],2.0)*density_derivative)/density_wrapper_func(radius,gal);
     v2_theta_gas = v_c2 + pressure_force;
     if(v2_theta_gas<0) v2_theta_gas = 0.;
