@@ -2,9 +2,14 @@ This folder contains a set of input example files
 To run DICE, and to start generating ICs, just type one of these line:
 
 dice dice_iso.config 		# Isolated disk
-dice dice_iso_streams.config	# Isolated disk with 2 streams
+dice dice_iso_gas_halo.config   # Isolated disk with a gaseous halo
+dice dice_iso_streams.config    # Isolated disk with 2 idealised free falling streams
 dice dice_merger.config		# Merging pair
 dice dice_halo.config		# Cooling halo
+dice dice_spiral.config		# Spiral galaxy
+dice dice_sattelites.config	# Central galaxy with 4 sattelites orbitin on parabolic orbtis
+dice dice_star_cloud.config	# Single star in a gas cloud
+dice dice_protopl.config	# Protoplanetary disk with a central 10 Msol star
 
 Warning: This example requires at least 8Gb of memory, and even more on OSX systems.
 Lower the level_grid parameter in order to use less memory

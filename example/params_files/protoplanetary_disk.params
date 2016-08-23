@@ -1,0 +1,56 @@
+# A protoplanetary disk with a ~10 Msol central star
+v200 			    0.0
+m200                        1.
+lambda		 	    0.035
+level_coarse		    7
+boxsize1                    25
+boxsize2                    12.5
+boxsize3                    6.125
+boxsize4                    3.0
+boxsize5                    1.5
+boxsize6                    0.75
+boxsize7                    0.35
+level_grid_dens		    8
+level_grid_turb		    8
+level_grid_dens_gauss	    8
+dens_gauss_sigma            0.0
+dens_gauss_scale            0.0
+dens_gauss_seed 	    12123434
+seed			    1234567
+mcmc_ntry		    1
+hydro_eq_niter		    3
+
+# Gas disk
+mass_frac1		    0.005
+npart1			    12000000
+model1			    1
+scale_length1		    1.0
+cut1			    10.0
+cut_in1			    1.0
+sigma_cut1		    0.005
+sigma_cut_in1		    0.1
+flatx1			    1.0
+flaty1			    1.0
+flatz1			    0.05
+mcmc_step1		    0.5
+type1			    0
+hydro_eq1                   0
+metal1                      1.0
+metal_gradient1		    1
+streaming_fraction1	    1.
+stream_method1		    4
+t_min1			    100.
+t_init1			    1e2
+compute_vel1 		    1
+softening1		    0.01
+
+mass_frac2		    0.995
+npart2			    1
+model2			    1
+scale_length2	            1.0
+cut2	 		    1.0
+type2			    2
+metal2			    1.0
+min_age2		    0.5
+
+

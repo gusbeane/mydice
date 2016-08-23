@@ -1,0 +1,53 @@
+# A single star embedded into a gaseous cloud
+v200 			    0.0
+m200                        100.
+lambda		 	    0.035
+level_coarse		    7
+boxsize1                    40
+level_grid_dens		    7
+level_grid_turb		    8
+level_grid_dens_gauss	    8
+dens_gauss_sigma            100.0
+dens_gauss_scale            0.5
+dens_gauss_seed 	    12123434
+seed			    1234567
+mcmc_ntry		    20
+
+# Gas Halo
+mass_frac1		    0.9
+npart1			    6000000
+npart_pot1                  4000000
+model1			    15
+scale_length1		    0.05
+concentration1		    0.
+cut1			    9.0
+sigma_cut1		    0.05
+cut_in1		            1.0
+flatx1			    1.0
+flaty1			    1.0
+flatz1			    1.0
+mcmc_step1		    9.0
+vmax1			    100.0
+type1			    0
+jeans_mass_cut1		    0
+thermal_eq1                 0
+metal1                      1.0
+metal_gradient1		    1
+streaming_fraction1	    0.00
+stream_method1		    4
+t_min1			    100.
+t_init1			    1e4
+compute_vel1 		    1
+turb_sigma1		    0.0
+turb_scale1		    0.01
+dens_gauss1		    1
+
+mass_frac2		    0.1
+npart2			    1
+model2			    1
+scale_length2	            1.0
+cut2	 		    1.0
+type2			    2
+metal2			    1.0
+
+
