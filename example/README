@@ -7,6 +7,7 @@ dice dice_iso_streams.config    # Isolated disk with 2 idealised free falling st
 dice dice_merger.config		# Merging pair
 dice dice_halo.config		# Cooling halo
 dice dice_spiral.config		# Spiral galaxy
+dice dice_counter_rot.config    # Isolated disk with a counter rotating inner gas disk
 dice dice_sattelites.config	# Central galaxy with 4 sattelites orbitin on parabolic orbtis
 dice dice_star_cloud.config	# Single star in a gas cloud
 dice dice_protopl.config	# Protoplanetary disk with a central 10 Msol star
