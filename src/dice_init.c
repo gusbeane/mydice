@@ -40,6 +40,7 @@
 
 #include "dice.h"
 
+
 // Allocate component arrays.
 int allocate_component_arrays(galaxy *gal) {
     int i;
