@@ -789,7 +789,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-
         n = sprintf(temp_tag,"mcmc_step_hydro%d",j+1);
         gal->comp_mcmc_step_hydro[j] = 1.0;
         strcpy(tag[nt], temp_tag);

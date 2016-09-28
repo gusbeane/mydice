@@ -566,7 +566,7 @@ void trash_stream(stream *, int);
 int add_galaxy_to_system(galaxy *, galaxy *);
 int rotate_galaxy(galaxy *, int);
 int rotate_component(galaxy *, double, double, int);
-int rotate_all(galaxy *, double, double);
+int rotate_all(galaxy *, double, double, int);
 int set_galaxy_trajectory(galaxy *, int);
 int copy_galaxy(galaxy *, galaxy *, int);
 void set_orbit_keplerian(int, int, double, double, double, double, double, int);

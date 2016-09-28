@@ -38,7 +38,6 @@
   /
   */
 
-// Include the DICE header
 #include "dice.h"
 
 // Allocate component arrays.
@@ -2087,7 +2086,7 @@ int set_galaxy_coords(galaxy *gal) {
             for(i = 0; i<AllVars.MaxCompNumber; i++) {
                 if((gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)&(gal->comp_hydro_eq[i]==1)) {
 		    // put the component in the xy plane
-                    rotate_all(gal,-gal->comp_theta_sph[i],-gal->comp_phi_sph[i]);
+                    if(gal->comp_theta_sph[i]!=0. || gal->comp_phi_sph[i]!=0.) rotate_all(gal,-gal->comp_theta_sph[i],-gal->comp_phi_sph[i],1);
 		    // Only apply the density cut for the last iteration
 	    	    if(j<gal->hydro_eq_niter-1 && gal->comp_spherical_hydro_eq[i]==0) {
 		        cut_dens = gal->comp_cut_dens[i];
@@ -2113,7 +2112,7 @@ int set_galaxy_coords(galaxy *gal) {
 		        gal->comp_cut_dens[i] = cut_dens;
 		    }
 		    // Restore original orientation
-                    rotate_all(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i]);
+                    if(gal->comp_theta_sph[i]!=0. || gal->comp_phi_sph[i]!=0.) rotate_all(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i],2);
                 }
             }
         }
@@ -2306,7 +2305,7 @@ int set_galaxy_velocity(galaxy *gal) {
         // Particle velocities
         if(gal->comp_npart[j]>1 && gal->comp_compute_vel[j]==1) {
 
-            if(gal->comp_theta_sph[j] != 0. || gal->comp_phi_sph[j] != 0.) rotate_all(gal,-gal->comp_theta_sph[j],-gal->comp_phi_sph[j]);
+            if(gal->comp_theta_sph[j]!=0. || gal->comp_phi_sph[j]!=0.) rotate_all(gal,-gal->comp_theta_sph[j],-gal->comp_phi_sph[j],1);
 	    if(j>gal->index_first && (gal->comp_softening[j] != gal->comp_softening[j-1] || gal->comp_theta_sph[j] != 0. || gal->comp_phi_sph[j] != 0.)) {
     		gal->softening = gal->comp_softening[j];
 	        printf("[   computing potential   ]");
@@ -2705,7 +2704,7 @@ int set_galaxy_velocity(galaxy *gal) {
                         100.*nrejected_failed/(double)gal->comp_npart[j]);
 		    }
                 }
-                if(gal->comp_theta_sph[j] !=0. || gal->comp_phi_sph[j] !=0.) rotate_all(gal,gal->comp_theta_sph[j],gal->comp_phi_sph[j]);
+		if(gal->comp_theta_sph[j]!=0. || gal->comp_phi_sph[j]!=0.) rotate_all(gal,gal->comp_theta_sph[j],gal->comp_phi_sph[j],2);
             }
         }
         if(warning1) printf("/////\t\t---------------[         Warning         ][           Streaming velocity > <v2_theta>           ]\n");
@@ -3177,34 +3176,62 @@ int rotate_component(galaxy *gal, double alpha, double delta, int component) {
 
 // This functions performs a rotation of all the particles contained in a galaxy
 // Angles should be specified in degrees
-int rotate_all(galaxy *gal, double alpha, double delta) {
+int rotate_all(galaxy *gal, double alpha, double delta, int order) {
 
     unsigned long int i;
     double x_temp, y_temp, z_temp;
     double vx_temp, vy_temp, vz_temp;
+
     // Alpha is the spin angle
     // Delta is the inclination of the disk compare to the XY plane
     alpha = alpha*pi/180.;
     delta = delta*pi/180.;
-    for(i = 0; i<gal->ntot_part_pot; ++i) {
-        //Rotation around Y axis
-        x_temp = cos(delta)*gal->x[i]+sin(delta)*gal->z[i];
-        z_temp = cos(delta)*gal->z[i]-sin(delta)*gal->x[i];
-        vx_temp = cos(delta)*gal->vel_x[i]+sin(delta)*gal->vel_z[i];
-        vz_temp = cos(delta)*gal->vel_z[i]-sin(delta)*gal->vel_x[i];
-        gal->x[i] = x_temp;
-        gal->z[i] = z_temp;
-        gal->vel_x[i] = vx_temp;
-        gal->vel_z[i] = vz_temp;
-        //Rotation around Z axis
-        x_temp = cos(alpha)*gal->x[i]+sin(alpha)*gal->y[i];
-        y_temp = cos(alpha)*gal->y[i]-sin(alpha)*gal->x[i];
-        vx_temp = cos(alpha)*gal->vel_x[i]+sin(alpha)*gal->vel_y[i];
-        vy_temp = cos(alpha)*gal->vel_y[i]-sin(alpha)*gal->vel_x[i];
-        gal->x[i] = x_temp;
-        gal->y[i] = y_temp;
-        gal->vel_x[i] = vx_temp;
-        gal->vel_y[i] = vy_temp;
+    switch(order) {
+        case 1:
+            for(i = 0; i<gal->ntot_part_pot; ++i) {
+    	        //Rotation around Y axis
+                x_temp = cos(delta)*gal->x[i]+sin(delta)*gal->z[i];
+                z_temp = cos(delta)*gal->z[i]-sin(delta)*gal->x[i];
+                vx_temp = cos(delta)*gal->vel_x[i]+sin(delta)*gal->vel_z[i];
+                vz_temp = cos(delta)*gal->vel_z[i]-sin(delta)*gal->vel_x[i];
+                gal->x[i] = x_temp;
+                gal->z[i] = z_temp;
+                gal->vel_x[i] = vx_temp;
+                gal->vel_z[i] = vz_temp;
+                //Rotation around Z axis
+                x_temp = cos(alpha)*gal->x[i]+sin(alpha)*gal->y[i];
+                y_temp = cos(alpha)*gal->y[i]-sin(alpha)*gal->x[i];
+                vx_temp = cos(alpha)*gal->vel_x[i]+sin(alpha)*gal->vel_y[i];
+                vy_temp = cos(alpha)*gal->vel_y[i]-sin(alpha)*gal->vel_x[i];
+                gal->x[i] = x_temp;
+                gal->y[i] = y_temp;
+                gal->vel_x[i] = vx_temp;
+                gal->vel_y[i] = vy_temp;
+    	    }
+	    break;
+        case 2:
+            for(i = 0; i<gal->ntot_part_pot; ++i) {
+                //Rotation around Z axis
+                x_temp = cos(alpha)*gal->x[i]+sin(alpha)*gal->y[i];
+                y_temp = cos(alpha)*gal->y[i]-sin(alpha)*gal->x[i];
+                vx_temp = cos(alpha)*gal->vel_x[i]+sin(alpha)*gal->vel_y[i];
+                vy_temp = cos(alpha)*gal->vel_y[i]-sin(alpha)*gal->vel_x[i];
+                gal->x[i] = x_temp;
+                gal->y[i] = y_temp;
+                gal->vel_x[i] = vx_temp;
+                gal->vel_y[i] = vy_temp;
+    	        //Rotation around Y axis
+                x_temp = cos(delta)*gal->x[i]+sin(delta)*gal->z[i];
+                z_temp = cos(delta)*gal->z[i]-sin(delta)*gal->x[i];
+                vx_temp = cos(delta)*gal->vel_x[i]+sin(delta)*gal->vel_z[i];
+                vz_temp = cos(delta)*gal->vel_z[i]-sin(delta)*gal->vel_x[i];
+                gal->x[i] = x_temp;
+                gal->z[i] = z_temp;
+                gal->vel_x[i] = vx_temp;
+                gal->vel_z[i] = vz_temp;
+            }
+	    break;
+	
     }
     return 0;
 }
@@ -3402,7 +3429,7 @@ int add_galaxy_to_system(galaxy *gal_1, galaxy *gal_2) {
         if(gal_1->comp_npart[k]>0) {
             for (i = gal_1->comp_start_part[k]; i < gal_1->comp_start_part[k]+gal_1->comp_npart[k]; ++i) {
                 gal_2->mass[a] = gal_1->mass[i];
-                gal_2->id[a] = a;
+                gal_2->id[a] = a+gal_2->ntot_part;
                 gal_2->x[a] = gal_1->x[i];
                 gal_2->y[a] = gal_1->y[i];
                 gal_2->z[a] = gal_1->z[i];
