@@ -282,7 +282,7 @@ double density_functions_stream_pool(stream *st, double radius, double theta, do
 void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model) {
     unsigned long int i,j,start_part,npart;
     int k, selected, tid;
-    double prob, *radius;
+    double prob, *radius, k_poly, d, rc;
     double theta, phi, randval, smooth_factor;
     double step_r, step_x, step_y, step_z, step_r_sph, hx, hy, hz;
     double new_step_x, new_step_y, new_step_z, new_step_r, new_step_r_sph, min_step_z, max_step_z;
@@ -398,6 +398,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         exit(0);
     }
 
+    rc = gal->comp_rc_entropy[component];
     hx = gal->comp_mcmc_step[component]*gal->comp_scale_length[component]*gal->comp_flatx_cut[component];
     hy = gal->comp_mcmc_step[component]*gal->comp_scale_length[component]*gal->comp_flaty_cut[component];
     hz = gal->comp_mcmc_step[component]*gal->comp_scale_length[component]*gal->comp_flatz_cut[component];
@@ -667,7 +668,9 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 gal->z[i] = prop_z[selected];
                 gal->rho[i] = pi_y[selected]/dv_y[selected];
 		if(gal->comp_type[component]==0) {
-		    gal->u[i] = gal->comp_k_poly[component]*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
+		    d = gal->comp_spherical_hydro_eq[component]?sqrt(pow(gal->r_cyl[i],2)+pow(gal->z[i],2)):gal->z[i];
+		    k_poly = d>rc?gal->comp_k_poly[component]*pow(d/rc,gal->comp_alpha_entropy[component]):gal->comp_k_poly[component];
+		    gal->u[i] = k_poly*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
 		}
                 acceptance += 1.0;
             // Proposal rejected, the particle keeps the same postion
@@ -688,7 +691,9 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 gal->rho[i] = pi_x[gal->mcmc_ntry-1]/dv_x[gal->mcmc_ntry-1];
 		// Set gas temperature
 		if(gal->comp_type[component]==0) {
-		    gal->u[i] = gal->comp_k_poly[component]*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
+		    d = gal->comp_spherical_hydro_eq[component]?gal->r_sph[i]:gal->z[i];
+		    k_poly = d>rc?gal->comp_k_poly[component]*pow(d/rc,gal->comp_alpha_entropy[component]):gal->comp_k_poly[component];
+		    gal->u[i] = k_poly*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
 		    Tpart = gal->u[i]*gamma_minus1*protonmass*mu_mol/boltzmann*unit_energy/unit_mass;
 		    if(Tpart>Tmax) Tmax = Tpart;
 		}
@@ -1162,8 +1167,9 @@ static double d_cumulative_mass_func_stream(double r, void *params) {
 double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, int cut, int density_model, int component, int spherical) {
 
     int tid;
-    double density, delta_pot, rho_0, save1, save2, rsph, x ,y, cs2, gamma_poly, base;
+    double density, delta_phi, delta_phi_rc, delta_phi_core, rho_0, rho_c, save1, save2, rsph, x ,y;
     double sigma1, sigma2, smooth_factor1, smooth_factor2, smooth_factor3, hx, hy, hz, n, m;
+    double k0, gamma0, rc, alpha, d;
 
 #if USE_THREADS == 1
     tid = omp_get_thread_num();
@@ -1171,9 +1177,13 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
     tid = 0;
 #endif
 
-    hx = gal->comp_cut[component]*gal->comp_flatx_cut[component];
-    hy = gal->comp_cut[component]*gal->comp_flaty_cut[component];
-    hz = gal->comp_cut[component]*gal->comp_flatz_cut[component];
+    hx = gal->comp_cut_hydro_eq[component]*gal->comp_flatx_cut[component];
+    hy = gal->comp_cut_hydro_eq[component]*gal->comp_flaty_cut[component];
+    hz = gal->comp_cut_hydro_eq[component]*gal->comp_flatz_cut[component];
+    k0 = gal->comp_k_poly[component];
+    gamma0 = gal->comp_gamma_poly[component];
+    rc = gal->comp_rc_entropy[component];
+    alpha = gal->comp_alpha_entropy[component];
     if(spherical) {
         rsph = sqrt(r*r+z*z);
         x = r*cos(theta);
@@ -1187,7 +1197,11 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
 	} else {
             gal->phi_sph[gal->index[tid]] = 0.;
 	}
-        delta_pot = galaxyrsph_potential_wrapper_func(rsph,gal)-galaxyrsph_potential_wrapper_func(0.,gal);
+        delta_phi = galaxyrsph_potential_wrapper_func(rsph,gal)-galaxyrsph_potential_wrapper_func(0.,gal);
+	if(alpha>0.) {
+            delta_phi_rc = galaxyrsph_potential_wrapper_func(rsph,gal)-galaxyrsph_potential_wrapper_func(rc,gal);
+            delta_phi_core = galaxyrsph_potential_wrapper_func(rc,gal)-galaxyrsph_potential_wrapper_func(0.,gal);
+	}
         // Central density
 	rho_0 = gal->comp_dens_init[component]/unit_nh;
         n = sqrt(pow(x/hx,2.0)+pow(y/hy,2.0)+pow(z/hz,2.0));
@@ -1199,9 +1213,13 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
         save2 = gal->y[gal->index[tid]];
         gal->x[gal->index[tid]] = r*cos(theta);
         gal->y[gal->index[tid]] = r*sin(theta);
-        delta_pot = galaxyz_potential_wrapper_func(z,gal)-galaxyz_potential_wrapper_func(0.,gal);
+        delta_phi = galaxyz_potential_wrapper_func(z,gal)-galaxyz_potential_wrapper_func(0.,gal);
+	if(alpha>0.) {
+           delta_phi_rc = galaxyz_potential_wrapper_func(z,gal)-galaxyz_potential_wrapper_func(rc,gal);
+           delta_phi_core = galaxyz_potential_wrapper_func(rc,gal)-galaxyz_potential_wrapper_func(0.,gal);
+	}
         // Density in the xy-plane
-        if(gal->comp_gamma_poly[component]<1.00001) {
+        if(gamma0<1.00001) {
             rho_0 = get_midplane_density(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
 	} else {
             rho_0 = density_functions_pool(gal,r,theta,0.,1,gal->comp_model[component],component);
@@ -1212,11 +1230,23 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
         gal->y[gal->index[tid]] = save2;
     }
 
+    // Safety value for the polytropic index
+    gamma0 = max(gamma0,1.00001);
+    // Switch between spherical or cylindrical
+    d = spherical?rsph:z;
     // Hydrostatic equilibrium requires the following density
-    cs2 = gal->comp_k_poly[component]*gal->comp_gamma_poly[component]*pow(rho_0,gal->comp_gamma_poly[component]-1.0);
-    gamma_poly = max(gal->comp_gamma_poly[component],1.00001);
-    base = 1.0-((gamma_poly-1.0)/cs2)*delta_pot;
-    density = rho_0*pow(max(base,0.0),1.0/(gamma_poly-1.0));
+    // Entropy core case
+    if(alpha>0.) {
+        if(d<=rc) {
+            density = rho_0*pow(max(1-(gamma0-1)/(k0*gamma0)*delta_phi*pow(rho_0,1-gamma0),0.),1.0/(gamma0-1));
+        } else {
+            rho_c = rho_0*pow(max(1-(gamma0-1)/(k0*gamma0)*delta_phi_core*pow(rho_0,1-gamma0),0.),1.0/(gamma0-1));
+            density = pow(d/rc,-alpha/gamma0)*rho_c*pow(max(1-(gamma0-1)/(k0*gamma0)*pow(rho_c,1.0-gamma0)*delta_phi_rc,0.),1.0/(gamma0-1));
+        }
+    // No entropy core
+    } else {
+	density = rho_0*pow(max(1-(gamma0-1)/(k0*gamma0)*delta_phi*pow(rho_0,1-gamma0),0.),1.0/(gamma0-1));
+    }
 
     if(cut==1) {
         sigma1 = gal->comp_sigma_cut[component];
@@ -1228,7 +1258,7 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
             density *= smooth_factor1;
             if(fabs(r)<gal->comp_cut_in[component]) density *= smooth_factor2;
         } else {
-            if(r>gal->comp_cut[component]) density = 0.;
+            if(r>gal->comp_cut[component]+3*gal->comp_sigma_cut[component]) density = 0.;
             density *= smooth_factor3;
             if(r<gal->comp_cut_in[component]) density *= smooth_factor2;
         }

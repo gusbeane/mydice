@@ -77,16 +77,19 @@
 
 // Some physical constants needed for the computation
 #define gamma                   (5.0/3.0)           // adiabatic index of simulated gas (mono-atomic)
-#define gamma_minus1            (gamma-1.0)         // adiabatic index of simulated gas minus 1
-#define hydrogen_massfrac       0.76                // mass fraction of hydrogen, relevant only for radiative cooling
+#define gamma_minus1            (gamma-1.0)
+#define hydrogen_massfrac       0.76                // mass fraction of hydrogen
 #define boltzmann               1.3806200e-16       // Boltzmann constant in [erg.K^-1] = [g.cm^2.s^-2.K^-1]
+#define boltzmann_kev           8.6173324e-8        // Boltzmann constant in [kev.K^-1]
 #define protonmass              1.6600000e-24       // proton mass in [g]
 #define solarmass               1.989E33            // Mass of the Sun in [g]
-#define mu_mol                  1.2195e0            // Molecular weight
+#define mu_mol                  1.0/(hydrogen_massfrac/1.0+(1.0-hydrogen_massfrac)/4.0) // Molecular weight
+#define mu_e                    2.0/(1.0+hydrogen_massfrac) // Molecular weight
 #define logOH_solar             8.66
 #define pi                      3.14159274101257    // pi = 4.0*atan(1.0)
 #define G_cgs                   6.67428E-8          // G = 6.67428E-8 [cm^3 g^-1 s^-2]
 #define kpc                     3.085678E21         // 1 kpc = 3.085678E21 [cm]
+#define kev			6.242e8             // kilo ElectronVolt [erg]
 #define unit_mass               AllVars.UnitMass    // 1.989E43 = 1E10 [Solar masses]
 #define unit_velocity           AllVars.UnitVelocity // km.s^-1 in [cm.s^-1]
 #define unit_length             AllVars.UnitLength  // kpc in [cm]
@@ -94,6 +97,7 @@
 #define unit_energy             (unit_mass*(unit_length*unit_length)/(unit_time*unit_time))
 #define unit_dens               (unit_mass/(unit_length*unit_length*unit_length))
 #define unit_nh                 ((hydrogen_massfrac/protonmass)*unit_dens)
+#define unit_ne                 ((((1+hydrogen_massfrac)/2.0)/protonmass)*unit_dens)
 #define G                       G_cgs*unit_mass/(unit_length*unit_velocity*unit_velocity)
 
 
@@ -235,11 +239,15 @@ typedef struct {
     double              *comp_rcore;
     double 		*comp_ggd_beta;
     double 		*comp_softening;
+    double 		*comp_rc_entropy;
+    double 		*comp_alpha_entropy;
+    double 		*comp_cut_hydro_eq;
     int              	*comp_symmetry;
     // Virial quantities
     double v200;
     double r200;
     double m200;
+    double s200;
     // Total angular momentum within R200
     double J200;
     // Coordinates vectors

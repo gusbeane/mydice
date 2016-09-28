@@ -406,7 +406,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 89*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 92*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -666,6 +666,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         read[nt] = 0;
         if(gal->comp_npart[j]>0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"cut_hydro_eq%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_cut_hydro_eq[j] = 0.0;
+        addr[nt] = &gal->comp_cut_hydro_eq[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
         n = sprintf(temp_tag,"cut_dens%d",j+1);
@@ -1298,6 +1306,22 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_softening[j];
         gal->comp_softening[j] = 0.0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"rc_entropy%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_rc_entropy[j];
+        gal->comp_rc_entropy[j] = 0.0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"alpha_entropy%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_alpha_entropy[j];
+        gal->comp_alpha_entropy[j] = 0.0;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
