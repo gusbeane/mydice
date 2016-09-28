@@ -2087,7 +2087,7 @@ int set_galaxy_coords(galaxy *gal) {
             for(i = 0; i<AllVars.MaxCompNumber; i++) {
                 if((gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)&(gal->comp_hydro_eq[i]==1)) {
 		    // put the component in the xy plane
-                    if(gal->comp_theta_sph[i]!=0. || gal->comp_phi_sph[i]!=0.) rotate_all(gal,-gal->comp_theta_sph[i],-gal->comp_phi_sph[i],1);
+                    if(gal->comp_theta_sph[i]!=0. || gal->comp_phi_sph[i]!=0.) rotate_all(gal,-gal->comp_theta_sph[i],-gal->comp_phi_sph[i],2);
 		    // Only apply the density cut for the last iteration
 	    	    if(j<gal->hydro_eq_niter-1 && gal->comp_spherical_hydro_eq[i]==0) {
 		        cut_dens = gal->comp_cut_dens[i];
@@ -2113,7 +2113,7 @@ int set_galaxy_coords(galaxy *gal) {
 		        gal->comp_cut_dens[i] = cut_dens;
 		    }
 		    // Restore original orientation
-                    if(gal->comp_theta_sph[i]!=0. || gal->comp_phi_sph[i]!=0.) rotate_all(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i],2);
+                    if(gal->comp_theta_sph[i]!=0. || gal->comp_phi_sph[i]!=0.) rotate_all(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i],1);
                 }
             }
         }
@@ -2306,7 +2306,7 @@ int set_galaxy_velocity(galaxy *gal) {
         // Particle velocities
         if(gal->comp_npart[j]>1 && gal->comp_compute_vel[j]==1) {
 
-            if(gal->comp_theta_sph[j]!=0. || gal->comp_phi_sph[j]!=0.) rotate_all(gal,-gal->comp_theta_sph[j],-gal->comp_phi_sph[j],1);
+            if(gal->comp_theta_sph[j]!=0. || gal->comp_phi_sph[j]!=0.) rotate_all(gal,-gal->comp_theta_sph[j],-gal->comp_phi_sph[j],2);
 	    if(j>gal->index_first && (gal->comp_softening[j] != gal->comp_softening[j-1] || gal->comp_theta_sph[j] != 0. || gal->comp_phi_sph[j] != 0.)) {
     		gal->softening = gal->comp_softening[j];
 	        printf("[   computing potential   ]");
@@ -2705,7 +2705,7 @@ int set_galaxy_velocity(galaxy *gal) {
                         100.*nrejected_failed/(double)gal->comp_npart[j]);
 		    }
                 }
-		if(gal->comp_theta_sph[j]!=0. || gal->comp_phi_sph[j]!=0.) rotate_all(gal,gal->comp_theta_sph[j],gal->comp_phi_sph[j],2);
+		if(gal->comp_theta_sph[j]!=0. || gal->comp_phi_sph[j]!=0.) rotate_all(gal,gal->comp_theta_sph[j],gal->comp_phi_sph[j],1);
             }
         }
         if(warning1) printf("/////\t\t---------------[         Warning         ][           Streaming velocity > <v2_theta>           ]\n");
