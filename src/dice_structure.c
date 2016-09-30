@@ -698,6 +698,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 		    if(Tpart>Tmax) Tmax = Tpart;
 		}
             }	
+	    //if(gal->pseudo[0]) printf("%lf %le\n",gal->r_sph[i],gal->rho[i]);
 	    if(gal->rho[i]>gal->comp_dens_max[component]) gal->comp_dens_max[component] = gal->rho[i];
 	    if(gal->rho[i]<gal->comp_dens_min[component]) gal->comp_dens_min[component] = gal->rho[i];
             // Temporary assign metallicity to local density value
@@ -1233,7 +1234,7 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
     // Safety value for the polytropic index
     gamma0 = max(gamma0,1.00001);
     // Switch between spherical or cylindrical
-    d = spherical?rsph:z;
+    d = spherical?fabs(rsph):fabs(z);
     // Hydrostatic equilibrium requires the following density
     // Entropy core case
     if(alpha>0.) {

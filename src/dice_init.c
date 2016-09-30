@@ -2087,7 +2087,7 @@ int set_galaxy_coords(galaxy *gal) {
             for(i = 0; i<AllVars.MaxCompNumber; i++) {
                 if((gal->comp_npart[i]>0)&&(gal->comp_type[i]==0)&(gal->comp_hydro_eq[i]==1)) {
 		    // put the component in the xy plane
-                    if(gal->comp_theta_sph[i]!=0. || gal->comp_phi_sph[i]!=0.) rotate_all(gal,-gal->comp_theta_sph[i],-gal->comp_phi_sph[i],2);
+                    if(fabs(gal->comp_theta_sph[i])>0. || fabs(gal->comp_phi_sph[i])>0.) rotate_all(gal,-gal->comp_theta_sph[i],-gal->comp_phi_sph[i],2);
 		    // Only apply the density cut for the last iteration
 	    	    if(j<gal->hydro_eq_niter-1 && gal->comp_spherical_hydro_eq[i]==0) {
 		        cut_dens = gal->comp_cut_dens[i];
@@ -2113,7 +2113,7 @@ int set_galaxy_coords(galaxy *gal) {
 		        gal->comp_cut_dens[i] = cut_dens;
 		    }
 		    // Restore original orientation
-                    if(gal->comp_theta_sph[i]!=0. || gal->comp_phi_sph[i]!=0.) rotate_all(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i],1);
+                    if(fabs(gal->comp_theta_sph[i])>0. || fabs(gal->comp_phi_sph[i])>0.) rotate_all(gal,gal->comp_theta_sph[i],gal->comp_phi_sph[i],1);
                 }
             }
         }
@@ -2632,7 +2632,6 @@ int set_galaxy_velocity(galaxy *gal) {
 
                             // Let's ensure that the particle velocity is lower than gal->comp_vmax times the escape velocity
                             int ct = 0;
-			    printf("%lf %lf\n",sqrt(pow(v_r,2)+pow(v_theta,2)+pow(v_phi,2)),vmax);
                             while(sqrt(pow(v_r,2)+pow(v_theta,2)+pow(v_phi,2)) > vmax) {
                                 if(ct >= AllVars.GaussianRejectIter) {
                                     v_r = (2.0/3.0)*vmax*(gsl_rng_uniform_pos(r[tid])-0.5);
@@ -2696,11 +2695,11 @@ int set_galaxy_velocity(galaxy *gal) {
         	if(J_sum>1.01*gal->J200) printf("/////\t\t---------------[         Warning         ][               sum(J_component) > J200               ]\n");
                 if(nrejected>1e-3) {
 		    if(gal->comp_jeans_dim[j]==1) {
-		        printf("/////\t\t---------------[         Warning         ][     rejection = %4.1lf%% / failed rejection=%4.1lf%%    ]\n",
+		        printf("/////\t\t---------------[         Warning         ][      rejection = %4.1lf%% / failed rejection=%4.1lf%%     ]\n",
                         100.*nrejected/(double)gal->comp_npart[j],
                         100.*nrejected_failed/(double)gal->comp_npart[j]);
 		    } else {
-		        printf("/////\t\t---------------[         Warning         ][     rejection = %4.1lf%% / failed rejection=%4.1lf%%    ]\n",
+		        printf("/////\t\t---------------[         Warning         ][      rejection = %4.1lf%% / failed rejection=%4.1lf%%     ]\n",
                         100.*nrejected/(double)gal->comp_npart[j],
                         100.*nrejected_failed/(double)gal->comp_npart[j]);
 		    }
@@ -3149,7 +3148,7 @@ int rotate_component(galaxy *gal, double alpha, double delta, int component) {
     // Delta is the inclination of the disk compare to the XY plane
     alpha = alpha*pi/180.;
     delta = delta*pi/180.;
-    if(alpha>0.0 && delta>0.0) {
+    if(alpha>0.0 || delta>0.0) {
         for(i = gal->comp_start_part[component]; i<gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++i) {
             //Rotation around Y axis
             x_temp = cos(delta)*gal->x[i]+sin(delta)*gal->z[i];
