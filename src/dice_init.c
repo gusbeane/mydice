@@ -1457,7 +1457,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
         if(gal->comp_type[i]==0) {
             if(gal->comp_thermal_eq[i]==1 && gal->comp_hydro_eq[i]==1) {
-                fprintf(stderr,"[Error] hydro_eq%d and thermal_eq%d cannot be both equal to 1\n",i);
+                fprintf(stderr,"[Error] hydro_eq%d and thermal_eq%d cannot be both equal to 1\n",i+1,i+1);
 		return -1;
 	    }
             // Set the gas specific internal energy

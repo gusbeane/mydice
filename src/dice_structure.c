@@ -732,11 +732,11 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 gal->comp_mcmc_step_hydro[component] /= 2.0;
                 printf("\n/////\t\t\t---------------[         Warning         ][ Low acceptance->mcmc_hydro_step%d=%.2le ]\n",
 		    component+1,gal->comp_mcmc_step_hydro[component]);
-                printf("/////\t\t\t- Component %2d [       recomputing       ]",component+1,gal->comp_profile_name[component]);
+                printf("/////\t\t\t- Component %2d [       recomputing       ]",component+1);
             } else {
                 gal->comp_mcmc_step[component] /= 2.0;
                 printf("\n/////\t\t---------------[         Warning         ][ Low MCMC acceptance->mcmc_step%d=%.2le  ]\n",component+1,gal->comp_mcmc_step[component]);
-                printf("/////\t\t- Component %2d [       recomputing       ]",component+1,gal->comp_profile_name[component]);
+                printf("/////\t\t- Component %2d [       recomputing       ]",component+1);
             }
             fflush(stdout);
             mcmc_metropolis_hasting_ntry(gal,component,gal->comp_model[component]);
@@ -746,11 +746,11 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 gal->comp_mcmc_step_hydro[component] *= 2.0;
                 printf("\n/////\t\t\t---------------[         Warning         ][ High acceptance->mcmc_step_hydro%d=%.2le]\n",
 		    component+1,gal->comp_mcmc_step_hydro[component]);
-                printf("/////\t\t\t- Component %2d [       recomputing       ]",component+1,gal->comp_profile_name[component]);
+                printf("/////\t\t\t- Component %2d [       recomputing       ]",component+1);
             } else {
                 gal->comp_mcmc_step[component] *= 2.0;
                 printf("\n/////\t\t---------------[         Warning         ][ High MCMC acceptance->mcmc_step%d=%.2le ]\n",component+1,gal->comp_mcmc_step[component]);
-                printf("/////\t\t- Component %2d [       recomputing       ]",component+1,gal->comp_profile_name[component]);
+                printf("/////\t\t- Component %2d [       recomputing       ]",component+1);
             }
             fflush(stdout);
             mcmc_metropolis_hasting_ntry(gal,component,gal->comp_model[component]);
