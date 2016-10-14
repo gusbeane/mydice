@@ -13,15 +13,18 @@ level_coarse		    	8
 # Refinement level of the turbulence grid 
 level_grid_turb		    	7
 # Refinement level of the gaussian field grid
-level_grid_dens_gauss 		7
+level_grid_dens_fluct 		7
 # Size of the potential grid [kpc]
 boxsize1	 	        100.0
 boxsize2	 	        50.0
 boxsize3	 	        25.0
 # Dispersion for the Gaussian field fluctuations
-dens_gauss_sigma        	0.50
-# Physical scale of the gaussian field fluctuations [kpc]
-dens_gauss_scale        	0.25
+dens_fluct_sigma        	0.50
+# Physical injection scale of the random field fluctuations [kpc]
+dens_fluct_scale_inj        	2.00
+# Physical dissipation scale of the random field fluctuations [kpc]
+dens_fluct_scale_diss        	0.25
+dens_fluct_seed		    	1212
 # Seed for the random number generator
 seed			        1246
 # Switch to MCMC ntry algorithm to position particles for a value > 1
@@ -79,7 +82,7 @@ vmax1			        5.0
 # Particles type (GADGET format -- 0=Gas,1=Halo,2=Disk,3=Bulge,4=Stars)
 type1			        1
 # Streaming fraction of the component 1
-streaming_fraction1	    	0.00
+stream_fraction1	    	0.00
 # Radius at which the density profile should have the exact same
 # value as the NFW profile with the previously defined concentration
 # and with a mass M200*mass_frac [kpc]
@@ -107,7 +110,7 @@ vmax2			        2.0
 type2		    	    	2
 # Epicycle approximation in the Jeans equations
 epicycle2		        1
-streaming_fraction2	    	1.00
+stream_fraction2	    	1.00
 # Minimal value for the Toomre parameter
 Q_lim2			        1.25
 # Mean Star Formation Rate [Msol/yr]
@@ -117,7 +120,7 @@ min_age2                	0.
 # Metallicity of the stars [Zsolar]
 metal2                  	0.01
 # Gaussian fluctuations in the density field
-dens_gauss2	        	0
+dens_fluct2	        	0
 # Cut the density function in the Jeans equation integration
 jeans_mass_cut2		    	1
 
@@ -134,14 +137,16 @@ flatz3			        0.05
 mcmc_step3		        0.15
 vmax3			        10.5
 type3			        0
-streaming_fraction3	    	1.00
+stream_fraction3	    	1.00
 metal3                  	0.01
 # Temperature of the gas particles [K]
 t_init3                 	1e5
 # Turbulent velocity dispersion [km/s]
 turb_sigma3		        0.0
-# Turbulence smoothing scale [kpc]
-turb_scale3		        1.0
+# Turbulence injection scale [kpc]
+turb_scale_inj3		        1.0
+# Turbulence dissipation scale [kpc]
+turb_scale_diss3	        0.01
 # Compute hydrostatic equilibrium 
 hydro_eq3			1
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm
@@ -161,7 +166,7 @@ flatz4			        0.80
 mcmc_step4		        0.3
 vmax4			        4.0
 type4			        3
-streaming_fraction4	    	0.5
+stream_fraction4	    	0.5
 min_age4                	50.
 metal4                  	0.001
 # Structural parameter specific to the Einasto density profile
@@ -181,7 +186,7 @@ flatz5			        0.40
 mcmc_step5		        0.3
 vmax5			        2.0
 type5		    	    	2
-streaming_fraction5	    	0.50
+stream_fraction5	    	0.50
 min_age5                	50.
 metal5                  	0.001
 Q_lim5			        1.5
@@ -200,10 +205,11 @@ flatz6			        1.00
 mcmc_step6		        0.50
 vmax6			        10.5
 type6			        0
-streaming_fraction6	    	1.00
+stream_fraction6	    	1.00
 metal6                  	0.01
 turb_sigma6		        0.0
-turb_scale6		        1.0
+turb_scale_inj6		        1.0
+turb_scale_diss6	        0.01
 # Method to compute the streaming velocity of the halo
 # 1: Bullock 2001 - specific angular momentum is proportional to the cumulative mass profile
 # 2: Springel 1999 - vstream is a fixed fraction of the circular velocity

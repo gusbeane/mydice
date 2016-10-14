@@ -123,11 +123,15 @@ typedef struct {
     // Total mass of the galactic model within R200
     double total_mass_r200;
     // Density fluctuation dispersion
-    double dens_gauss_sigma;
-    // Density fluctuation scale
-    double dens_gauss_scale;
+    double dens_fluct_sigma;
+    // Density fluctuation injection scale
+    double dens_fluct_scale_inj;
+    // Density fluctuation injection scale
+    double dens_fluct_scale_diss;
+    // Density fluctuations spectral power index
+    double dens_fluct_nspec;
     // Density fluctuation seed
-    long dens_gauss_seed;
+    long dens_fluct_seed;
     // Total number of components
     int n_component;
     int                 *selected_comp;
@@ -158,6 +162,12 @@ typedef struct {
     double              *comp_flatx_out;
     double              *comp_flaty_out;
     double              *comp_flatz_out;
+    double              *comp_flatx_rt;
+    double              *comp_flaty_rt;
+    double              *comp_flatz_rt;
+    double              *comp_flatx_st;
+    double              *comp_flaty_st;
+    double              *comp_flatz_st;
     double              *comp_mcmc_step;
     double              *comp_mcmc_step_slope;
     double              *comp_mcmc_step_hydro;
@@ -178,6 +188,9 @@ typedef struct {
     double              *comp_turb_sigma;
     double              *comp_turb_frac;
     double              *comp_turb_scale;
+    double              *comp_turb_scale_inj;
+    double              *comp_turb_scale_diss;
+    double              *comp_turb_nspec;
     long                *comp_turb_seed;
     double              *comp_age_sigma;
     double              *comp_age_scale;
@@ -197,7 +210,7 @@ typedef struct {
     int                 *comp_compute_vel;
     int                 *comp_hydro_eq;
     int                 *comp_spherical_hydro_eq;
-    int                 *comp_dens_gauss;
+    int                 *comp_dens_fluct;
     double              *comp_cut_in;
     int                 *comp_thermal_eq;
     double              *comp_part_mass;
@@ -313,7 +326,7 @@ typedef struct {
     // Level of refinement of the metal grid
     int level_grid_metal;
     // Level of refinement of the density gaussian fluctuations
-    int level_grid_dens_gauss;
+    int level_grid_dens_fluct;
     // Number of cells in the potential grid
     int **ngrid;
     // Number of cells in the midplane density grid
@@ -370,7 +383,9 @@ typedef struct {
     double              *comp_dens;
     double              *comp_opening_angle;
     double              *comp_turb_sigma;
-    double              *comp_turb_scale;
+    double              *comp_turb_scale_inj;
+    double              *comp_turb_scale_diss;
+    double              *comp_turb_nspec;
     long                *comp_turb_seed;
     double              *comp_t_init;
     // Stream's spin orientation spherical angles
@@ -388,7 +403,13 @@ typedef struct {
     double              *comp_cs_init;
     unsigned long int   *comp_start_part;
     char                **comp_profile_name;
-    int                 *comp_dens_gauss;
+    int                 *comp_dens_fluct;
+    double              *comp_dens_min;
+    double              *comp_dens_max;
+    double              *comp_k_poly;
+    double              *comp_gamma_poly;
+    double              *comp_accept_min;
+    double              *comp_accept_max;
     // Coordinates vectors
     double              *x;
     double              *y;
@@ -413,7 +434,7 @@ typedef struct {
     // Level of refinement of the gas turbulence grid
     int level_grid_turb;
     // Level of refinement of the density gaussian fluctuations
-    int level_grid_dens_gauss;
+    int level_grid_dens_fluct;
     // Number of cells in the turbulence grid
     int ngrid_gauss[3];
     // Gaussian field grid cell size vector [kpc]
@@ -427,13 +448,17 @@ typedef struct {
     int n_component;
     long seed;
     // Density fluctuation dispersion
-    double dens_gauss_sigma;
+    double dens_fluct_sigma;
     // Density fluctuation scale
-    double dens_gauss_scale;
+    double dens_fluct_scale_inj;
+    double dens_fluct_scale_diss;
+    double dens_fluct_nspec;
     // Density fluctuation seed
-    long dens_gauss_seed;
+    long dens_fluct_seed;
     // Boolean variable checking the computation of the gaussian field
     int gaussian_field_defined;
+    // MCMC multiple try parameter
+    int mcmc_ntry;
 } stream;
 
 //Gadget2-style header for Gadget2 snapshots.
@@ -580,7 +605,7 @@ int position_stream(galaxy *, int);
 // Structure functions
 double density_functions_pool(galaxy *, double, double, double, int, int, int);
 void mcmc_metropolis_hasting_ntry(galaxy *, int, int);
-void mcmc_metropolis_hasting_stream(stream *, int, int);
+void mcmc_metropolis_hasting_ntry_stream(stream *, int, int);
 double density_functions_stream_pool(stream *, double, double, double, int, int);
 
 double surface_density_func(galaxy *, double, double, int, int);
@@ -677,8 +702,8 @@ double deriv_forward(galaxy *, double, double, function_to_derivate);
 double interpol(double, double, double, double, double);
 double smooth_in(double, double, double);
 double smooth_out(double, double, double);
-int set_galaxy_gaussian_field_grid(galaxy *, double, long);
-int set_stream_gaussian_field_grid(stream *, double, long);
+int set_galaxy_random_field_grid(galaxy *, double, double, double, long);
+int set_stream_random_field_grid(stream *, double, double, double, long);
 double galaxy_gaussian_field_func(galaxy *, double, double, double);
 double stream_gaussian_field_func(stream *, double, double, double);
 

@@ -1,15 +1,17 @@
 # Refinement level of the PM turbulence grid 
 level_grid_turb 	    7
 # Refinement level of the PM gaussian field grid
-level_grid_dens_gauss   7
+level_grid_dens_fluct       7
 # Seed for the random number generator
-seed 			        123456
+seed 			    123456
 # Dispersion for the Gaussian field fluctuations
-dens_gauss_sigma        0.35
-# Physical scale of the gaussian field fluctuations [kpc]
-dens_gauss_scale        2.00
+dens_fluct_sigma            1.0
+# Physical injection scale of the random field fluctuations [kpc]
+dens_fluct_scale_inj        1.00
+# Physical dissipation scale of the random field fluctuations [kpc]
+dens_fluct_scale_diss       0.01
 # Seed for gaussian density fluctuations
-dens_gauss_seed        	1313
+dens_fluct_seed        	    1313
 
 
 ##############
@@ -19,29 +21,31 @@ dens_gauss_seed        	1313
 # Available models:
 # 1 = Uniform density cone
 # 2 = Exponential density cone
-model1		            2
+model1		            1
 # Number of particles for the stream 1 
-npart1		            3000000
+npart1		            2000000
 # Opening angle of the stream [degree]
 opening_angle1	        30.
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
 # expressed in units of the component scale length. Default value is 0.5.
 mcmc_step1	            0.01
 # Stream central density [nH/cm^3]
-dens1		            0.01
+dens1		            1.0
 # Stream metallicity [Zsolar]
 metal1		            0.001
 # Initial temperature [K]
 t_init1		            1e5
 # Velocity dispersion of the gas [km/s]
-turb_sigma1	            10.0
-# Scale of the velocity fluctuations of the gas [kpc]
-turb_scale1	            1.0
+turb_sigma1	            0.0
+# Injection scale of the velocity fluctuations of the gas [kpc]
+turb_scale_inj1	            4.00
+# Dissipation scale of the velocity fluctuations of the gas [kpc]
+turb_scale_diss1            0.01
 turb_seed1	            1414
 # Length of the stream [kpc]
 length1		            100.
 # Density scale factor
 scale1		            0.1
 # Gaussian fluctuations in the density field
-dens_gauss1	            0
+dens_fluct1	            1
 

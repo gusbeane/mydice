@@ -82,9 +82,13 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     hy_cut_in = max(gal->comp_cut_in[component],0.01*gal->comp_scale_length[component])*gal->comp_flaty_cut[component];
     hz_cut_in = max(gal->comp_cut_in[component],0.01*gal->comp_scale_length[component])*gal->comp_flatz_cut[component];
 
-    flatx = fabs(r_sph)*(gal->comp_flatx_out[component]-gal->comp_flatx[component])/hx_cut+gal->comp_flatx[component];
-    flaty = fabs(r_sph)*(gal->comp_flaty_out[component]-gal->comp_flaty[component])/hy_cut+gal->comp_flaty[component];
-    flatz = fabs(r_sph)*(gal->comp_flatz_out[component]-gal->comp_flatz[component])/hz_cut+gal->comp_flatz[component];
+    // Component flattening at [x,y,z] coordinate
+    flatx = gal->comp_flatx[component]*smooth_out(x,gal->comp_flatx_rt[component],gal->comp_flatx_st[component])
+	   +gal->comp_flatx_out[component]*smooth_in(x,gal->comp_flatx_rt[component],gal->comp_flatx_st[component]);
+    flaty = gal->comp_flaty[component]*smooth_out(y,gal->comp_flaty_rt[component],gal->comp_flaty_st[component])
+	   +gal->comp_flaty_out[component]*smooth_in(y,gal->comp_flaty_rt[component],gal->comp_flaty_st[component]);
+    flatz = gal->comp_flatz[component]*smooth_out(z,gal->comp_flatz_rt[component],gal->comp_flatz_st[component])
+	   +gal->comp_flatz_out[component]*smooth_in(z,gal->comp_flatz_rt[component],gal->comp_flatz_st[component]);
 
     h = gal->comp_scale_length[component];
     hx = gal->comp_scale_length[component]*flatx;
@@ -218,8 +222,8 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     smooth_factor1 = 1-0.5*(1+erf((n-1.0)/(sigma1*sqrt(2))));
     smooth_factor2 = 0.5*(1+erf((s-1.0)/(sigma2*sqrt(2))));
 
-    if(gal->dens_gauss_sigma>0. && gal->comp_dens_gauss[component]==1 && gal->gaussian_field_defined) {
-        density *= (galaxy_gaussian_field_func(gal,x,y,z)*gal->dens_gauss_sigma+1.0);
+    if(gal->dens_fluct_sigma>0. && gal->comp_dens_fluct[component]==1 && gal->gaussian_field_defined) {
+        density *= (galaxy_gaussian_field_func(gal,x,y,z)*gal->dens_fluct_sigma+1.0);
         if(density<0.) density = 0.0;
     }
     if(gal->comp_excavate[component]>0 && gal->comp_npart[gal->comp_excavate[component]]>0) {
@@ -272,8 +276,8 @@ double density_functions_stream_pool(stream *st, double radius, double theta, do
             fprintf(stderr,"/////\t\t\tSpecify a valid model for component %d\n",component);
             exit(0);
     }
-    if(st->dens_gauss_sigma>0. && st->comp_dens_gauss[component]==1 && st->gaussian_field_defined) {
-        density *= (stream_gaussian_field_func(st,x,y,z)*st->dens_gauss_sigma+1.0);
+    if(st->dens_fluct_sigma>0. && st->comp_dens_fluct[component]==1 && st->gaussian_field_defined) {
+        density *= (stream_gaussian_field_func(st,x,y,z)*st->dens_fluct_sigma+1.0);
         if(density<0.) density = 0.0;
     }
     return density;
@@ -460,7 +464,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         mean_metal = 0.;
         // Reduce the dimensionality of the MCMC if the component is axisymmetric
         gal->comp_symmetry[component] = 0;
-        if(gal->comp_flatx[component] == gal->comp_flaty[component]) {
+        if(gal->comp_flatx[component] == gal->comp_flaty[component] && !gal->comp_dens_fluct[component]) {
             // Shperical symmetry
             if(gal->comp_flatz[component]==gal->comp_flatx[component] && gal->comp_flatz[component]==gal->comp_flaty[component]) {
                 gal->comp_symmetry[component] = 2;
@@ -802,121 +806,340 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
     return;
 }
 
-void mcmc_metropolis_hasting_stream(stream *st, int component, int density_model) {
-    unsigned long int i,j;
-    double pi_x, pi_y, q_x, q_y, prob, *radius;
-    double theta, phi, randval, proposal, prop_r, prop_theta, prop_x, prop_y, prop_z;
-    double step_r, step_x, step_y, step_z, prev_step_x, prev_step_y, prev_step_z;
-    double acceptance, mean_metal;
 
-    if(st->comp_npart[component]>0) {
+
+void mcmc_metropolis_hasting_ntry_stream(stream *st, int component, int density_model) {
+    unsigned long int i,j,start_part,npart;
+    int k, selected, tid;
+    double prob, *radius, k_poly, d, rc;
+    double theta, phi, randval, smooth_factor;
+    double step_r, step_x, step_y, step_z, step_r_sph, hx, hy, hz;
+    double new_step_x, new_step_y, new_step_z, new_step_r, new_step_r_sph, min_step_z, max_step_z;
+    double acceptance, norm, ratio, rho_ref, rho_0, mean_metal, Tpart, Tmax, cs2;
+    double *prop_x, *prop_y, *prop_z, *prop_r, *prop_theta, *prop_r_sph, *prop_phi_sph;
+    double *pi_x, *pi_y, *q_x, *q_y, *weights, *w_x, *w_y;
+    double *ref_x, *ref_y, *ref_z, *ref_r, *ref_theta, *ref_r_sph, *ref_phi_sph, *lambda_x, *lambda_y, *dv_x, *dv_y;
+
+#if USE_THREADS == 1
+    tid = omp_get_thread_num();
+#else
+    tid = 0;
+#endif
+
+    if(!(prop_x = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate prop_x array\n");
+        exit(0);
+    }
+    if(!(prop_y = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate prop_y array\n");
+        exit(0);
+    }
+    if(!(prop_z = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate prop_z array\n");
+        exit(0);
+    }
+    if(!(prop_r = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate prop_r array\n");
+        exit(0);
+    }
+    if(!(prop_theta = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate prop_theta array\n");
+        exit(0);
+    }
+    if(!(prop_r_sph = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate prop_r_sph array\n");
+        exit(0);
+    }
+    if(!(prop_phi_sph = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate prop_phi_sph array\n");
+        exit(0);
+    }
+    if(!(pi_x = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate pi_x array\n");
+        exit(0);
+    }
+    if(!(pi_y = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate pi_y array\n");
+        exit(0);
+    }
+    if(!(q_x = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate q_x array\n");
+        exit(0);
+    }
+    if(!(q_y = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate q_y array\n");
+        exit(0);
+    }
+    if(!(weights = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate w array\n");
+        exit(0);
+    }
+    if(!(w_x = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate w_x array\n");
+        exit(0);
+    }
+    if(!(w_y = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate w_y array\n");
+        exit(0);
+    }
+    if(!(ref_x = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate ref_x array\n");
+        exit(0);
+    }
+    if(!(ref_y = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate ref_y array\n");
+        exit(0);
+    }
+    if(!(ref_z = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate ref_z array\n");
+        exit(0);
+    }
+    if(!(ref_r = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate ref_r array\n");
+        exit(0);
+    }
+    if(!(ref_theta = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate ref_theta array\n");
+        exit(0);
+    }
+    if(!(ref_r_sph = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate ref_r_sph array\n");
+        exit(0);
+    }
+    if(!(ref_phi_sph = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate ref_phi_sph array\n");
+        exit(0);
+    }
+    if(!(lambda_x = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate lambda_x array\n");
+        exit(0);
+    }
+    if(!(lambda_y = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate lambda_y array\n");
+        exit(0);
+    }
+    if(!(dv_x = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate dv_x array\n");
+        exit(0);
+    }
+    if(!(dv_y = calloc(st->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate dv_y array\n");
+        exit(0);
+    }
+
+    hx = st->comp_mcmc_step[component]*st->comp_length[component];
+    hy = st->comp_mcmc_step[component]*st->comp_length[component];
+    hz = st->comp_mcmc_step[component]*st->comp_length[component];
+
+    i = st->comp_start_part[component];
+    if(st->comp_npart[component]>1) {
         // Use the Metropolis algorithm to place the disk particles.
         // We start the Monte Carlo Markov Chain with a realistic particle position
+        step_x = hx;
+        step_y = hy;
+        step_z = hz;
+        step_r = sqrt(pow(step_x,2)+pow(step_y,2));
+        step_r_sph = sqrt(pow(step_x,2)+pow(step_y,2)+pow(step_z,2));
         theta = 2.0*pi*gsl_rng_uniform_pos(r[0]);
-        i = st->comp_start_part[component];
-        st->x[i] = 0.;
-        st->y[i] = 0.;
+        // Single particle always placed at the center
+        st->x[i] = 0.0;
+        st->y[i] = 0.0;
         st->z[i] = 0.;
         st->r_cyl[i] = sqrt(st->x[i]*st->x[i]+st->y[i]*st->y[i]);
-        st->theta_cyl[i] = atan2(st->y[i],st->x[i]);
+        st->theta_cyl[i] = atan2(st->y[i],st->x[i])+pi;
         st->r_sph[i] = sqrt(st->x[i]*st->x[i]+st->y[i]*st->y[i]+st->z[i]*st->z[i]);
-        st->phi_sph[i] = acos(st->z[i]/st->r_sph[i]);
-        step_r = st->comp_mcmc_step[component]*st->comp_length[component];
-        step_x = st->comp_mcmc_step[component]*st->comp_length[component];
-        step_y = st->comp_mcmc_step[component]*st->comp_length[component];
-        step_z = st->comp_mcmc_step[component]*st->comp_length[component];
+	if(st->r_sph[i]>0.) {
+            st->phi_sph[i] = acos(st->z[i]/st->r_sph[i]);
+	} else {
+            st->phi_sph[i] = 0.;
+	}
+	// Initialize min max densities
+	st->comp_dens_min[component] = density_functions_stream_pool(st,fabs(st->x[i]),0.,0.,density_model,component);
+	st->comp_dens_max[component] = 0.0;
+	Tmax = 0.;
+	
+	if(st->comp_npart[component]==1) return;
 
         acceptance = 0.;
         mean_metal = 0.;
-        // Burning period
-        for(j = 1; j<(int)(0.1*st->comp_npart[component]); ++j) {
-            // Generating a proposal
-            prop_x = st->x[i] + gsl_ran_gaussian(r[0],step_x);
-            prop_y = st->y[i] + gsl_ran_gaussian(r[0],step_y);
-            prop_z = st->z[i] + gsl_ran_gaussian(r[0],step_z);
-            prop_r = sqrt(pow(prop_x,2)+pow(prop_y,2));
-            prop_theta = atan2(prop_y,prop_x);
-            // Distribution function of the considered component
-            // Density of the component times the integrand of spherical volume element
-            pi_x = density_functions_stream_pool(st,st->r_cyl[i],st->theta_cyl[i],st->z[i],density_model,component);
-            pi_y = density_functions_stream_pool(st,prop_r,prop_theta,prop_z,density_model,component);
-            prob = min(1.0,(pi_y/pi_x)); //*(q_x/q_y));
-            randval = gsl_rng_uniform_pos(r[0]);
-            if(randval <= prob) {
-                st->r_cyl[i] = prop_r;
-                st->theta_cyl[i] = prop_theta;
-                st->z[i] = prop_z;
-            }
-        }
-        // Updating the coordinate values
-        st->x[i] = st->r_cyl[i]*cos(st->theta_cyl[i]);
-        st->y[i] = st->r_cyl[i]*sin(st->theta_cyl[i]);
-        // Updating the coordinate values
-        st->theta_cyl[i] = atan2(st->y[i],st->x[i]);
-        st->r_sph[i] = sqrt(st->x[i]*st->x[i]+st->y[i]*st->y[i]+st->z[i]*st->z[i]);
-        st->phi_sph[i] = acos(st->z[i]/st->r_sph[i]);
+        // Reduce the dimensionality of the MCMC if the component is axisymmetric
+        fflush(stdout);
         // Filling the Markov Chain
-        for(i = st->comp_start_part[component]+1; i<st->comp_start_part[component]+st->comp_npart[component]; ++i) {
+        for(i = st->comp_start_part[component]+1; i < st->comp_start_part[component]+st->comp_npart[component]; ++i) {
             // Generating a proposal
-            prop_x = st->x[i-1] + gsl_ran_gaussian(r[0],step_x);
-            prop_y = st->y[i-1] + gsl_ran_gaussian(r[0],step_y);
-            prop_z = st->z[i-1] + gsl_ran_gaussian(r[0],step_z);
-            prop_r = sqrt(pow(prop_x,2)+pow(prop_y,2));
-            prop_theta = atan2(prop_y,prop_x);
-            prev_step_x = step_x;
-            prev_step_y = step_y;
-            prev_step_z = step_z;
-            // Distribution function of the considered component
-            pi_x = density_functions_stream_pool(st,st->r_cyl[i-1],st->theta_cyl[i-1],st->z[i-1],density_model,component);
-            pi_y = density_functions_stream_pool(st,prop_r,prop_theta,prop_z,density_model,component);
-            q_x = gsl_ran_gaussian_pdf(-prop_x+st->x[i-1],step_x);
-            q_x *= gsl_ran_gaussian_pdf(-prop_y+st->y[i-1],step_y);
-            q_x *= gsl_ran_gaussian_pdf(-prop_z+st->z[i-1],step_z);
-            q_y = gsl_ran_gaussian_pdf(-st->x[i-1]+prop_x,prev_step_x);
-            q_y *= gsl_ran_gaussian_pdf(-st->y[i-1]+prop_y,prev_step_y);
-            q_y *= gsl_ran_gaussian_pdf(-st->z[i-1]+prop_z,prev_step_z);
-            prob = min(1.0,(pi_y/pi_x)*(q_x/q_y));
+            for(k = 0; k<st->mcmc_ntry; k++) {
+                step_x = hx;
+                step_y = hy;
+                step_z = hz;
+                step_r = sqrt(pow(step_x,2)+pow(step_y,2));
+                step_r_sph = sqrt(pow(step_x,2)+pow(step_y,2)+pow(step_z,2));
+                prop_x[k] = st->x[i-1] + gsl_ran_gaussian(r[0],step_x);
+                prop_y[k] = st->y[i-1] + gsl_ran_gaussian(r[0],step_y);
+                prop_z[k] = st->z[i-1] + gsl_ran_gaussian(r[0],step_z);
+                prop_r[k] = sqrt(pow(prop_x[k],2)+pow(prop_y[k],2));
+                prop_theta[k] = atan2(prop_y[k],prop_x[k]);
+                q_y[k] = gsl_ran_gaussian_pdf(-st->x[i-1]+prop_x[k],step_x);
+                q_y[k] *= gsl_ran_gaussian_pdf(-st->y[i-1]+prop_y[k],step_y);
+                q_y[k] *= gsl_ran_gaussian_pdf(-st->z[i-1]+prop_z[k],step_z);
+                dv_y[k] = 1.0;
+                // Distribution function of the considered component
+                pi_y[k] = dv_y[k]*density_functions_stream_pool(st,prop_r[k],prop_theta[k],prop_z[k],density_model,component);
+                weights[k] = pi_y[k];
+            }
+            // Normalize weights
+            norm = sum_dbl(weights,st->mcmc_ntry);
+            for(k = 0; k<st->mcmc_ntry; k++) if(norm != 0.) weights[k] /= norm;
+            // Select a proposal according to its probability
+            selected = 0;
             randval = gsl_rng_uniform_pos(r[0]);
+            for(k = 0; k<st->mcmc_ntry; k++) {
+                if(randval<weights[k]) {
+                    selected = k;
+                    break;
+                }
+                randval -= weights[k];
+            }
+
+            // Produce a reference set
+            for(k = 0; k<st->mcmc_ntry; k++) {
+                new_step_x = hx;
+                new_step_y = hy;
+                new_step_z = hz;
+                new_step_r = sqrt(pow(new_step_x,2)+pow(new_step_y,2));
+                new_step_r_sph = sqrt(pow(new_step_x,2)+pow(new_step_y,2)+pow(new_step_z,2));
+                if(k == st->mcmc_ntry-1) {
+                    ref_r[k] = st->r_cyl[i-1];
+                    ref_r_sph[k] = st->r_sph[i-1];
+                    ref_theta[k] = st->theta_cyl[i-1];
+                    ref_x[k] = st->x[i-1];
+                    ref_y[k] = st->y[i-1];
+                    ref_z[k] = st->z[i-1];
+                } else {
+                    ref_x[k] = prop_x[selected] + gsl_ran_gaussian(r[0],new_step_x);
+                    ref_y[k] = prop_y[selected] + gsl_ran_gaussian(r[0],new_step_y);
+                    ref_z[k] = prop_z[selected] + gsl_ran_gaussian(r[0],new_step_z);
+                    ref_r[k] = sqrt(pow(ref_x[k],2)+pow(ref_y[k],2));
+                    ref_theta[k] = atan2(ref_y[k],ref_x[k]);
+                }
+                q_x[k] = gsl_ran_gaussian_pdf(-prop_x[selected]+ref_x[k],new_step_x);
+                q_x[k] *= gsl_ran_gaussian_pdf(-prop_y[selected]+ref_y[k],new_step_y);
+                q_x[k] *= gsl_ran_gaussian_pdf(-prop_z[selected]+ref_z[k],new_step_z);
+                dv_x[k] = 1.0;
+                // Distribution function of the considered component
+                pi_x[k] = dv_x[k]*density_functions_stream_pool(st,ref_r[k],ref_theta[k],ref_z[k],density_model,component);
+                lambda_x[k] = 1.0;///q_x[k];
+                lambda_y[k] = 1.0;///q_y[k];
+                w_x[k] = pi_x[k]*q_x[k]*lambda_x[k];
+                w_y[k] = pi_y[k]*q_y[k]*lambda_y[k];
+            }
+            prob = min(1.0,(sum_dbl(w_y,st->mcmc_ntry)/sum_dbl(w_x,st->mcmc_ntry)));
+            randval = gsl_rng_uniform_pos(r[0]);
+            // Proposal accepted
             if(randval <= prob) {
-                st->r_cyl[i] = prop_r;
-                st->theta_cyl[i] = prop_theta;
-                st->z[i] = prop_z;
-                st->rho[i] = pi_y/fabs(st->r_cyl[i]);
+                st->r_cyl[i] = prop_r[selected];
+                st->theta_cyl[i] = prop_theta[selected];
+                st->phi_sph[i] = prop_phi_sph[selected];
+                st->z[i] = prop_z[selected];
+                st->rho[i] = pi_y[selected]/dv_y[selected];
+		k_poly = st->comp_k_poly[component];
+		st->u[i] = k_poly*pow(st->rho[i],st->comp_gamma_poly[component]-1.0)/gamma_minus1;
                 acceptance += 1.0;
+            // Proposal rejected, the particle keeps the same postion
             } else {
                 st->r_cyl[i] = st->r_cyl[i-1];
-                st->theta_cyl[i] = st->theta_cyl[i-1];
                 st->z[i] = st->z[i-1];
-                st->rho[i] = pi_x/fabs(st->r_cyl[i]);
-            }
+                st->theta_cyl[i] = st->theta_cyl[i-1];
+                st->rho[i] = pi_x[st->mcmc_ntry-1]/dv_x[st->mcmc_ntry-1];
+		// Set gas temperature
+		k_poly = st->comp_k_poly[component];
+		st->u[i] = k_poly*pow(st->rho[i],st->comp_gamma_poly[component]-1.0)/gamma_minus1;
+		Tpart = st->u[i]*gamma_minus1*protonmass*mu_mol/boltzmann*unit_energy/unit_mass;
+		if(Tpart>Tmax) Tmax = Tpart;
+            }	
+	    if(st->rho[i]>st->comp_dens_max[component]) st->comp_dens_max[component] = st->rho[i];
+	    if(st->rho[i]<st->comp_dens_min[component]) st->comp_dens_min[component] = st->rho[i];
             // Temporary assign metallicity to local density value
             if(st->comp_metal_gradient[component]) {
                 st->metal[i] = st->rho[i];
                 mean_metal = mean_metal+st->metal[i];
             }
+
             // Updating the coordinate values
             st->x[i] = st->r_cyl[i]*cos(st->theta_cyl[i]);
             st->y[i] = st->r_cyl[i]*sin(st->theta_cyl[i]);
+
             // Updating the coordinate values
-            st->theta_cyl[i] = atan2(st->y[i],st->x[i]);
+            st->theta_cyl[i] = atan2(st->y[i],st->x[i])+pi;
             st->r_sph[i] = sqrt(st->x[i]*st->x[i]+st->y[i]*st->y[i]+st->z[i]*st->z[i]);
             st->phi_sph[i] = acos(st->z[i]/st->r_sph[i]);
         }
         // Rescale metallicity to user specified mean value
         if(st->comp_metal_gradient[component]) {
             mean_metal = mean_metal/st->comp_npart[component];
-            for(i = st->comp_start_part[component]+1; i<st->comp_start_part[component]+st->comp_npart[component]; ++i) {
+            for(i = st->comp_start_part[component]+1; i < st->comp_start_part[component]+st->comp_npart[component]; ++i) {
                 st->metal[i] = st->metal[i]*st->comp_metal[component]/mean_metal;
             }
         }
         acceptance /= st->comp_npart[component];
-        printf("[acceptance=%.2lf]\n",acceptance);
-        if(acceptance<0.50) printf("/////\t\t[Warning] MCMC acceptance is low -> Decrease mcmc_step%d\n",component+1);
-        if(acceptance>0.90) printf("/////\t\t[Warning] MCMC acceptance is high -> Increase mcmc_step%d\n",component+1);
+        printf("[  acceptance=%.2lf  ]",acceptance);
+        // Recursive calls if acceptance is outside the range [accept_min,accept_max]
+        if(acceptance<st->comp_accept_min[component]) {
+            st->comp_mcmc_step[component] /= 2.0;
+            printf("\n/////\t\t---------------[         Warning         ][ Low MCMC acceptance->mcmc_step%d=%.2le  ]\n",component+1,st->comp_mcmc_step[component]);
+            printf("/////\t\t- Component %2d [       recomputing       ]",component+1);
+            fflush(stdout);
+            mcmc_metropolis_hasting_ntry_stream(st,component,st->comp_model[component]);
+        }
+        if(acceptance>st->comp_accept_max[component]) {
+            st->comp_mcmc_step[component] *= 2.0;
+            printf("\n/////\t\t---------------[         Warning         ][ High MCMC acceptance->mcmc_step%d=%.2le ]\n",component+1,st->comp_mcmc_step[component]);
+            printf("/////\t\t- Component %2d [       recomputing       ]",component+1);
+            fflush(stdout);
+            mcmc_metropolis_hasting_ntry_stream(st,component,st->comp_model[component]);
+        }
+        if(acceptance<st->comp_accept_max[component] && acceptance>st->comp_accept_min[component]) {
+            printf("[rho_min=%4.2le rho_max=%4.2le H/cc]",st->comp_dens_min[component]*unit_nh,st->comp_dens_max[component]*unit_nh);
+	    printf("[Tmax=%4.2le K]",Tmax);
+	    printf("\n");
+	}
+    } else {
+        st->x[i] = 0.;
+        st->y[i] = 0.;
+        st->z[i] = 0.;
+        st->r_cyl[i] = 0.;
+        st->theta_cyl[i] = 0.;
+        st->r_sph[i] = 0.;
+        st->phi_sph[i] = 0.;
+        printf("\n");
     }
+    free(prop_x);
+    free(prop_y);
+    free(prop_z);
+    free(prop_r);
+    free(prop_r_sph);
+    free(prop_theta);
+    free(prop_phi_sph);
+    free(ref_x);
+    free(ref_y);
+    free(ref_z);
+    free(ref_r);
+    free(ref_r_sph);
+    free(ref_theta);
+    free(ref_phi_sph);
+    free(pi_x);
+    free(pi_y);
+    free(q_x);
+    free(q_y);
+    free(lambda_x);
+    free(lambda_y);
+    free(w_x);
+    free(w_y);
+    free(weights);
+    free(dv_x);
+    free(dv_y);
+
     return;
 }
-
 
 // Surface density function
 // The surface density is computed using a numerical integration
@@ -1066,6 +1289,7 @@ double surface_density_func_stream(stream *st, double r, double theta, int compo
 
     int status,tid;
     double surface_density,error,h;
+    size_t neval;
 
     gsl_integration_workspace *w = gsl_integration_workspace_alloc(AllVars.GslWorkspaceSize);
     gsl_function F;
@@ -1083,7 +1307,8 @@ double surface_density_func_stream(stream *st, double r, double theta, int compo
     st->storage[1][tid] = theta;
 
     st->selected_comp[tid] = component;
-    gsl_integration_qag(&F,0.,st->comp_length[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&surface_density,&error);
+    gsl_integration_qag(&F,0.0,st->comp_length[component],epsabs,epsrel,AllVars.GslWorkspaceSize,key,w,&surface_density,&error);
+    //gsl_integration_qng(&F,0.,st->comp_length[component],epsabs,epsrel,&surface_density,&error,&neval);
 
     gsl_integration_workspace_free(w);
     return surface_density;
@@ -1118,6 +1343,7 @@ double cumulative_mass_func_stream(stream *st, double radius, int component) {
     int status;
     double result,integral, error;
     int tid;
+    size_t neval;
 
 #if USE_THREADS == 1
     tid = omp_get_thread_num();
@@ -1133,7 +1359,8 @@ double cumulative_mass_func_stream(stream *st, double radius, int component) {
 
     st->selected_comp[tid] = component;
 
-    gsl_integration_qag(&F,0,radius,epsabs,epsrel,AllVars.GslWorkspaceSize,key,wk,&integral,&error);
+    gsl_integration_qag(&F,0.0,radius,epsabs,epsrel,AllVars.GslWorkspaceSize,key,wk,&integral,&error);
+    //gsl_integration_qng(&F,0.0,radius,epsabs,epsrel,&integral,&error,&neval);
     gsl_integration_workspace_free(wk);
 
     result = 2*pi*integral;

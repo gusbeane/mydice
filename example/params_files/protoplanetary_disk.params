@@ -12,10 +12,11 @@ boxsize6                    0.75
 boxsize7                    0.35
 level_grid_dens		    8
 level_grid_turb		    8
-level_grid_dens_gauss	    8
-dens_gauss_sigma            0.0
-dens_gauss_scale            0.0
-dens_gauss_seed 	    12123434
+level_grid_dens_fluct	    8
+dens_fluct_sigma            0.0
+dens_fluct_scale_inj        0.0
+dens_fluct_scale_diss       0.0
+dens_fluct_seed 	    12123434
 seed			    1234567
 mcmc_ntry		    1
 hydro_eq_niter		    3
@@ -37,7 +38,7 @@ type1			    0
 hydro_eq1                   0
 metal1                      1.0
 metal_gradient1		    1
-streaming_fraction1	    1.
+stream_fraction1	    1.
 stream_method1		    4
 t_min1			    100.
 t_init1			    1e2

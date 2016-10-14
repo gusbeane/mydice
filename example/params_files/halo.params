@@ -12,15 +12,18 @@ level_grid_dens		    	7
 # Refinement level of the PM turbulence grid 
 level_grid_turb		    	8
 # Refinement level of the PM gaussian field grid
-level_grid_dens_gauss   	7
+level_grid_dens_fluct   	7
 # Size of the PM grid [kpc]
 boxsize1			100.0
 boxsize2			50.0
 boxsize3			25.0
 # Dispersion for the Gaussian field fluctuations
-dens_gauss_sigma        	0.35
-# Physical scale of the gaussian field fluctuations [kpc]
-dens_gauss_scale        	1.00
+dens_fluct_sigma        	0.50
+# Physical injection scale of the random field fluctuations [kpc]
+dens_fluct_scale_inj        	2.00
+# Physical dissipation scale of the random field fluctuations [kpc]
+dens_fluct_scale_diss        	0.25
+dens_fluct_seed		    	1212
 # Seed for the random number generator
 seed			        1246
 
@@ -78,7 +81,7 @@ vmax1			        5.0
 # Particles type (GADGET format -- 0=Gas,1=Halo,2=Disk,3=Bulge,4=Stars)
 type1			        1
 # Streaming fraction of the component 1
-streaming_fraction1	    	0.0
+stream_fraction1	    	0.0
 # Method used to compute the angular momentum radial profile
 stream_method1			1
 # Radius at which the density profile should have the exact same
@@ -102,7 +105,7 @@ flatz2			        1.00
 mcmc_step2		        0.3
 vmax2			        5.0
 type2			        0
-streaming_fraction2		0.0
+stream_fraction2		0.0
 stream_method2			1
 metal2                  	1e-4
 # Compute gas temperature to reach hydrostatic equilibrium

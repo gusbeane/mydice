@@ -126,7 +126,7 @@ double smooth_out(double x, double xc, double sigma) {
 // In-Cell mass assignment with vacuum (isolated) boundary conditions on a
 // Cartesian grid. The method was adapted from the discussion found in Hockney
 // and Eastwood, "Computer Simulation Using Particles," 1981.
-int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
+int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_diss, double nspec, long seed) {
     unsigned long int ii, start, end, l;
     // Loop variables
     int i, j, k;
@@ -135,7 +135,7 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
     int ngrid_padded[3];
     double dx, dy, dz, tx, ty, tz, n;
     double x, y, z;
-    double rand_vel,rad;
+    double K_diss,K_inj;
     // The particle-mesh grid size and the Green's function and potential
     // storage buffers. Global to keep from hitting the stack limit for large grid
     // size.
@@ -148,6 +148,10 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
     ngrid_padded[1] = 2*gal->ngrid_gauss[1];
     ngrid_padded[2] = 2*gal->ngrid_gauss[2];
 
+    if(scale_inj!=scale_diss) {
+        K_diss = ngrid_padded[0]/(scale_diss/gal->dx_gauss);
+        K_inj = ngrid_padded[0]/(scale_inj/gal->dx_gauss);
+    }
 
     // Setup fftw threads
 #if USE_THREADS == 1
@@ -208,13 +212,6 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
         return -1;
     }
 
-    // Sort the position arrays and figure out the spacing between grid points.
-    // Subtract 2 for a.) the C offset and b.) the CIC offset. Finally, store
-    // the values in the galaxy for later use.
-    //gsl_sort_index(p_x,gal->x,1,gal->num_part[0]);
-    //gsl_sort_index(p_y,gal->y,1,gal->num_part[0]);
-    //gsl_sort_index(p_z,gal->z,1,gal->num_part[0]);
-
     // Initialization loop
     for (i = 0; i < ngrid_padded[0]; ++i) {
         for (j = 0; j < ngrid_padded[1]; ++j) {
@@ -223,8 +220,8 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
             }
         }
     }
-    if(gauss_scale<gal->dx_gauss) {
-        printf("/////\t\t- Gaussian field scale < grid size -> no convolution\n");
+    if(scale_inj<gal->dx_gauss) {
+        printf("/////\t\t- Injection scale for random field < grid size -> no convolution\n");
         return 0;
     }
 
@@ -241,12 +238,24 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
         for (j = 0; j < ngrid_padded[1]/2; ++j) {
 #pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
             for (k = 0; k < ngrid_padded[2]/2; ++k) {
-                dx = sqrt(pow((double)(i+0.5)*gal->dx_gauss,2.0));
-                dy = sqrt(pow((double)(j+0.5)*gal->dx_gauss,2.0));
-                dz = sqrt(pow((double)(k+0.5)*gal->dx_gauss,2.0));
-                rad = sqrt(dx*dx+dy*dy+dz*dz);
+                dx = (double)(i+0.5);
+                dy = (double)(j+0.5);
+                dz = (double)(k+0.5);
                 // Octant 1
-                kernel_grid[i][j][k] = exp(-pow(rad,2.0)/(2.0*pow(gauss_scale,2.0)));
+                // Use a power spectrum
+                if(scale_diss!=scale_inj) {
+		    // define wave number function
+                    double K = sqrt(dx*dx+dy*dy+dz*dz);
+		    // Suppress high & low frequencies
+		    K = K>=K_diss?K_diss*1e10:K;
+		    K = K<=K_inj?K_inj:K;
+                    kernel_grid[i][j][k] = pow(K,nspec/2.0);
+		// Use a gaussian convolution
+		} else {
+		    // define radius function
+		    double rad = sqrt(dx*dx+dy*dy+dz*dz)*gal->dx_gauss;
+                    kernel_grid[i][j][k] = exp(-pow(rad,2.0)/(2.0*pow(scale_inj,2.0)));
+		}
                 // Octant 2
                 kernel_grid[ngrid_padded[0]-1-i][j][k] = kernel_grid[i][j][k];
                 // Octant 3
@@ -265,7 +274,6 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
         }
     }
 
-
     // Pack kernel's function and the density into 1D arrays
     l = 0;
     for (i = 0; i < ngrid_padded[0]; ++i) {
@@ -280,12 +288,13 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
 
     // Perform the fourier transforms. Density first, kernel's function second.
     fftw_execute(fft_gaussian_field);
-    fftw_execute(fft_kernel);
+    if(scale_diss!=scale_inj) fftw_execute(fft_kernel);
     // FFT is computed, we can free the memory
     fftw_destroy_plan(fft_gaussian_field);
     fftw_destroy_plan(fft_kernel);
     // Allocating memory for the inverse fourier computation
     fftinv_gaussian_field = fftw_plan_dft_3d(ngrid_padded[0],ngrid_padded[1],ngrid_padded[2],gaussian_field,gaussian_field,FFTW_BACKWARD,FFTW_ESTIMATE);
+    // Multiply the density by kernel's function to find the k-space gaussian_field and
     // Multiply the density by kernel's function to find the k-space gaussian_field and
     // invert for the real potenital. Second, normalize the system and, finally,
     // put the gaussian_field information into the grid.
@@ -334,11 +343,12 @@ int set_galaxy_gaussian_field_grid(galaxy *gal, double gauss_scale, long seed) {
 }
 
 
+
 // This function calculates the potential due to a galactic disk using Cloud-
 // In-Cell mass assignment with vacuum (isolated) boundary conditions on a
 // Cartesian grid. The method was adapted from the discussion found in Hockney
 // and Eastwood, "Computer Simulation Using Particles," 1981.
-int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
+int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss, double nspec, long seed) {
     unsigned long int ii, start, end, l;
     // Loop variables
     int i, j, k;
@@ -347,7 +357,7 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
     int ngrid_padded[3];
     double dx, dy, dz, tx, ty, tz, n;
     double x, y, z;
-    double rand_vel,rad;
+    double K_diss,K_inj;
     // The particle-mesh grid size and the Green's function and potential
     // storage buffers. Global to keep from hitting the stack limit for large grid
     // size.
@@ -359,6 +369,11 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
     ngrid_padded[0] = 2*st->ngrid_gauss[0];
     ngrid_padded[1] = 2*st->ngrid_gauss[1];
     ngrid_padded[2] = 2*st->ngrid_gauss[2];
+
+    if(scale_inj!=scale_diss) {
+        K_diss = ngrid_padded[0]/(scale_diss/st->dx_gauss);
+        K_inj = ngrid_padded[0]/(scale_inj/st->dx_gauss);
+    }
 
     // Setup fftw threads
 #if USE_THREADS == 1
@@ -417,16 +432,6 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
         fprintf(stderr,"\t\tGrid dimensions must be greater than zero! (ngrid=%d)\n",st->ngrid_gauss[0]);
         return -1;
     }
-
-    // Sort the position arrays and figure out the spacing between grid points.
-    // Subtract 2 for a.) the C offset and b.) the CIC offset. Finally, store
-    // the values in the galaxy for later use.
-    //gsl_sort_index(p_x,st->x,1,st->num_part[0]);
-    //gsl_sort_index(p_y,st->y,1,st->num_part[0]);
-    //gsl_sort_index(p_z,st->z,1,st->num_part[0]);
-
-    // Print the gaussian_field in the xy-plane for z = 0 if the option is set.
-    //if (verbose) printf("/////\t\t-Grid cell spacings [kpc]: dx = %.3f dy = %.3f dz = %.3f\n",space_x,space_y,space_z);
     fflush(stdout);
 
     // Initialization loop
@@ -436,6 +441,10 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
                 st->gaussian_field[i][j][k] = gsl_ran_gaussian(rng,1.0);
             }
         }
+    }
+    if(scale_inj<st->dx_gauss) {
+        printf("/////\t\t- Injection scale for random field < grid size -> no convolution\n");
+        return 0;
     }
 
     // Define kernel's function.
@@ -451,12 +460,24 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
         for (j = 0; j < ngrid_padded[1]/2; ++j) {
 #pragma omp parallel for private(dx, dy, dz) shared(kernel_grid,i,j)
             for (k = 0; k < ngrid_padded[2]/2; ++k) {
-                dx = sqrt(pow((double)(i+0.5)*st->dx_gauss,2.0));
-                dy = sqrt(pow((double)(j+0.5)*st->dx_gauss,2.0));
-                dz = sqrt(pow((double)(k+0.5)*st->dx_gauss,2.0));
-                rad = sqrt(dx*dx+dy*dy+dz*dz);
+                dx = (double)(i+0.5);
+                dy = (double)(j+0.5);
+                dz = (double)(k+0.5);
                 // Octant 1
-                kernel_grid[i][j][k] = 1.0/(pow(gauss_scale*sqrt(2.0*pi),3.0))*exp(-pow(rad,2.0)/(2.0*pow(gauss_scale,2.0)));
+                // Use a power spectrum
+                if(scale_diss!=scale_inj) {
+		    // define wave number function
+                    double K = sqrt(dx*dx+dy*dy+dz*dz);
+		    // Suppress high & low frequencies
+		    K = K>=K_diss?K_diss*1e10:K;
+		    K = K<=K_inj?K_inj:K;
+                    kernel_grid[i][j][k] = pow(K,nspec/2.0);
+		// Use a gaussian convolution
+		} else {
+		    // define radius function
+		    double rad = sqrt(dx*dx+dy*dy+dz*dz)*st->dx_gauss;
+                    kernel_grid[i][j][k] = exp(-pow(rad,2.0)/(2.0*pow(scale_inj,2.0)));
+		}
                 // Octant 2
                 kernel_grid[ngrid_padded[0]-1-i][j][k] = kernel_grid[i][j][k];
                 // Octant 3
@@ -490,7 +511,7 @@ int set_stream_gaussian_field_grid(stream *st, double gauss_scale, long seed) {
 
     // Perform the fourier transforms. Density first, kernel's function second.
     fftw_execute(fft_gaussian_field);
-    fftw_execute(fft_kernel);
+    if(scale_inj!=scale_diss) fftw_execute(fft_kernel);
     // FFT is computed, we can free the memory
     fftw_destroy_plan(fft_gaussian_field);
     fftw_destroy_plan(fft_kernel);
@@ -572,9 +593,9 @@ double galaxy_gaussian_field_func(galaxy *gal, double x, double y, double z) {
     node_y = floor(ytemp);
     node_z = floor(ztemp);
 
-    if(node_x<0||node_x>=ngrid_padded[0]) printf("%d %d %d %lf %lf %lf\n",node_x,node_y,node_z,x,y,z);
-    if(node_y<0||node_y>=ngrid_padded[1]) printf("%d %d %d %lf %lf %lf\n",node_x,node_y,node_z,x,y,z);
-    if(node_z<0||node_z>=ngrid_padded[2]) printf("%d %d %d %lf %lf %lf\n",node_x,node_y,node_z,x,y,z);
+    if(node_x<0||node_x>=ngrid_padded[0]-1) return 0.;
+    if(node_y<0||node_y>=ngrid_padded[1]-1) return 0.;
+    if(node_z<0||node_z>=ngrid_padded[2]-1) return 0.;
 
     // Check to see if (x,y,z) is a grid point.
     if (xtemp == (double) node_y && ytemp == (double) node_y && ztemp == (double) node_z) {
@@ -636,6 +657,10 @@ double stream_gaussian_field_func(stream *st, double x, double y, double z) {
     node_y = floor(ytemp);
     node_z = floor(ztemp);
 
+    if(node_x<0||node_x>=ngrid_padded[0]-1) return 0.;
+    if(node_y<0||node_y>=ngrid_padded[1]-1) return 0.;
+    if(node_z<0||node_z>=ngrid_padded[2]-1) return 0.;
+
     // Check to see if (x,y,z) is a grid point.
     if (xtemp == (double) node_y && ytemp == (double) node_y && ztemp == (double) node_z) {
         // If (x,y,z) is a grid point, return its potential.
@@ -647,7 +672,6 @@ double stream_gaussian_field_func(stream *st, double x, double y, double z) {
         gauss2 = st->gaussian_field[node_x+1][node_y][node_z];
         gauss3 = st->gaussian_field[node_x][node_y+1][node_z];
         gauss4 = st->gaussian_field[node_x][node_y][node_z+1];
-        gauss5 = st->gaussian_field[node_x][node_y+1][node_z+1];
         gauss6 = st->gaussian_field[node_x+1][node_y+1][node_z];
         gauss7 = st->gaussian_field[node_x+1][node_y][node_z+1];
         gauss8 = st->gaussian_field[node_x+1][node_y+1][node_z+1];

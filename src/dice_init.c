@@ -231,10 +231,6 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_turb_sigma array\n");
         return -1;
     }
-    if (!(gal->comp_turb_scale = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-        fprintf(stderr,"[Error] Unable to allocate comp_turb_scale array\n");
-        return -1;
-    }
     if (!(gal->comp_turb_seed = calloc(AllVars.MaxCompNumber,sizeof(long)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_seed_scale array\n");
         return -1;
@@ -255,8 +251,8 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_spherical_hydro_eq array\n");
         return -1;
     }
-    if (!(gal->comp_dens_gauss = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-        fprintf(stderr,"[Error] Unable to allocate comp_dens_gauss array\n");
+    if (!(gal->comp_dens_fluct = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_dens_fluct array\n");
         return -1;
     }
     if (!(gal->comp_cut_in = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -313,6 +309,30 @@ int allocate_component_arrays(galaxy *gal) {
     }
     if (!(gal->comp_flaty_out = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_flaty_out array\n");
+        return -1;
+    }
+    if (!(gal->comp_flatx_rt = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_flatx_rt array\n");
+        return -1;
+    }
+    if (!(gal->comp_flaty_rt = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_flaty_rt array\n");
+        return -1;
+    }
+    if (!(gal->comp_flatz_rt = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_flatz_rt array\n");
+        return -1;
+    }
+    if (!(gal->comp_flatx_st = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_flatx_st array\n");
+        return -1;
+    }
+    if (!(gal->comp_flaty_st = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_flaty_st array\n");
+        return -1;
+    }
+    if (!(gal->comp_flatz_st = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_flatz_st array\n");
         return -1;
     }
     if (!(gal->comp_t_min = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -477,6 +497,18 @@ int allocate_component_arrays(galaxy *gal) {
     }
     if (!(gal->comp_jeans_anisotropy_model = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_jeans_anisotropy array\n");
+        return -1;
+    }
+    if (!(gal->comp_turb_scale_diss = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_turb_scale_diss array\n");
+        return -1;
+    }
+    if (!(gal->comp_turb_scale_inj = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_turb_scale_inj array\n");
+        return -1;
+    }
+    if (!(gal->comp_turb_nspec = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_turb_nspec array\n");
         return -1;
     }
 
@@ -917,18 +949,51 @@ int allocate_component_arrays_stream(stream *st) {
         fprintf(stderr,"[Error] Unable to allocate particle comp_turb_sigma array\n");
         return -1;
     }
-    if (!(st->comp_turb_scale = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-        fprintf(stderr,"[Error] Unable to allocate particle comp_turb_scale array\n");
+    if (!(st->comp_turb_scale_inj = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_turb_scale_inj array\n");
+        return -1;
+    }
+    if (!(st->comp_turb_scale_diss = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_turb_scale_diss array\n");
+        return -1;
+    }
+    if (!(st->comp_turb_nspec = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_turb_nspec array\n");
         return -1;
     }
     if (!(st->comp_turb_seed = calloc(AllVars.MaxCompNumber,sizeof(long)))) {
         fprintf(stderr,"[Error] Unable to allocate particle comp_turb_seed array\n");
         return -1;
     }
-    if (!(st->comp_dens_gauss = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-        fprintf(stderr,"[Error] Unable to allocate particle comp_dens_gauss array\n");
+    if (!(st->comp_dens_fluct = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_dens_fluct array\n");
         return -1;
     }
+    if (!(st->comp_dens_min = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_dens_min array\n");
+        return -1;
+    }
+    if (!(st->comp_dens_max = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_dens_max array\n");
+        return -1;
+    }
+    if (!(st->comp_k_poly = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_k_poly array\n");
+        return -1;
+    }
+    if (!(st->comp_gamma_poly = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_gamma_poly array\n");
+        return -1;
+    }
+    if (!(st->comp_accept_min = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_accept_min array\n");
+        return -1;
+    }
+    if (!(st->comp_accept_max = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_dens_max array\n");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -1114,7 +1179,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
     unsigned long int k;
     int i,j,n,nt;
-    int dens_gauss;
+    int dens_fluct;
     // Seed for the random number generator
     long seed;
     double cutted_halo_mass, cutted_disk_mass, cutted_gas_mass, cutted_bulge_mass;
@@ -1300,13 +1365,13 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     gal->index_disk = -1;
     gal->index_first = -1;
     gal->index_gasdisk = -1;
-    dens_gauss = 0;
+    dens_fluct = 0;
 
     
 
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
         // Checking for gaussian fluctuations bool
-        dens_gauss += gal->comp_dens_gauss[i];
+        dens_fluct += gal->comp_dens_fluct[i];
         // Rescale the mass fractions
         if(gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.) effective_mass_factor = effective_mass_factor+gal->comp_mass_frac[i];
         // Disk fraction - count only flat components
@@ -1323,10 +1388,10 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     if(gal->index_halo>-1) if(gal->comp_cut[gal->index_halo]<=0.) gal->comp_cut[gal->index_halo] = gal->r200;
 
     // Allocate and set the gaussian field grid if necessary
-    if(gal->dens_gauss_sigma>0. && gal->dens_gauss_scale>0. && dens_gauss>0) {
-        gal->ngrid_gauss[0] = pow(2,gal->level_grid_dens_gauss);
-        gal->ngrid_gauss[1] = pow(2,gal->level_grid_dens_gauss);
-        gal->ngrid_gauss[2] = pow(2,gal->level_grid_dens_gauss);
+    if(gal->dens_fluct_sigma>0. && gal->dens_fluct_scale_inj>0. && dens_fluct>0) {
+        gal->ngrid_gauss[0] = pow(2,gal->level_grid_dens_fluct);
+        gal->ngrid_gauss[1] = pow(2,gal->level_grid_dens_fluct);
+        gal->ngrid_gauss[2] = pow(2,gal->level_grid_dens_fluct);
 
         if(allocate_galaxy_gaussian_grid(gal)!=0) {
             fprintf(stderr,"[Error] Cannot allocate gaussian grid\n");;
@@ -1337,14 +1402,17 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                 gal->dx_gauss = 2.1*gal->comp_cut[i]/((double)gal->ngrid_gauss[0]);
             }
         }
-        set_galaxy_gaussian_field_grid(gal,gal->dens_gauss_scale,gal->dens_gauss_seed);
-        printf("/////\tSetting gaussian density fluctuations [sigma=%.2lf][scale=%.2lf kpc][grid scale=%.3lf kpc][seed=%ld]\n",gal->dens_gauss_sigma,gal->dens_gauss_scale,gal->dx_gauss,gal->dens_gauss_seed);
-        if(gal->dens_gauss_sigma>0.5) {
+        printf("/////\t--------------------------------------------------\n");
+        printf("/////\tSetting density fluctuations [sigma=%.2lf][scale inj=%.2lf kpc][scale diss=%.3lf kpc][spectral index=%.2lf]\n",
+		gal->dens_fluct_sigma,gal->dens_fluct_scale_inj,gal->dens_fluct_scale_diss,gal->dens_fluct_nspec);
+        printf("/////\t                             [grid scale=%.3lf kpc][seed=%ld]\n",gal->dx_gauss,gal->dens_fluct_seed);
+	fflush(stdout);
+        set_galaxy_random_field_grid(gal,gal->dens_fluct_scale_inj,gal->dens_fluct_scale_diss,gal->dens_fluct_nspec,gal->dens_fluct_seed);
+        if(gal->dens_fluct_sigma>0.5) {
             printf("/////\t[Warning] Gaussian fluctuations may break the axisymmetry hypothesis\n");
         }
+        printf("/////\t--------------------------------------------------\n");
     }
-    // Turn off GSL errors
-    gsl_set_error_handler_off();
     // Do not work with pseudo densities yet
     for(i = 0; i<AllVars.Nthreads; i++) gal->pseudo[i] = 0;
     // Rescale the baryon fraction
@@ -1668,9 +1736,9 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                 break;
             }
         }
-        if(gal->dens_gauss_sigma>0. && gal->dens_gauss_scale>0. && dens_gauss>0) {
+        if(gal->dens_fluct_sigma>0. && gal->dens_fluct_scale_inj>0. && dens_fluct>0) {
             printf("/////\t\t- Gaussian field density \t[ %4d,%4d,%4d ]\n",
-                    (int)pow(2,gal->level_grid_dens_gauss),(int)pow(2,gal->level_grid_dens_gauss),(int)pow(2,gal->level_grid_dens_gauss));
+                    (int)pow(2,gal->level_grid_dens_fluct),(int)pow(2,gal->level_grid_dens_fluct),(int)pow(2,gal->level_grid_dens_fluct));
         }
         for(i = 0; i<AllVars.MaxCompNumber; i++) {
             if(gal->comp_type[i]==0 && gal->comp_turb_sigma[i]>0.) {
@@ -1777,7 +1845,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
             gal->dx_gauss = 2.1*gal->comp_cut[j]/((double)gal->ngrid_gauss[0]);
 
-            set_galaxy_gaussian_field_grid(gal,gal->comp_age_scale[j],gal->comp_age_seed[j]);
+            set_galaxy_random_field_grid(gal,gal->comp_age_scale[j],gal->comp_age_scale[j],1.0,gal->comp_age_seed[j]);
 
             mean_age = 0.;
             max_age = 0.;
@@ -1826,7 +1894,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
             gal->dx_gauss = 2.1*gal->comp_cut[j]/((double)gal->ngrid_gauss[0]);
 
-            set_galaxy_gaussian_field_grid(gal,gal->comp_metal_scale[j],gal->comp_metal_seed[j]);
+            set_galaxy_random_field_grid(gal,gal->comp_metal_scale[j],gal->comp_metal_scale[j],1.0,gal->comp_metal_seed[j]);
 
             mean_metal = 0.;
             printf("/////\t\t- Component %2d -> setting metal fluctuations [sigma=%.2lf][scale=%.2lf %s][grid scale=%.3lf %s][seed=%ld]\n",
@@ -1877,7 +1945,7 @@ int create_stream(stream *st, char *fname, int info) {
 
     unsigned long int i;
     int j,nt;
-    int dens_gauss;
+    int dens_fluct;
     double base;
     // Seed for the random number generator
     long seed;
@@ -1908,17 +1976,17 @@ int create_stream(stream *st, char *fname, int info) {
     st->ntot_part = (unsigned long int)0;
     st->comp_start_part[0] = (unsigned long int)0;
     st->total_mass = 0.;
-    dens_gauss = 0;
+    dens_fluct = 0;
 
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
         // Checking for gaussian fluctuations bool
-        dens_gauss += st->comp_dens_gauss[i];
+        dens_fluct += st->comp_dens_fluct[i];
     }
     // Allocate and set the gaussian field grid if necessary
-    if(st->dens_gauss_sigma>0. && st->dens_gauss_scale>0. && dens_gauss>0) {
-        st->ngrid_gauss[0] = pow(2,st->level_grid_dens_gauss);
-        st->ngrid_gauss[1] = pow(2,st->level_grid_dens_gauss);
-        st->ngrid_gauss[2] = pow(2,st->level_grid_dens_gauss);
+    if(st->dens_fluct_sigma>0. && st->dens_fluct_scale_inj>0. && dens_fluct>0) {
+        st->ngrid_gauss[0] = pow(2,st->level_grid_dens_fluct);
+        st->ngrid_gauss[1] = pow(2,st->level_grid_dens_fluct);
+        st->ngrid_gauss[2] = pow(2,st->level_grid_dens_fluct);
 
         allocate_stream_gaussian_grid(st);
 
@@ -1927,11 +1995,13 @@ int create_stream(stream *st, char *fname, int info) {
             if(2.1*st->comp_length[i]/((double)st->ngrid_gauss[0])>st->dx_gauss) st->dx_gauss = 2.1*st->comp_length[i]/((double)st->ngrid_gauss[0]);
         }
 
-        set_stream_gaussian_field_grid(st,st->dens_gauss_scale,st->dens_gauss_seed);
-        printf("/////\tGaussian fluctuations grid initialised [dx=%.3lf kpc]\n",st->dx_gauss);
-        if(st->dens_gauss_sigma>0.5) {
-            printf("/////\t[Warning] Gaussian fluctuations may break the axisymmetry hypothesis\n");
-        }
+        printf("/////\t--------------------------------------------------\n");
+        printf("/////\tSetting density fluctuations [sigma=%.2lf][scale inj=%.2lf kpc][scale diss=%.3lf kpc][spectral index=%.2lf]\n",
+		st->dens_fluct_sigma,st->dens_fluct_scale_inj,st->dens_fluct_scale_diss,st->dens_fluct_nspec);
+        printf("/////\t                             [grid scale=%.3lf kpc][seed=%ld]\n",st->dx_gauss,st->dens_fluct_seed);
+	fflush(stdout);
+        set_stream_random_field_grid(st,st->dens_fluct_scale_inj,st->dens_fluct_scale_diss,st->dens_fluct_nspec,st->dens_fluct_seed);
+        printf("/////\t--------------------------------------------------\n");
     }
 
     // Set up component properties
@@ -1960,11 +2030,19 @@ int create_stream(stream *st, char *fname, int info) {
             st->comp_u_init[i] *= unit_mass / unit_energy;
             st->comp_u_init[i] *= (1.0 / gamma_minus1);
             st->comp_u_init[i] /= mu_mol;
-            // Computing isothermal sound speed
-            st->comp_cs_init[i] = sqrt(gamma_minus1*st->comp_u_init[i]*unit_energy/unit_mass);
+
+            if(st->comp_gamma_poly[i]<1.0) {
+                fprintf(stderr,"[Error] gamma_poly%d<1.0\n",i);
+		return -1;
+	    }
+	    // Polytropic EoS case
+	    // The normalisation factor K is computed for T_init and dens_init
+	    st->comp_k_poly[i] = st->comp_u_init[i]*pow(st->comp_dens[i]/unit_nh,1.0-st->comp_gamma_poly[i])*gamma_minus1;  
+            st->comp_cs_init[i] = sqrt(st->comp_k_poly[i]*st->comp_gamma_poly[i]*pow(st->comp_dens[i],st->comp_gamma_poly[i]-1.0));
         }
     }
 
+    printf("/////\t--------------------------------------------------\n");
     // Print some information to screen
     if (info != 0) {
         printf("/////\tStream properties\n");
@@ -1976,6 +2054,7 @@ int create_stream(stream *st, char *fname, int info) {
     if(allocate_variable_arrays_stream(st)!=0) {
         fprintf(stderr,"[Error] Allocation of component arrays failed\n");
     }
+    printf("/////\t--------------------------------------------------\n");
     printf("/////\tComponent informations\n");
     for (j = 0; j<AllVars.MaxCompNumber; j++) {
         if(st->comp_npart[j]>0) printf("/////\t\t- Component %2d -> m=%.2e Msol\n",j+1,(st->comp_mass[j]*1.0E10)/(st->comp_npart[j]));
@@ -1983,21 +2062,21 @@ int create_stream(stream *st, char *fname, int info) {
         for (i = st->comp_start_part[j]; i < st->comp_start_part[j] + st->comp_npart[j]; i++) {
             st->mass[i] = st->comp_mass[j]/st->comp_npart[j];
             st->id[i] = i;
-            st->u[i] = st->comp_u_init[j];
-            st->rho[i] = 0.;
-            st->metal[i] = st->comp_metal[j];
         }
     }
+    printf("/////\t--------------------------------------------------\n");
     // If the new galaxy is different from the previous one
     // Let's recompute everything
     if ((i = set_stream_coords(st)) != 0) {
         fprintf(stderr,"[Error] Unable to set coordinates\n");
         exit(0);
     }
+    printf("/////\t--------------------------------------------------\n");
     if(set_stream_velocity(st) != 0) {
         fprintf(stderr,"[Error] Unable to set the velocities\n");
         exit(0);
     }
+    printf("/////\t--------------------------------------------------\n");
     // No problems detected
     return 0;
 }
@@ -2149,7 +2228,7 @@ int set_stream_coords(stream *st) {
         if(st->comp_npart[i]>0) {
             printf("/////\t\t- Component %2d [%s]",i+1,st->comp_profile_name[i]);
             fflush(stdout);
-            mcmc_metropolis_hasting_stream(st,i,st->comp_model[i]);
+            mcmc_metropolis_hasting_ntry_stream(st,i,st->comp_model[i]);
         }
     }
     // Be nice to the memory
@@ -2724,7 +2803,7 @@ int set_galaxy_velocity(galaxy *gal) {
         gal->pseudo[tid] = 0;
     }
 
-    printf("/////\t\t----------------------------------------------\n");
+    printf("/////\t\t-------------------------------------------\n");
     printf("/////\t\t[   J_tot=%4.2le  J200=%4.2le Msol.%s.%s  ]\n",J_sum*unit_mass/solarmass,gal->J200*unit_mass/solarmass,AllVars.UnitLengthName,AllVars.UnitVelocityName);
     if(warning1) printf("/////\t\t[Warning] Potential derivative unstable -> Increase particule number\n");
 
@@ -2760,16 +2839,20 @@ int set_galaxy_velocity(galaxy *gal) {
 
             gal->dx_gauss = 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss[0]);
 
-            printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc][seed=%ld]\n",k+1,gal->comp_turb_sigma[k],gal->comp_turb_scale[k],gal->dx_gauss,gal->comp_turb_seed[k]);
-            set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k],gal->comp_turb_seed[k]);
+            printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale inj=%.2lf kpc][scale diss=%.3lf kpc][spectral index=%.2lf]\n",k+1,gal->comp_turb_sigma[k],gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k]);
+            printf("/////\t\t                                     [grid scale=%.3lf kpc][seed=%ld]",gal->dx_gauss,gal->comp_turb_seed[k]);
+	    printf("[ x ");
+            set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k],gal->comp_turb_seed[k]);
             for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
                 gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
             }
-            set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k],gal->comp_turb_seed[k]+1);
+	    printf("y ");
+            set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k],gal->comp_turb_seed[k]+1);
             for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
                 gal->vel_y[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
             }
-            set_galaxy_gaussian_field_grid(gal,gal->comp_turb_scale[k],gal->comp_turb_seed[k]+2);
+	    printf("z ]\n");
+            set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k],gal->comp_turb_seed[k]+2);
             for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
                 gal->vel_z[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
             }
@@ -2803,7 +2886,7 @@ int set_stream_velocity(stream *st) {
     for(j = 0; j<AllVars.MaxCompNumber; j++) {
         // Particle velocities.
         if(st->comp_npart[j]>0) {
-            printf("/////\t\t-Setting component %d particles velocities\n",j+1);
+            printf("/////\t\t- Setting component %d particles velocities\n",j+1);
             fflush(stdout);
             for (i = st->comp_start_part[j]; i < st->comp_start_part[j]+st->comp_npart[j]; ++i) {
                 //Make sure to divide by 1.0E5 to put the velocities in km/s.
@@ -2814,7 +2897,8 @@ int set_stream_velocity(stream *st) {
         }
     }
 
-    printf("/////\tComputing turbulence\n");
+    printf("/////\t--------------------------------------------------\n");
+    printf("/////\t Computing turbulence\n");
     // Loop over components
     for(k = 0; k<AllVars.MaxCompNumber; k++) {
         if(st->comp_turb_sigma[k]>0.) {
@@ -2832,16 +2916,17 @@ int set_stream_velocity(stream *st) {
 
             st->dx_gauss = 2.1*st->comp_length[k]/((double)st->ngrid_gauss[0]);
 
-            printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale=%.2lf kpc][grid scale=%.3lf kpc]\n",k+1,st->comp_turb_sigma[k]/unit_velocity,st->comp_turb_scale[k],st->dx_gauss);
-            set_stream_gaussian_field_grid(st,st->comp_turb_sigma[k],st->comp_turb_seed[k]);
+            printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale inj=%.2lf kpc][scale diss=%.3lf kpc][spectral index=%.2lf]\n",k+1,st->comp_turb_sigma[k],st->comp_turb_scale_inj[k],st->comp_turb_scale_diss[k],st->comp_turb_nspec[k]);
+            printf("/////\t\t                                     [grid scale=%.3lf kpc][seed=%ld]\n",st->dx_gauss,st->comp_turb_seed[k]);
+            set_stream_random_field_grid(st,st->comp_turb_scale_inj[k],st->comp_turb_scale_diss[k],st->comp_turb_nspec[k],st->comp_turb_seed[k]);
             for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
                 st->vel_x[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
             }
-            set_stream_gaussian_field_grid(st,st->comp_turb_sigma[k],st->comp_turb_seed[k]+1);
+            set_stream_random_field_grid(st,st->comp_turb_scale_inj[k],st->comp_turb_scale_diss[k],st->comp_turb_nspec[k],st->comp_turb_seed[k]+1);
             for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
                 st->vel_y[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
             }
-            set_stream_gaussian_field_grid(st,st->comp_turb_sigma[k],st->comp_turb_seed[k]+2);
+            set_stream_random_field_grid(st,st->comp_turb_scale_inj[k],st->comp_turb_scale_diss[k],st->comp_turb_nspec[k],st->comp_turb_seed[k]+2);
             for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
                 st->vel_z[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
             }
@@ -2886,6 +2971,12 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_flatx_out);
     free(gal->comp_flaty_out);
     free(gal->comp_flatz_out);
+    free(gal->comp_flatx_rt);
+    free(gal->comp_flaty_rt);
+    free(gal->comp_flatz_rt);
+    free(gal->comp_flatx_st);
+    free(gal->comp_flaty_st);
+    free(gal->comp_flatz_st);
     free(gal->comp_mcmc_step);
     free(gal->comp_mcmc_step_hydro);
     free(gal->comp_mcmc_step_slope);
@@ -2905,7 +2996,9 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_cs_init);
     free(gal->comp_turb_sigma);
     free(gal->comp_turb_frac);
-    free(gal->comp_turb_scale);
+    free(gal->comp_turb_scale_inj);
+    free(gal->comp_turb_scale_diss);
+    free(gal->comp_turb_nspec);
     free(gal->comp_turb_seed);
     free(gal->comp_mean_age);
     free(gal->comp_age_sigma);
@@ -2925,7 +3018,7 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_compute_vel);
     free(gal->comp_hydro_eq);
     free(gal->comp_spherical_hydro_eq);
-    free(gal->comp_dens_gauss);
+    free(gal->comp_dens_fluct);
     free(gal->comp_cut_in);
     free(gal->comp_thermal_eq);
     free(gal->comp_part_mass);
@@ -3060,7 +3153,9 @@ void trash_stream(stream *st, int info) {
     free(st->comp_dens);
     free(st->comp_opening_angle);
     free(st->comp_turb_sigma);
-    free(st->comp_turb_scale);
+    free(st->comp_turb_scale_inj);
+    free(st->comp_turb_scale_diss);
+    free(st->comp_turb_nspec);
     free(st->comp_turb_seed);
     free(st->comp_t_init);
     free(st->comp_theta_sph);
@@ -3076,7 +3171,13 @@ void trash_stream(stream *st, int info) {
     free(st->comp_u_init);
     free(st->comp_cs_init);
     free(st->comp_start_part);
-    free(st->comp_dens_gauss);
+    free(st->comp_dens_fluct);
+    free(st->comp_dens_min);
+    free(st->comp_dens_max);
+    free(st->comp_accept_min);
+    free(st->comp_accept_max);
+    free(st->comp_gamma_poly);
+    free(st->comp_k_poly);
 
     // Deallocate all the small parts of the galaxy to be nice to the memory.
     free(st->id);

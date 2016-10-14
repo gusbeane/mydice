@@ -110,6 +110,8 @@ int main (int argc, char **argv) {
 #else
     AllVars.Nthreads = 1;
 #endif
+    // Turn off GSL errors
+    gsl_set_error_handler_off();
     // Set the GSL random number generator
     printf("/////\tAllocating GSL random number generators\n");
     gsl_rng_env_setup();
@@ -285,12 +287,14 @@ int main (int argc, char **argv) {
         write_gadget2_ics(stack,AllVars.Filename);
     }
     printf("/////\tCleaning memory\n");
-    trash_galaxy(pgal,0);
-    trash_galaxy(stack,0);
-    free(gal);
-    free(pgal);
-    free(stack);
-    free(st);
+    if(AllVars.Ngal>0) {
+        trash_galaxy(pgal,0);
+        trash_galaxy(stack,0);
+        free(gal);
+        free(pgal);
+        free(stack);
+    }
+    if(AllVars.Nstream>0) free(st);
     // Free random number generator & GSL integration workspace
     for(i = 0; i<AllVars.Nthreads; i++) {
         gsl_rng_free(r[i]);
