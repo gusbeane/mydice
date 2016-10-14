@@ -406,7 +406,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 92*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 100*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
 
     FILE *fd;
     int i,j,n;
@@ -543,9 +543,9 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     mandatory[nt] = 0;
     id[nt++] = INT;
 
-    strcpy(tag[nt], "level_grid_dens_gauss");
-    addr[nt] = &gal->level_grid_dens_gauss;
-    gal->level_grid_dens_gauss = 7;
+    strcpy(tag[nt], "level_grid_dens_fluct");
+    addr[nt] = &gal->level_grid_dens_fluct;
+    gal->level_grid_dens_fluct = 7;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = INT;
@@ -556,23 +556,37 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     mandatory[nt] = 1;
     id[nt++] = LONG;
 
-    strcpy(tag[nt], "dens_gauss_sigma");
-    addr[nt] = &gal->dens_gauss_sigma;
-    gal->dens_gauss_sigma = 0.;
+    strcpy(tag[nt], "dens_fluct_sigma");
+    addr[nt] = &gal->dens_fluct_sigma;
+    gal->dens_fluct_sigma = 0.;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = DOUBLE;
 
-    strcpy(tag[nt], "dens_gauss_scale");
-    addr[nt] = &gal->dens_gauss_scale;
-    gal->dens_gauss_scale = 0.5;
+    strcpy(tag[nt], "dens_fluct_scale_inj");
+    addr[nt] = &gal->dens_fluct_scale_inj;
+    gal->dens_fluct_scale_inj = 0.0;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = DOUBLE;
 
-    strcpy(tag[nt], "dens_gauss_seed");
-    addr[nt] = &gal->dens_gauss_seed;
-    gal->dens_gauss_seed = 111111;
+    strcpy(tag[nt], "dens_fluct_scale_diss");
+    addr[nt] = &gal->dens_fluct_scale_diss;
+    gal->dens_fluct_scale_diss = 0.0;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = DOUBLE;
+
+    strcpy(tag[nt], "dens_fluct_nspec");
+    addr[nt] = &gal->dens_fluct_nspec;
+    gal->dens_fluct_nspec = -5.0/3.0;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = DOUBLE;
+
+    strcpy(tag[nt], "dens_fluct_seed");
+    addr[nt] = &gal->dens_fluct_seed;
+    gal->dens_fluct_seed = 111111;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = LONG;
@@ -772,7 +786,54 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
+        n = sprintf(temp_tag,"flatx_rt%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flatx_rt[j] = -1.0;
+        addr[nt] = &gal->comp_flatx_rt[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
 
+        n = sprintf(temp_tag,"flaty_rt%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flaty_rt[j] = -1.0;
+        addr[nt] = &gal->comp_flaty_rt[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"flatz_rt%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flatz_rt[j] = -1.0;
+        addr[nt] = &gal->comp_flatz_rt[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"flatx_st%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flatx_st[j] = -1.0;
+        addr[nt] = &gal->comp_flatx_st[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"flaty_st%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flaty_st[j] = -1.0;
+        addr[nt] = &gal->comp_flaty_st[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"flatz_st%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flatz_st[j] = -1.0;
+        addr[nt] = &gal->comp_flatz_st[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+	
         n = sprintf(temp_tag,"mcmc_step%d",j+1);
         strcpy(tag[nt], temp_tag);
 	gal->comp_mcmc_step[j] = 0.5;
@@ -837,7 +898,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-        n = sprintf(temp_tag,"streaming_fraction%d",j+1);
+        n = sprintf(temp_tag,"stream_fraction%d",j+1);
         strcpy(tag[nt], temp_tag);
         gal->comp_stream_frac[j] = 1.0;
         addr[nt] = &gal->comp_stream_frac[j];
@@ -981,10 +1042,26 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-        n = sprintf(temp_tag,"turb_scale%d",j+1);
+        n = sprintf(temp_tag,"turb_scale_inj%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_turb_scale[j] = 0.;
-        addr[nt] = &gal->comp_turb_scale[j];
+        gal->comp_turb_scale_inj[j] = 0.;
+        addr[nt] = &gal->comp_turb_scale_inj[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"turb_scale_diss%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_turb_scale_diss[j] = 0.;
+        addr[nt] = &gal->comp_turb_scale_diss[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"turb_nspec%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_turb_nspec[j] = -5.0/3.0;
+        addr[nt] = &gal->comp_turb_nspec[j];
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
@@ -1045,10 +1122,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = INT;
 
-        n = sprintf(temp_tag,"dens_gauss%d",j+1);
+        n = sprintf(temp_tag,"dens_fluct%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_dens_gauss[j] = 0;
-        addr[nt] = &gal->comp_dens_gauss[j];
+        gal->comp_dens_fluct[j] = 0;
+        addr[nt] = &gal->comp_dens_fluct[j];
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
@@ -1403,7 +1480,7 @@ int parse_stream_file(stream *st, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 19*AllVars.MaxCompNumber+6
+#define MAXTAGS 25*AllVars.MaxCompNumber+6
 
     FILE    *fd;
     int i,j,n;
@@ -1446,9 +1523,9 @@ int parse_stream_file(stream *st, char *fname) {
     mandatory[nt] = 0;
     id[nt++] = INT;
 
-    strcpy(tag[nt], "level_grid_dens_gauss");
-    addr[nt] = &st->level_grid_dens_gauss;
-    st->level_grid_dens_gauss = 7;
+    strcpy(tag[nt], "level_grid_dens_fluct");
+    addr[nt] = &st->level_grid_dens_fluct;
+    st->level_grid_dens_fluct = 7;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = INT;
@@ -1459,23 +1536,44 @@ int parse_stream_file(stream *st, char *fname) {
     mandatory[nt] = 1;
     id[nt++] = INT;
 
-    strcpy(tag[nt], "dens_gauss_sigma");
-    addr[nt] = &st->dens_gauss_sigma;
-    st->dens_gauss_sigma = 0.;
+    strcpy(tag[nt], "dens_fluct_sigma");
+    addr[nt] = &st->dens_fluct_sigma;
+    st->dens_fluct_sigma = 0.;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = DOUBLE;
 
-    strcpy(tag[nt], "dens_gauss_scale");
-    addr[nt] = &st->dens_gauss_scale;
-    st->dens_gauss_scale = 0.5;
+    strcpy(tag[nt], "dens_fluct_scale_inj");
+    addr[nt] = &st->dens_fluct_scale_inj;
+    st->dens_fluct_scale_inj = 0.5;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = DOUBLE;
 
-    strcpy(tag[nt], "dens_gauss_seed");
-    addr[nt] = &st->dens_gauss_seed;
-    st->dens_gauss_seed = 222222;
+    strcpy(tag[nt], "dens_fluct_scale_diss");
+    addr[nt] = &st->dens_fluct_scale_diss;
+    st->dens_fluct_scale_diss = 0.5;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = DOUBLE;
+
+    strcpy(tag[nt], "dens_fluct_nspec");
+    addr[nt] = &st->dens_fluct_nspec;
+    st->dens_fluct_nspec = -5.0/3.0;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = DOUBLE;
+
+    strcpy(tag[nt], "dens_fluct_seed");
+    addr[nt] = &st->dens_fluct_seed;
+    st->dens_fluct_seed = 222222;
+    read[nt] = 0;
+    mandatory[nt] = 0;
+    id[nt++] = LONG;
+
+    strcpy(tag[nt], "mcmc_ntry");
+    addr[nt] = &st->mcmc_ntry;
+    st->mcmc_ntry = 1;
     read[nt] = 0;
     mandatory[nt] = 0;
     id[nt++] = LONG;
@@ -1538,10 +1636,26 @@ int parse_stream_file(stream *st, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-        n = sprintf(temp_tag,"turb_scale%d",j+1);
+        n = sprintf(temp_tag,"turb_scale_inj%d",j+1);
         strcpy(tag[nt], temp_tag);
-        st->comp_turb_scale[j] = 0.;
-        addr[nt] = &st->comp_turb_scale[j];
+        st->comp_turb_scale_inj[j] = 0.;
+        addr[nt] = &st->comp_turb_scale_inj[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"turb_scale_diss%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        st->comp_turb_scale_diss[j] = 0.;
+        addr[nt] = &st->comp_turb_scale_diss[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"turb_nspec%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        st->comp_turb_nspec[j] = 0.;
+        addr[nt] = &st->comp_turb_nspec[j];
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
@@ -1626,13 +1740,37 @@ int parse_stream_file(stream *st, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-        n = sprintf(temp_tag,"dens_gauss%d",j+1);
+        n = sprintf(temp_tag,"dens_fluct%d",j+1);
         strcpy(tag[nt], temp_tag);
-        st->comp_dens_gauss[j] = 0;
-        addr[nt] = &st->comp_dens_gauss[j];
+        st->comp_dens_fluct[j] = 0;
+        addr[nt] = &st->comp_dens_fluct[j];
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
+
+        n = sprintf(temp_tag,"accept_min%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        st->comp_accept_min[j] = 0.80;
+        addr[nt] = &st->comp_accept_min[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"accept_max%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        st->comp_accept_max[j] = 0.95;
+        addr[nt] = &st->comp_accept_max[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"gamma_poly%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        st->comp_gamma_poly[j] = 1.00;
+        addr[nt] = &st->comp_gamma_poly[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
     }
 
     printf("/////\tReading stream params file [%s]\n",fname);
