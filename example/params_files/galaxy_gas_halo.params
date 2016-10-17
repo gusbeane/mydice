@@ -78,7 +78,7 @@ flatz1			        1.00
 # expressed in units of the component scale length. Default value is 0.5.
 mcmc_step1		        0.50
 # Maximum velocity for the component 1 particles in expressed in units of escape velocity
-vmax1			        5.0
+vmax_esc1		        5.0
 # Particles type (GADGET format -- 0=Gas,1=Halo,2=Disk,3=Bulge,4=Stars)
 type1			        1
 # Streaming fraction of the component 1
@@ -106,7 +106,6 @@ scale_length2		    	0.0
 cut2			        9.0
 flatz2			        0.15
 mcmc_step2		        0.3
-vmax2			        2.0
 type2		    	    	2
 # Epicycle approximation in the Jeans equations
 epicycle2		        1
@@ -135,7 +134,6 @@ scale_length3		    	0.
 cut3			        9.0
 flatz3			        0.05
 mcmc_step3		        0.15
-vmax3			        10.5
 type3			        0
 stream_fraction3	    	1.00
 metal3                  	0.01
@@ -164,7 +162,7 @@ scale_length4		    	2.0
 cut4			        4.0
 flatz4			        0.80
 mcmc_step4		        0.3
-vmax4			        4.0
+vmax_esc4		        2.0
 type4			        3
 stream_fraction4	    	0.5
 min_age4                	50.
@@ -184,7 +182,7 @@ scale_length5		    	4.0
 cut5			        12.0
 flatz5			        0.40
 mcmc_step5		        0.3
-vmax5			        2.0
+vmax_esc5		        2.0
 type5		    	    	2
 stream_fraction5	    	0.50
 min_age5                	50.
@@ -203,7 +201,6 @@ concentration1		    	13.0
 cut6			        50.0
 flatz6			        1.00
 mcmc_step6		        0.50
-vmax6			        10.5
 type6			        0
 stream_fraction6	    	1.00
 metal6                  	0.01

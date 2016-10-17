@@ -171,7 +171,8 @@ typedef struct {
     double              *comp_mcmc_step;
     double              *comp_mcmc_step_slope;
     double              *comp_mcmc_step_hydro;
-    double              *comp_vmax;
+    double              *comp_vmax_esc;
+    double              *comp_vmax_circ;
     int                 *comp_type;
     int                 *comp_bool;
     double              *comp_stream_frac;

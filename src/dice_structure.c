@@ -944,7 +944,7 @@ void mcmc_metropolis_hasting_ntry_stream(stream *st, int component, int density_
         // Single particle always placed at the center
         st->x[i] = 0.0;
         st->y[i] = 0.0;
-        st->z[i] = 0.;
+        st->z[i] = st->comp_length[component]/2.0;
         st->r_cyl[i] = sqrt(st->x[i]*st->x[i]+st->y[i]*st->y[i]);
         st->theta_cyl[i] = atan2(st->y[i],st->x[i])+pi;
         st->r_sph[i] = sqrt(st->x[i]*st->x[i]+st->y[i]*st->y[i]+st->z[i]*st->z[i]);

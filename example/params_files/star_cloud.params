@@ -4,7 +4,6 @@ m200                        100.
 lambda		 	    0.035
 level_coarse		    7
 boxsize1                    40
-level_grid_dens		    7
 level_grid_turb		    8
 level_grid_dens_fluct	    8
 dens_fluct_sigma            100.0
@@ -27,7 +26,6 @@ flatx1			    1.0
 flaty1			    1.0
 flatz1			    1.0
 mcmc_step1		    9.0
-vmax1			    100.0
 type1			    0
 jeans_mass_cut1		    0
 thermal_eq1                 0

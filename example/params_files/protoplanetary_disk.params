@@ -10,7 +10,7 @@ boxsize4                    3.0
 boxsize5                    1.5
 boxsize6                    0.75
 boxsize7                    0.35
-level_grid_dens		    8
+level_grid_mid_dens	    8
 level_grid_turb		    8
 level_grid_dens_fluct	    8
 dens_fluct_sigma            0.0
@@ -45,6 +45,7 @@ t_init1			    1e2
 compute_vel1 		    1
 softening1		    0.01
 
+# Central star
 mass_frac2		    0.995
 npart2			    1
 model2			    1
@@ -53,5 +54,7 @@ cut2	 		    1.0
 type2			    2
 metal2			    1.0
 min_age2		    0.5
+# Do not write the particle in the initial conditions
+delete2			    1
 
 

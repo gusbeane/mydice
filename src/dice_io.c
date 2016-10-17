@@ -497,9 +497,10 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     id[nt++] = DOUBLE;
     
     strcpy(tag[nt], "lambda");
+    gal->lambda = 0.;
     addr[nt] = &gal->lambda;
     read[nt] = 0;
-    mandatory[nt] = 1;
+    mandatory[nt] = 0;
     id[nt++] = DOUBLE;
 
     strcpy(tag[nt], "level_coarse");
@@ -508,7 +509,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
     mandatory[nt] = 1;
     id[nt++] = INT;
 
-    strcpy(tag[nt], "level_grid_dens");
+    strcpy(tag[nt], "level_grid_mid_dens");
     addr[nt] = &gal->level_grid_dens;
     gal->level_grid_dens = 7;
     read[nt] = 0;
@@ -858,10 +859,18 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-        n = sprintf(temp_tag,"vmax%d",j+1);
+        n = sprintf(temp_tag,"vmax_esc%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_vmax[j] = 10.;
-        addr[nt] = &gal->comp_vmax[j];
+        gal->comp_vmax_esc[j] = 0.;
+        addr[nt] = &gal->comp_vmax_esc[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"vmax_circ%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_vmax_circ[j] = 0.;
+        addr[nt] = &gal->comp_vmax_circ[j];
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;

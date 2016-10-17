@@ -8,7 +8,7 @@ lambda		 	        0.04
 # Refinement level of the PM potential grid 
 level_coarse		    	8
 # Refinement level of the plane plane density grid 
-level_grid_dens		    	7
+level_grid_mid_dens		7
 # Refinement level of the PM turbulence grid 
 level_grid_turb		    	8
 # Refinement level of the PM gaussian field grid
@@ -77,7 +77,7 @@ flatz1			        1.00
 # expressed in units of the component scale length. Default value is 0.5.
 mcmc_step1		        0.3
 # Maximum velocity for the component 1 particles in expressed in units of escape velocity
-vmax1			        5.0
+vmax_esc1		        5.0
 # Particles type (GADGET format -- 0=Gas,1=Halo,2=Disk,3=Bulge,4=Stars)
 type1			        1
 # Streaming fraction of the component 1
@@ -103,7 +103,6 @@ flatx2			        1.00
 flaty2			        1.00
 flatz2			        1.00
 mcmc_step2		        0.3
-vmax2			        5.0
 type2			        0
 stream_fraction2		0.0
 stream_method2			1
