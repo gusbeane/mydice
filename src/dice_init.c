@@ -1483,12 +1483,14 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	}
 	// No anisotropy for gas component for the isotropic 1D Jeans equation
 	if(gal->comp_type[i]==0) gal->comp_jeans_anisotropy_model[i] = 0;
-	// DM halo default cut
-	if(gal->comp_cut[i]<=0. && gal->comp_type[i]==1) {
-	    gal->comp_cut[i] = gal->r200;
-	// Baryonic component component default cut
-	} else {
-	    gal->comp_cut[i] = 3.0*gal->comp_scale_length[i];
+	if(gal->comp_cut[i]<=0.) {
+	    // DM halo default cut
+	    if(gal->comp_type[i]==1) {
+	        gal->comp_cut[i] = gal->r200;
+	    // Baryonic component component default cut
+	    } else {
+	        gal->comp_cut[i] = 3.0*gal->comp_scale_length[i];
+	    }
 	}
 	// Define default gravitational softening
         if(gal->comp_softening[i]==0.0) gal->comp_softening[i] = 0.05*gal->comp_scale_length[i];
