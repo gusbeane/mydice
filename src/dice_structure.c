@@ -462,17 +462,6 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 
         acceptance = 0.;
         mean_metal = 0.;
-        // Reduce the dimensionality of the MCMC if the component is axisymmetric
-        gal->comp_symmetry[component] = 0;
-        if(gal->comp_flatx[component] == gal->comp_flaty[component] && !gal->comp_dens_fluct[component]) {
-            // Shperical symmetry
-            if(gal->comp_flatz[component]==gal->comp_flatx[component] && gal->comp_flatz[component]==gal->comp_flaty[component]) {
-                gal->comp_symmetry[component] = 2;
-                // Cylindrical symmetry
-            } else {
-                gal->comp_symmetry[component] = 1;
-            }
-        }
         // Accept cylindrical symmetry for the gas disk with vertical hydrostatic equilibrium
         // only if all the components display a cylindrical symmetry
         if(gal->pseudo[0] && gal->comp_flatx[component] == gal->comp_flaty[component] && gal->comp_spherical_hydro_eq[component]==0) {

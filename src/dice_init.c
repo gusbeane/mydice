@@ -1469,10 +1469,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             fprintf(stderr,"\n[Error] accept_min%d>accept_max%d\n",i+1,i+1);
             exit(0);
 	}
-	if(gal->comp_jeans_dim[i]<0 || gal->comp_jeans_dim[i]>3) {
-            fprintf(stderr,"\n[Error] Invalid value for jeans_dim%d (valid = [0,1,2,3])\n",i+1);
-            exit(0);
-	}
 	if(gal->comp_jeans_anisotropy_model[i]<0 || gal->comp_jeans_anisotropy_model[i]>2) {
             fprintf(stderr,"\n[Error] Invalid value for jeans_anisotropy_model%d (valid = [0,1,2])\n",i+1);
             exit(0);
@@ -1502,6 +1498,31 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         if(gal->comp_flaty_out[i]==-1.0) gal->comp_flaty_out[i] = gal->comp_flaty[i];
         if(gal->comp_flatz_out[i]==-1.0) gal->comp_flatz_out[i] = gal->comp_flatz[i];
 	if(gal->comp_cut_hydro_eq[i]==0.0) gal->comp_cut_hydro_eq[i] = gal->comp_cut[i];
+	// Set up symmetry of the component
+        // Reduce the dimensionality of the MCMC if the component is axisymmetric
+        gal->comp_symmetry[i] = 0;
+        if(gal->comp_flatx[i] == gal->comp_flaty[i] && !gal->comp_dens_fluct[i]) {
+            // Shperical symmetry
+            if(gal->comp_flatz[i]==gal->comp_flatx[i] && gal->comp_flatz[i]==gal->comp_flaty[i]) {
+                gal->comp_symmetry[i] = 2;
+            // Cylindrical symmetry
+            } else {
+                gal->comp_symmetry[i] = 1;
+            }
+        }
+	// Set up the Jeans equation dimension if not user defined
+	if(gal->comp_jeans_dim[i]==-1) {
+	    if(gal->comp_symmetry[i]==2) {
+	        gal->comp_jeans_dim[i] = 1;
+	    } else {
+	        gal->comp_jeans_dim[i] = 2;
+	    }
+	}
+	// Safety
+	if(gal->comp_jeans_dim[i]<0 || gal->comp_jeans_dim[i]>3) {
+            fprintf(stderr,"\n[Error] Invalid value for jeans_dim%d (valid = [0,1,2,3])\n",i+1);
+            exit(0);
+	}
         // Setting default values for the inside and outside spiral radius
         if(gal->comp_spiral_r_in[i]==0.) gal->comp_spiral_r_in[i] = 0.2*gal->comp_scale_length[i];
         if(gal->comp_spiral_r_out[i]==0.) gal->comp_spiral_r_out[i] = 0.8*gal->comp_scale_length[i];
@@ -3737,7 +3758,6 @@ void set_orbit_keplerian(int gal1, int gal2, double sep, double per, double e, d
         }
     }
 
-    //kappa = G*unit_mass*(m1+m2);
     kappa = G*(m1+m2);
 
     x_1 = (radius1)*cos(nu1);
@@ -3756,13 +3776,9 @@ void set_orbit_keplerian(int gal1, int gal2, double sep, double per, double e, d
 
     l = per*(1.0+e);
 
-    //vx_1 = k1*sqrt(kappa/(l*unit_length))*sin(nu1)/1.0E5;
-    //vy_1 = -k1*sqrt(kappa/(l*unit_length))*(e+cos(nu1))/1.0E5;
     vx_1 = k1*sqrt(kappa/l)*sin(nu1);
     vy_1 = -k1*sqrt(kappa/l)*(e+cos(nu1));
     vz_1 = 0.;
-    //vx_2 = -k2*sqrt(kappa/(l*unit_length))*sin(nu2)/1.0E5;
-    //vy_2 = k2*sqrt(kappa/(l*unit_length))*(e+cos(nu2))/1.0E5;
     vx_2 = -k2*sqrt(kappa/l)*sin(nu2);
     vy_2 = k2*sqrt(kappa/l)*(e+cos(nu2));
     vz_2 = 0.;

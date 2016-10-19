@@ -107,7 +107,7 @@ compute_vel1		    	1
 # 1 = Spherically symmetric Jeans equation
 # 2 = Jeans equations with 2 integrals of motion
 # 3 = Jeans equations with 3 integrals of motion (solved on a 2D grid in the r-z plane)
-jeans_dim1			2
+jeans_dim1			1
 # Method for streaming velocity computation
 # 0 =               - User defined fixed fraction of the circular velocity profile (stream_fraction keyword)
 # 1 = Bullock 2001  - Streaming velocity profile following the cumulative mass profile

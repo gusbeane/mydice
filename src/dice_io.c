@@ -1414,7 +1414,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	n = sprintf(temp_tag,"jeans_dim%d",j+1);
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_jeans_dim[j];
-        gal->comp_jeans_dim[j] = 2;
+        gal->comp_jeans_dim[j] = -1;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
@@ -1422,7 +1422,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 	n = sprintf(temp_tag,"jeans_anisotropy_model%d",j+1);
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_jeans_anisotropy_model[j];
-        gal->comp_jeans_anisotropy_model[j] = 2;
+        gal->comp_jeans_anisotropy_model[j] = 0;
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
