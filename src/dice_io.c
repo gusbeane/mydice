@@ -981,7 +981,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
         n = sprintf(temp_tag,"min_age%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_min_age[j] = 0.;
+        gal->comp_min_age[j] = 100.;
         addr[nt] = &gal->comp_min_age[j];
         read[nt] = 0;
         mandatory[nt] = 0;
