@@ -1,0 +1,31 @@
+v200 			160.
+lambda 			0.035
+level_coarse 		7
+boxsize1 		100.
+boxsize2 		50.
+boxsize3 		25.
+boxsize4 		12.5
+boxsize5 		6.25
+seed 			464646
+hydro_eq_niter  	2
+
+mass_frac1 		0.9868
+part_mass1 		5e5
+model1 			8
+type1 			1
+accept_min1		0.925
+accept_max1		0.975
+
+mass_frac2 		0.0066
+part_mass2 		1e4
+model2 			2
+type2 			2
+flatz2			0.10
+
+mass_frac3 		0.0066
+part_mass3 		1e3
+model3 			2
+type3 			0
+flatz3 			0.2
+hydro_eq3		1
+gamma_poly3		1.1
