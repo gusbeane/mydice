@@ -212,7 +212,16 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
                 strcpy(gal->comp_profile_name[component],"     Pseudo-Isothermal   ");
             density = gal->comp_scale_dens[component]*1.0/(1.0+pow(m,2.0));
             break;
-
+	case 17:
+	    // Power law
+            if(strcmp(gal->comp_profile_name[component],"")==0)
+                strcpy(gal->comp_profile_name[component],"         Power law       ");
+            density = gal->comp_scale_dens[component]*-pow(m,alpha);
+	case 18:
+	    // Bissantz & Gerhard
+            if(strcmp(gal->comp_profile_name[component],"")==0)
+                strcpy(gal->comp_profile_name[component],"   Bissantz & Gerhard    ");
+            density = gal->comp_scale_dens[component]*1/pow(1+m,alpha);
         default:
             fprintf(stderr,"[Error] model%d=%d is not a valid value\n",component+1,model);
             exit(0);
@@ -691,7 +700,6 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 		    if(Tpart>Tmax) Tmax = Tpart;
 		}
             }	
-	    //if(gal->pseudo[0]) printf("%lf %le\n",gal->r_sph[i],gal->rho[i]);
 	    if(gal->rho[i]>gal->comp_dens_max[component]) gal->comp_dens_max[component] = gal->rho[i];
 	    if(gal->rho[i]<gal->comp_dens_min[component]) gal->comp_dens_min[component] = gal->rho[i];
             // Temporary assign metallicity to local density value
