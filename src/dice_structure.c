@@ -217,11 +217,13 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
             if(strcmp(gal->comp_profile_name[component],"")==0)
                 strcpy(gal->comp_profile_name[component],"         Power law       ");
             density = gal->comp_scale_dens[component]*-pow(m,alpha);
+            break;
 	case 18:
 	    // Bissantz & Gerhard
             if(strcmp(gal->comp_profile_name[component],"")==0)
                 strcpy(gal->comp_profile_name[component],"   Bissantz & Gerhard    ");
             density = gal->comp_scale_dens[component]*1/pow(1+m,alpha);
+            break;
         default:
             fprintf(stderr,"[Error] model%d=%d is not a valid value\n",component+1,model);
             exit(0);
