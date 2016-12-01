@@ -2643,7 +2643,6 @@ int set_galaxy_velocity(galaxy *gal) {
                             if(gal->comp_epicycle[j]==1) {
                                 sigma2_theta = sigma2_theta_epicycle_func(gal,fabs(gal->r_cyl[i]),v2a_r);
                                 va_theta = v2a_theta>=sigma2_theta?sqrt(v2a_theta-sigma2_theta):0.;
-                                Q = toomre(gal,fabs(gal->r_cyl[i]),v2a_r,j);
                             } else {
                                 if(gal->comp_k_stream[j]>0.){
                                     kmax_stream = v2a_theta/(v2a_theta-v2a_r);
