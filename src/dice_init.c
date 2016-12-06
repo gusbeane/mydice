@@ -1563,6 +1563,10 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                 fprintf(stderr,"[Error] hydro_eq%d and thermal_eq%d cannot be both equal to 1\n",i+1,i+1);
 		return -1;
 	    }
+	    // Prevent the Jeans mass cut in 1D Jeans equations integration
+            if(gal->comp_thermal_eq[i]==1) {
+	        gal->comp_jeans_mass_cut[i] = 0;
+	    }
             // Set the gas specific internal energy
             // We assume the gas is in an isothermal state
             gal->comp_u_init[i] = (boltzmann / protonmass) * gal->comp_t_init[i];
