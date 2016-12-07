@@ -572,6 +572,7 @@ double toomre(galaxy *gal, double radius, double v2a_r, int component) {
     } else {
         Q = sqrt(v2a_r*fabs(kappa_sqrd))/(3.36*G*surface_density);
     }
+    gal->comp_Q_min[component] = (Q < gal->comp_Q_min[component] && Q > 0.0) ? Q : gal->comp_Q_min[component];
     gal->z[gal->index[tid]] = save;
 
     return Q;

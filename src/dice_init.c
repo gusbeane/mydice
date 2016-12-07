@@ -2647,6 +2647,13 @@ int set_galaxy_velocity(galaxy *gal) {
                             if(gal->comp_epicycle[j]==1) {
                                 sigma2_theta = sigma2_theta_epicycle_func(gal,fabs(gal->r_cyl[i]),v2a_r);
                                 va_theta = v2a_theta>=sigma2_theta?sqrt(v2a_theta-sigma2_theta):0.;
+                                // Enforce Q>Q_min
+                                if(gal->comp_Q_lim[j]>0 || gal->comp_Q_fixed[j]>0 || gal->comp_Q_boost[j]>0) {
+                                    double v2a_r_new = v2a_r_toomre(gal,fabs(gal->r_cyl[i]),v2a_r,j);
+                                    v2a_r = v2a_r_new;
+                                } else {
+				    Q = toomre(gal,fabs(gal->r_cyl[i]),v2a_r,j);
+				}
                             } else {
                                 if(gal->comp_k_stream[j]>0.){
                                     kmax_stream = v2a_theta/(v2a_theta-v2a_r);
@@ -2658,11 +2665,6 @@ int set_galaxy_velocity(galaxy *gal) {
 			    }
                             if(va_theta>v2a_theta) warning1 = 1;
 		    	    if(va_theta>v_stream_max) v_stream_max = va_theta; 
-                            // Enforce Q>Q_min
-                            if(gal->comp_Q_lim[j]>0 || gal->comp_Q_fixed[j]>0 || gal->comp_Q_boost[j]>0) {
-                                double v2a_r_new = v2a_r_toomre(gal,fabs(gal->r_cyl[i]),v2a_r,j);
-                                v2a_r = v2a_r_new;
-                            }
 
 			    // Drawing random velocities
                             v_r = gsl_ran_exppow(r[tid],sqrt(2.0*v2a_r),gal->comp_ggd_beta[j]);
@@ -2870,18 +2872,15 @@ int set_galaxy_velocity(galaxy *gal) {
             gal->dx_gauss = 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss[0]);
 
             printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale inj=%.2lf kpc][scale diss=%.3lf kpc][spectral index=%.2lf]\n",k+1,gal->comp_turb_sigma[k],gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k]);
-            printf("/////\t\t                                     [grid scale=%.3lf kpc][seed=%ld]",gal->dx_gauss,gal->comp_turb_seed[k]);
-	    printf("[ x ");
+            printf("/////\t\t                                     [grid scale=%.3lf kpc][seed=%ld]\n",gal->dx_gauss,gal->comp_turb_seed[k]);
             set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k],gal->comp_turb_seed[k]);
             for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
                 gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
             }
-	    printf("y ");
             set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k],gal->comp_turb_seed[k]+1);
             for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
                 gal->vel_y[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
             }
-	    printf("z ]\n");
             set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k],gal->comp_turb_seed[k]+2);
             for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
                 gal->vel_z[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
