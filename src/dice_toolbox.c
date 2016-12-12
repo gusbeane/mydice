@@ -248,7 +248,7 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
                     double K = sqrt(dx*dx+dy*dy+dz*dz);
 		    // Suppress high & low frequencies
 		    K = K>=K_diss?K_diss*1e10:K;
-		    K = K<=K_inj?K_inj:K;
+		    K = K<=K_inj?K_diss*1e10:K;
                     kernel_grid[i][j][k] = pow(K,nspec/2.0);
 		// Use a gaussian convolution
 		} else {
