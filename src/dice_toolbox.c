@@ -220,8 +220,7 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
             }
         }
     }
-    if(scale_inj<gal->dx_gauss) {
-        printf("/////\t\t- Injection scale for random field < grid size -> no convolution\n");
+    if((scale_inj<gal->dx_gauss)&&(scale_inj==scale_diss)) {
         return 0;
     }
 
