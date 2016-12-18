@@ -1355,6 +1355,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
+        n = sprintf(temp_tag,"isobaric%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_isobaric[j];
+        gal->comp_isobaric[j] = 0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+
 	n = sprintf(temp_tag,"accept_min%d",j+1);
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_accept_min[j];

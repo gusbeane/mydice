@@ -185,6 +185,7 @@ typedef struct {
     long                *comp_metal_seed;
     double              *comp_t_init;
     double              *comp_u_init;
+    int    		*comp_isobaric;
     double              *comp_cs_init;
     double              *comp_turb_sigma;
     double              *comp_turb_frac;

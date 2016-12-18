@@ -301,7 +301,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
     double theta, phi, randval, smooth_factor;
     double step_r, step_x, step_y, step_z, step_r_sph, hx, hy, hz;
     double new_step_x, new_step_y, new_step_z, new_step_r, new_step_r_sph, min_step_z, max_step_z;
-    double acceptance, norm, ratio, rho_ref, rho_0, mean_metal, Tpart, Tmax, cs2;
+    double acceptance, norm, ratio, rho_ref, rho_0, mean_metal, Tpart, Tmax, cs2, press_init;
     double *prop_x, *prop_y, *prop_z, *prop_r, *prop_theta, *prop_r_sph, *prop_phi_sph;
     double *pi_x, *pi_y, *q_x, *q_y, *weights, *w_x, *w_y;
     double *ref_x, *ref_y, *ref_z, *ref_r, *ref_theta, *ref_r_sph, *ref_phi_sph, *lambda_x, *lambda_y, *dv_x, *dv_y;
@@ -695,11 +695,21 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 gal->rho[i] = pi_x[gal->mcmc_ntry-1]/dv_x[gal->mcmc_ntry-1];
 		// Set gas temperature
 		if(gal->comp_type[component]==0) {
-		    d = gal->comp_spherical_hydro_eq[component]?gal->r_sph[i]:gal->z[i];
-		    k_poly = d>rc?gal->comp_k_poly[component]*pow(d/rc,gal->comp_alpha_entropy[component]):gal->comp_k_poly[component];
-		    gal->u[i] = k_poly*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
-		    Tpart = gal->u[i]*gamma_minus1*protonmass*mu_mol/boltzmann*unit_energy/unit_mass;
-		    if(Tpart>Tmax) Tmax = Tpart;
+		    // Isobaric gas
+                    if(gal->comp_isobaric[component]==1) {
+                        press_init = gamma_minus1*gal->comp_dens_init[component]*gal->comp_u_init[component];
+		    	gal->u[i] = press_init/(gamma_minus1*gal->rho[i]);
+                    // Polytropic gas
+                    } else {
+			// Entropy core
+		    	d = gal->comp_spherical_hydro_eq[component]?gal->r_sph[i]:gal->z[i];
+		    	k_poly = d>rc?gal->comp_k_poly[component]*pow(d/rc,gal->comp_alpha_entropy[component]):gal->comp_k_poly[component];
+                        // Internal energy
+		    	gal->u[i] = k_poly*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
+                        // Temperature
+		    	Tpart = gal->u[i]*gamma_minus1*protonmass*mu_mol/boltzmann*unit_energy/unit_mass;
+		    	if(Tpart>Tmax) Tmax = Tpart;
+                    }
 		}
             }	
 	    if(gal->rho[i]>gal->comp_dens_max[component]) gal->comp_dens_max[component] = gal->rho[i];

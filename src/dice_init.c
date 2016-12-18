@@ -515,6 +515,10 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_turb_nspec array\n");
         return -1;
     }
+    if (!(gal->comp_isobaric = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_isobaric array\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -3094,6 +3098,7 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_symmetry);
     free(gal->comp_jeans_dim);
     free(gal->comp_jeans_anisotropy_model);
+    free(gal->comp_isobaric);
     // Deallocate the potential grid to be really nice to the memory.
     if(gal->potential_defined == 1) {
         for (n = 0; n < gal->nlevel; n++) {
