@@ -422,6 +422,10 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         min_step_z = 1e-3*gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
         max_step_z = gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
     }
+    // Compute pressure for isobaric gas
+    if(gal->comp_isobaric[component]) {
+        press_init = gamma_minus1*gal->comp_dens_init[component]*gal->comp_u_init[component];
+    }
 
     i = gal->comp_start_part[component];
     if(gal->comp_npart[component]>1) {
@@ -697,7 +701,6 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 		if(gal->comp_type[component]==0) {
 		    // Isobaric gas
                     if(gal->comp_isobaric[component]==1) {
-                        press_init = gamma_minus1*gal->comp_dens_init[component]*gal->comp_u_init[component];
 		    	gal->u[i] = press_init/(gamma_minus1*gal->rho[i]);
                     // Polytropic gas
                     } else {
