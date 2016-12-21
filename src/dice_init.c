@@ -1417,6 +1417,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	printf("/////\t\t[sigma=%.2lf][scale inj=%.2le %s][scale diss=%.2le %s][spectral index=%.2lf]\n",
 		gal->dens_fluct_sigma,gal->dens_fluct_scale_inj,AllVars.UnitLengthName,gal->dens_fluct_scale_diss,AllVars.UnitLengthName,gal->dens_fluct_nspec);
         printf("/////\t\t[grid scale=%.2le %s][seed=%ld]\n",gal->dx_gauss,AllVars.UnitLengthName,gal->dens_fluct_seed);
+        if(gal->dx_gauss==0.) printf("/////\t[Warning] a cut value has to be specified explicitely\n");
 	fflush(stdout);
         set_galaxy_random_field_grid(gal,gal->dens_fluct_scale_inj,gal->dens_fluct_scale_diss,gal->dens_fluct_nspec,gal->dens_fluct_seed);
         if(gal->dens_fluct_sigma>0.5) {
