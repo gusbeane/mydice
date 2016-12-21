@@ -701,6 +701,7 @@ typedef double (*function_to_derivate)(double, void *);
 double deriv_central2(galaxy *, double, double, function_to_derivate);
 double deriv_central4(galaxy *, double, double, function_to_derivate);
 double deriv_forward(galaxy *, double, double, function_to_derivate);
+double standard_dev(double *, unsigned long int, unsigned long int);
 double interpol(double, double, double, double, double);
 double smooth_in(double, double, double);
 double smooth_out(double, double, double);

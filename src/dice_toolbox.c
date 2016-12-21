@@ -107,6 +107,24 @@ double deriv_forward(galaxy *gal, double x, double h, function_to_derivate F) {
     return derivative;
 }
 
+double standard_dev(double *array, unsigned long int start, unsigned long int end) {
+    double stddev,mean;
+    unsigned long int i;
+
+    mean = 0.;
+    for(i=start;i<end;i++) {
+        mean += array[i];
+    }
+    mean /= (double)(end-start);
+    stddev = 0.;
+    for(i=start;i<end;i++) {
+        stddev += pow(array[i],2);
+    }
+    stddev = sqrt(stddev/(double)(end-start));
+
+    return stddev;
+}
+
 // Linear interpolation between two points
 double interpol(double x0, double x1, double x, double y0, double y1) {
 	return y0+(y1-y0)*(x-x0)/(x1-x0);
@@ -135,7 +153,7 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
     int ngrid_padded[3];
     double dx, dy, dz, tx, ty, tz, n;
     double x, y, z;
-    double K_diss,K_inj;
+    double S_diss,S_inj,K_diss,K_inj,stddev,mean;
     // The particle-mesh grid size and the Green's function and potential
     // storage buffers. Global to keep from hitting the stack limit for large grid
     // size.
@@ -144,14 +162,16 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
     fftw_plan fft_kernel, fft_gaussian_field, fftinv_gaussian_field;
     fftw_complex *kernel,*gaussian_field;
 
-    ngrid_padded[0] = 2*gal->ngrid_gauss[0];
-    ngrid_padded[1] = 2*gal->ngrid_gauss[1];
-    ngrid_padded[2] = 2*gal->ngrid_gauss[2];
+    ngrid_padded[0] = gal->ngrid_gauss[0];
+    ngrid_padded[1] = gal->ngrid_gauss[1];
+    ngrid_padded[2] = gal->ngrid_gauss[2];
 
-    if(scale_inj!=scale_diss) {
-        K_diss = ngrid_padded[0]/(scale_diss/gal->dx_gauss);
-        K_inj = ngrid_padded[0]/(scale_inj/gal->dx_gauss);
-    }
+    // Security
+    if(scale_inj<scale_diss) scale_diss=scale_inj;
+    S_diss = (scale_diss/gal->dx_gauss);
+    S_inj = (scale_inj/gal->dx_gauss);
+    K_diss = ngrid_padded[0]/S_diss;
+    K_inj = ngrid_padded[0]/S_inj;
 
     // Setup fftw threads
 #if USE_THREADS == 1
@@ -220,10 +240,27 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
             }
         }
     }
-    if((scale_inj<gal->dx_gauss)&&(scale_inj==scale_diss)) {
+
+    if(scale_inj<gal->dx_gauss) {
+        // Free fftw plan.
+        // Kill the storage arrays since they are no longer needed.
+        fftw_free(kernel);
+        fftw_free(gaussian_field);
+        for (i = 0; i < ngrid_padded[1]; ++i) {
+            for (j = 0; j < ngrid_padded[2]; ++j) {
+                free(kernel_grid[i][j]);
+            }
+            free(kernel_grid[i]);
+        }
+        free(kernel_grid);
+        gsl_rng_free(rng);
+
+#if USE_THREADS == 1
+        fftw_cleanup_threads();
+#endif
+        // Flag the galaxy structure
         return 0;
     }
-
     // Define kernel's function.
     // These are the grid points as measured from the center of kernel's function
     // and the local value of the truncation function. The density is also packed into a
@@ -242,18 +279,17 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
                 dz = (double)(k+0.5);
                 // Octant 1
                 // Use a power spectrum
-                if(scale_diss!=scale_inj) {
-		    // define wave number function
-                    double K = sqrt(dx*dx+dy*dy+dz*dz);
-		    // Suppress high & low frequencies
-		    K = K>=K_diss?K_diss*1e10:K;
-		    K = K<=K_inj?K_diss*1e10:K;
-                    kernel_grid[i][j][k] = pow(K,nspec/2.0);
-		// Use a gaussian convolution
-		} else {
-		    // define radius function
-		    double rad = sqrt(dx*dx+dy*dy+dz*dz)*gal->dx_gauss;
-                    kernel_grid[i][j][k] = exp(-pow(rad,2.0)/(2.0*pow(scale_inj,2.0)));
+		// define wave number function
+                double K_loc = sqrt(dx*dx+dy*dy+dz*dz);
+                kernel_grid[i][j][k] = pow(K_loc,nspec/2.0);
+		// Suppress high & low frequencies
+                if(K_loc<=K_inj) {
+                    kernel_grid[i][j][k] = pow(K_inj,nspec/2.0);
+		    kernel_grid[i][j][k] = kernel_grid[i][j][k]*exp(-pow(K_loc-K_inj,2.0)/(2.0*pow(S_inj,2.0)));
+		}
+                if(K_loc>=K_diss) {
+                    kernel_grid[i][j][k] = pow(K_diss,nspec/2.0);
+		    kernel_grid[i][j][k] = kernel_grid[i][j][k]*exp(-pow(K_loc-K_diss,2.0)/(2.0*pow(S_diss,2.0)));
 		}
                 // Octant 2
                 kernel_grid[ngrid_padded[0]-1-i][j][k] = kernel_grid[i][j][k];
@@ -287,7 +323,7 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
 
     // Perform the fourier transforms. Density first, kernel's function second.
     fftw_execute(fft_gaussian_field);
-    if(scale_diss!=scale_inj) fftw_execute(fft_kernel);
+    // Do not run fftw_execute(fft_kernel) because the kernel was built in Fourier space
     // FFT is computed, we can free the memory
     fftw_destroy_plan(fft_gaussian_field);
     fftw_destroy_plan(fft_kernel);
@@ -305,9 +341,17 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
     fftw_execute(fftinv_gaussian_field);
     fftw_destroy_plan(fftinv_gaussian_field);
     // Normalization
-    double stddev;
+    mean = 0.;
     for (i = 0; i < n; ++i) {
+        // Convolve the gaussian_field
         gaussian_field[i] = gaussian_field[i]/n;
+        // Compute mean and standard deviation
+        mean += gaussian_field[i];
+    }
+    mean /= (double)n;
+    stddev = 0.;
+    for (i = 0; i < n; ++i) {
+        gaussian_field[i] -= mean;
         stddev += pow(gaussian_field[i],2.0);
     }
     stddev = sqrt(stddev/n);
@@ -333,6 +377,7 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
         free(kernel_grid[i]);
     }
     free(kernel_grid);
+    gsl_rng_free(rng);
 
 #if USE_THREADS == 1
     fftw_cleanup_threads();
@@ -356,7 +401,7 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
     int ngrid_padded[3];
     double dx, dy, dz, tx, ty, tz, n;
     double x, y, z;
-    double K_diss,K_inj;
+    double S_diss,S_inj,K_diss,K_inj,stddev,mean;
     // The particle-mesh grid size and the Green's function and potential
     // storage buffers. Global to keep from hitting the stack limit for large grid
     // size.
@@ -365,14 +410,16 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
     fftw_plan fft_kernel, fft_gaussian_field, fftinv_gaussian_field;
     fftw_complex *kernel,*gaussian_field;
 
-    ngrid_padded[0] = 2*st->ngrid_gauss[0];
-    ngrid_padded[1] = 2*st->ngrid_gauss[1];
-    ngrid_padded[2] = 2*st->ngrid_gauss[2];
+    ngrid_padded[0] = st->ngrid_gauss[0];
+    ngrid_padded[1] = st->ngrid_gauss[1];
+    ngrid_padded[2] = st->ngrid_gauss[2];
 
-    if(scale_inj!=scale_diss) {
-        K_diss = ngrid_padded[0]/(scale_diss/st->dx_gauss);
-        K_inj = ngrid_padded[0]/(scale_inj/st->dx_gauss);
-    }
+    // Security
+    if(scale_inj<scale_diss) scale_diss=scale_inj;
+    S_diss = (scale_diss/st->dx_gauss);
+    S_inj = (scale_inj/st->dx_gauss);
+    K_diss = ngrid_padded[0]/S_diss;
+    K_inj = ngrid_padded[0]/S_inj;
 
     // Setup fftw threads
 #if USE_THREADS == 1
@@ -441,10 +488,28 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
             }
         }
     }
+
     if(scale_inj<st->dx_gauss) {
-        printf("/////\t\t- Injection scale for random field < grid size -> no convolution\n");
+        // Free fftw plan.
+        // Kill the storage arrays since they are no longer needed.
+        fftw_free(kernel);
+        fftw_free(gaussian_field);
+        for (i = 0; i < ngrid_padded[0]; ++i) {
+            for (j = 0; j < ngrid_padded[0]; ++j) {
+                free(kernel_grid[i][j]);
+            }
+            free(kernel_grid[i]);
+        }
+        free(kernel_grid);
+        gsl_rng_free(rng);
+    
+#if USE_THREADS == 1
+        fftw_cleanup_threads();
+#endif
+        // Flag the galaxy structure
         return 0;
     }
+
 
     // Define kernel's function.
     // These are the grid points as measured from the center of kernel's function
@@ -464,18 +529,17 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
                 dz = (double)(k+0.5);
                 // Octant 1
                 // Use a power spectrum
-                if(scale_diss!=scale_inj) {
-		    // define wave number function
-                    double K = sqrt(dx*dx+dy*dy+dz*dz);
-		    // Suppress high & low frequencies
-		    K = K>=K_diss?K_diss*1e10:K;
-		    K = K<=K_inj?K_inj:K;
-                    kernel_grid[i][j][k] = pow(K,nspec/2.0);
-		// Use a gaussian convolution
-		} else {
-		    // define radius function
-		    double rad = sqrt(dx*dx+dy*dy+dz*dz)*st->dx_gauss;
-                    kernel_grid[i][j][k] = exp(-pow(rad,2.0)/(2.0*pow(scale_inj,2.0)));
+		// define wave number function
+                double K_loc = sqrt(dx*dx+dy*dy+dz*dz);
+                kernel_grid[i][j][k] = pow(K_loc,nspec/2.0);
+		// Suppress high & low frequencies
+                if(K_loc<=K_inj) {
+                    kernel_grid[i][j][k] = pow(K_inj,nspec/2.0);
+		    kernel_grid[i][j][k] = kernel_grid[i][j][k]*exp(-pow(K_loc-K_inj,2.0)/(2.0*pow(S_inj,2.0)));
+		}
+                if(K_loc>=K_diss) {
+                    kernel_grid[i][j][k] = pow(K_diss,nspec/2.0);
+		    kernel_grid[i][j][k] = kernel_grid[i][j][k]*exp(-pow(K_loc-K_diss,2.0)/(2.0*pow(S_diss,2.0)));
 		}
                 // Octant 2
                 kernel_grid[ngrid_padded[0]-1-i][j][k] = kernel_grid[i][j][k];
@@ -495,7 +559,6 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
         }
     }
 
-
     // Pack kernel's function and the density into 1D arrays
     l = 0;
     for (i = 0; i < ngrid_padded[0]; ++i) {
@@ -510,7 +573,7 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
 
     // Perform the fourier transforms. Density first, kernel's function second.
     fftw_execute(fft_gaussian_field);
-    if(scale_inj!=scale_diss) fftw_execute(fft_kernel);
+    // Do not run fftw_execute(fft_kernel) because the kernel was built in Fourier space
     // FFT is computed, we can free the memory
     fftw_destroy_plan(fft_gaussian_field);
     fftw_destroy_plan(fft_kernel);
@@ -527,17 +590,25 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
     fftw_execute(fftinv_gaussian_field);
     fftw_destroy_plan(fftinv_gaussian_field);
     // Normalization
-    double stddev;
+    mean = 0.;
     for (i = 0; i < n; ++i) {
+        // Convolve the gaussian_field
         gaussian_field[i] = gaussian_field[i]/n;
+        // Compute mean and standard deviation
+        mean += gaussian_field[i];
+    }
+    mean /= (double)n;
+    stddev = 0.;
+    for (i = 0; i < n; ++i) {
+        gaussian_field[i] -= mean;
         stddev += pow(gaussian_field[i],2.0);
     }
     stddev = sqrt(stddev/n);
 
     l = 0;
     for (i = 0; i < ngrid_padded[0]; ++i) {
-        for (j = 0; j < ngrid_padded[0]; ++j) {
-            for (k = 0; k < ngrid_padded[0]; ++k) {
+        for (j = 0; j < ngrid_padded[1]; ++j) {
+            for (k = 0; k < ngrid_padded[2]; ++k) {
                 // Fix the grid info
                 st->gaussian_field[i][j][k] = gaussian_field[l]/stddev;
                 l++;
@@ -555,6 +626,7 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
         free(kernel_grid[i]);
     }
     free(kernel_grid);
+    gsl_rng_free(rng);
 
 #if USE_THREADS == 1
     fftw_cleanup_threads();
@@ -578,9 +650,9 @@ double galaxy_gaussian_field_func(galaxy *gal, double x, double y, double z) {
     double a, dx, dy, dz, tx, ty, tz, gaussian_field;
     double xtemp,ytemp,ztemp,theta,phi,xmax,ymax,zmax,rnorm;
 
-    ngrid_padded[0] = 2*gal->ngrid_gauss[0];
-    ngrid_padded[1] = 2*gal->ngrid_gauss[1];
-    ngrid_padded[2] = 2*gal->ngrid_gauss[2];
+    ngrid_padded[0] = gal->ngrid_gauss[0];
+    ngrid_padded[1] = gal->ngrid_gauss[1];
+    ngrid_padded[2] = gal->ngrid_gauss[2];
 
     // Scale the coordinates
     xtemp = x/gal->dx_gauss + ((double)(ngrid_padded[0]/2)-0.5-0.5);
@@ -618,7 +690,7 @@ double galaxy_gaussian_field_func(galaxy *gal, double x, double y, double z) {
         tx = 1.0 - dx;
         ty = 1.0 - dy;
         tz = 1.0 - dz;
-        // Return the interpolated potential.
+        // Return the interpolated field
         gaussian_field = dx*dy*dz*gauss1 + tx*dy*dz*gauss2 +
             dx*ty*dz*gauss3 + dx*dy*tz*gauss4 +
             dx*ty*tz*gauss5 + tx*ty*dz*gauss6 +

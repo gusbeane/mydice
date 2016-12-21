@@ -1409,13 +1409,14 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 
         for(i = 0; i<AllVars.MaxCompNumber; i++) {
             if(gal->comp_type[i]==0) {
-                gal->dx_gauss = 2.1*gal->comp_cut[i]/((double)gal->ngrid_gauss[0]);
+                gal->dx_gauss = 2.0*(gal->comp_cut[i]+5*gal->comp_sigma_cut[i]*gal->comp_scale_length[i])/((double)gal->ngrid_gauss[0]);
             }
         }
         printf("/////\t--------------------------------------------------\n");
-        printf("/////\tSetting density fluctuations [sigma=%.2lf][scale inj=%.2lf kpc][scale diss=%.3lf kpc][spectral index=%.2lf]\n",
-		gal->dens_fluct_sigma,gal->dens_fluct_scale_inj,gal->dens_fluct_scale_diss,gal->dens_fluct_nspec);
-        printf("/////\t                             [grid scale=%.3lf kpc][seed=%ld]\n",gal->dx_gauss,gal->dens_fluct_seed);
+        printf("/////\tSetting density fluctuations \n");
+	printf("/////\t\t[sigma=%.2lf][scale inj=%.2le %s][scale diss=%.2le %s][spectral index=%.2lf]\n",
+		gal->dens_fluct_sigma,gal->dens_fluct_scale_inj,AllVars.UnitLengthName,gal->dens_fluct_scale_diss,AllVars.UnitLengthName,gal->dens_fluct_nspec);
+        printf("/////\t\t[grid scale=%.2le %s][seed=%ld]\n",gal->dx_gauss,AllVars.UnitLengthName,gal->dens_fluct_seed);
 	fflush(stdout);
         set_galaxy_random_field_grid(gal,gal->dens_fluct_scale_inj,gal->dens_fluct_scale_diss,gal->dens_fluct_nspec,gal->dens_fluct_seed);
         if(gal->dens_fluct_sigma>0.5) {
@@ -1940,7 +1941,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             set_galaxy_random_field_grid(gal,gal->comp_metal_scale[j],gal->comp_metal_scale[j],1.0,gal->comp_metal_seed[j]);
 
             mean_metal = 0.;
-            printf("/////\t\t- Component %2d -> setting metal fluctuations [sigma=%.2lf][scale=%.2lf %s][grid scale=%.3lf %s][seed=%ld]\n",
+            printf("/////\t\t- Component %2d -> setting metal fluctuations [sigma=%.2lf][scale=%.2le %s][grid scale=%.2le %s][seed=%ld]\n",
                     j+1,gal->comp_metal_sigma[j],gal->comp_metal_scale[j],AllVars.UnitLengthName,gal->dx_gauss,AllVars.UnitLengthName,gal->comp_metal_seed[j]);
             for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
                 gal->metal[k] += galaxy_gaussian_field_func(gal,gal->x[k],gal->y[k],gal->z[k])*gal->comp_metal_sigma[k];
@@ -2039,8 +2040,8 @@ int create_stream(stream *st, char *fname, int info) {
         }
 
         printf("/////\t--------------------------------------------------\n");
-        printf("/////\tSetting density fluctuations [sigma=%.2lf][scale inj=%.2lf kpc][scale diss=%.3lf kpc][spectral index=%.2lf]\n",
-		st->dens_fluct_sigma,st->dens_fluct_scale_inj,st->dens_fluct_scale_diss,st->dens_fluct_nspec);
+        printf("/////\tSetting density fluctuations [sigma=%.2lf][scale inj=%.2le %s][scale diss=%.2le %s][spectral index=%.2lf]\n",
+		st->dens_fluct_sigma,st->dens_fluct_scale_inj,AllVars.UnitLengthName,st->dens_fluct_scale_diss,AllVars.UnitLengthName,st->dens_fluct_nspec);
         printf("/////\t                             [grid scale=%.3lf kpc][seed=%ld]\n",st->dx_gauss,st->dens_fluct_seed);
 	fflush(stdout);
         set_stream_random_field_grid(st,st->dens_fluct_scale_inj,st->dens_fluct_scale_diss,st->dens_fluct_nspec,st->dens_fluct_seed);
@@ -2289,7 +2290,7 @@ int set_galaxy_velocity(galaxy *gal) {
     int status,warning1,warning2;
     int nrejected,nrejected_failed;
     double v_c, v_r, v_theta, v_phi, v_z, v_cmax, v_stream_max, Q, J_comp, J_sum, lambda_crit, eps_m;
-    double v2a_r, v2a_theta, v2_theta, v2a_z, va_theta, sigma2_theta, vel_x, vel_y, vel_z;
+    double v2a_r, v2a_theta, v2_theta, v2a_z, va_theta, sigma2_theta, vel_x, vel_y, vel_z, stddev_vx, stddev_vy, stddev_vz;
     double maxvel_x, maxvel_y, maxvel_z;
     double u_min, maxrad, maxrad_gas, k_stream, kmax_stream;
     double radius, interval, save1, save2, save3, save4, save5;
@@ -2529,6 +2530,54 @@ int set_galaxy_velocity(galaxy *gal) {
                 fflush(stdout);
                 fill_jeans_3D_grid(gal,j);
             }
+
+	    // Reset velocities
+            for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j]+gal->comp_npart_pot[j]; ++i) {
+                gal->vel_x[i] = 0.0;
+                gal->vel_y[i] = 0.0;
+                gal->vel_z[i] = 0.0;
+            }
+
+	    // Computing velocity turbulence
+            if(gal->comp_turb_sigma[j]>0. && gal->comp_npart[j]>1 && gal->comp_compute_vel[j]==1) {
+                gal->ngrid_gauss[0] = pow(2,gal->level_grid_turb);
+                gal->ngrid_gauss[1] = pow(2,gal->level_grid_turb);
+                gal->ngrid_gauss[2] = pow(2,gal->level_grid_turb);
+
+                allocate_galaxy_gaussian_grid(gal);
+
+                gal->dx_gauss = 2.1*gal->comp_cut[j]/((double)gal->ngrid_gauss[0]);
+                gal->dx_gauss = 2.0*(gal->comp_cut[j]+5*gal->comp_sigma_cut[j]*gal->comp_scale_length[j])/((double)gal->ngrid_gauss[0]);
+                printf("\n/////\t\t- Component %2d [sigma_turb=%.2lf km/s][scale inj=%.2e %s][scale diss=%.2e %s][spectral index=%.2lf]\n",
+			j+1,gal->comp_turb_sigma[j],gal->comp_turb_scale_inj[j],AllVars.UnitLengthName,gal->comp_turb_scale_diss[j],AllVars.UnitLengthName,gal->comp_turb_nspec[j]);
+                printf("/////\t\t ------------- [grid scale=%.2e %s][seed=%ld]\n",gal->dx_gauss,AllVars.UnitLengthName,gal->comp_turb_seed[j]);
+		// Generating velocites 
+                set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[j],gal->comp_turb_scale_diss[j],gal->comp_turb_nspec[j],gal->comp_turb_seed[j]+0);
+                for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j]+gal->comp_npart[j]; ++i) {
+                    gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i]);
+                }
+                set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[j],gal->comp_turb_scale_diss[j],gal->comp_turb_nspec[j],gal->comp_turb_seed[j]+1);
+                for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j]+gal->comp_npart[j]; ++i) {
+                    gal->vel_y[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i]);
+                }
+                set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[j],gal->comp_turb_scale_diss[j],gal->comp_turb_nspec[j],gal->comp_turb_seed[j]+2);
+                for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j]+gal->comp_npart[j]; ++i) {
+                    gal->vel_z[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i]);
+                }
+                deallocate_galaxy_gaussian_grid(gal);
+                // Computing standard deviations
+                stddev_vx = standard_dev(gal->vel_x,gal->comp_start_part[j],gal->comp_start_part[j]+gal->comp_npart[j]);
+                stddev_vy = standard_dev(gal->vel_y,gal->comp_start_part[j],gal->comp_start_part[j]+gal->comp_npart[j]);
+                stddev_vz = standard_dev(gal->vel_z,gal->comp_start_part[j],gal->comp_start_part[j]+gal->comp_npart[j]);
+                // Rescaling velocities to get the user specified dispersion
+                for (i = gal->comp_start_part[j]; i < gal->comp_start_part[j]+gal->comp_npart[j]; ++i) {
+                    gal->vel_x[i] *= gal->comp_turb_sigma[j]/stddev_vx;
+                    gal->vel_y[i] *= gal->comp_turb_sigma[j]/stddev_vy;
+                    gal->vel_z[i] *= gal->comp_turb_sigma[j]/stddev_vz;
+                }
+                printf("/////\t\t- Component %2d ",j+1);
+            }
+
 	    // Initialze maximum streaming velocity storage variable
     	    v_stream_max = 0.;
 	    // Set gas hydrostatic pseudo density switch
@@ -2602,9 +2651,9 @@ int set_galaxy_velocity(galaxy *gal) {
                         }
 		    	if(va_theta>v_stream_max) v_stream_max = va_theta; 
 			// Cylindrical to cartesian coordinates
-                        gal->vel_x[i] = (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]));
-                        gal->vel_y[i] = (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
-                        gal->vel_z[i] = v_z;
+                        gal->vel_x[i] += (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]));
+                        gal->vel_y[i] += (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
+                        gal->vel_z[i] += v_z;
                     } else {
 			// ------ Cylindrical coordinates ------
 		        if(gal->comp_jeans_dim[j]!=1) {
@@ -2704,9 +2753,9 @@ int set_galaxy_velocity(galaxy *gal) {
                                 }
 			    }
 			    // Cylindrical to cartesian coordinates
-                            vel_x = (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]));
-                            vel_y = (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
-                            vel_z = v_z;
+                            vel_x += (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]));
+                            vel_y += (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
+                            vel_z += v_z;
 			// ------ Spherical coordinates ------
 			} else {
 			    // Computing radial velocity dispersion
@@ -2781,9 +2830,9 @@ int set_galaxy_velocity(galaxy *gal) {
 			    exit(0);
 			}
 	
-                        gal->vel_x[i] = vel_x;
-                        gal->vel_y[i] = vel_y;
-                        gal->vel_z[i] = vel_z;
+                        gal->vel_x[i] += vel_x;
+                        gal->vel_y[i] += vel_y;
+                        gal->vel_z[i] += vel_z;
                     }
                 }
 		if(gal->comp_type[j]==0) {
@@ -2842,56 +2891,6 @@ int set_galaxy_velocity(galaxy *gal) {
     printf("/////\t\t-------------------------------------------\n");
     printf("/////\t\t[   J_tot=%4.2le  J200=%4.2le Msol.%s.%s  ]\n",J_sum*unit_mass/solarmass,gal->J200*unit_mass/solarmass,AllVars.UnitLengthName,AllVars.UnitVelocityName);
     if(warning1) printf("/////\t\t[Warning] Potential derivative unstable -> Increase particule number\n");
-
-    // Loop over components
-    nt = 0;
-    for(k = 0; k<AllVars.MaxCompNumber; k++) {
-        if(gal->comp_turb_sigma[k]>0. && gal->comp_npart[k]>1 && gal->comp_compute_vel[k]==1) {
-            nt++;
-            if(nt==1) {
-    	        printf("/////\t--------------------------------------------------\n");
-	        printf("/////\tComputing turbulence\n");
-	    }
-            // Deallocate potential grid to save some memory for the next computation
-            if(gal->potential_defined) {
-                for (n = 0; i < gal->nlevel; n++) {
-                    for (j = 0; i < 2*gal->ngrid[n][0]; i++) {
-                        for (k = 0; j < 2*gal->ngrid[n][1]; j++) {
-                            free(gal->potential[n][i][j]);
-                        }
-                        free(gal->potential[n][i]);
-                    }
-                    free(gal->potential[n]);
-                }
-                free(gal->potential);
-                gal->potential_defined = 0;
-            }
-
-            gal->ngrid_gauss[0] = pow(2,gal->level_grid_turb);
-            gal->ngrid_gauss[1] = pow(2,gal->level_grid_turb);
-            gal->ngrid_gauss[2] = pow(2,gal->level_grid_turb);
-
-            allocate_galaxy_gaussian_grid(gal);
-
-            gal->dx_gauss = 2.1*gal->comp_cut[k]/((double)gal->ngrid_gauss[0]);
-
-            printf("/////\t\t- Component %2d -> setting turbulence [sigma=%.2lf km/s][scale inj=%.2lf kpc][scale diss=%.3lf kpc][spectral index=%.2lf]\n",k+1,gal->comp_turb_sigma[k],gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k]);
-            printf("/////\t\t                                     [grid scale=%.3lf kpc][seed=%ld]\n",gal->dx_gauss,gal->comp_turb_seed[k]);
-            set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k],gal->comp_turb_seed[k]);
-            for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-                gal->vel_x[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
-            }
-            set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k],gal->comp_turb_seed[k]+1);
-            for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-                gal->vel_y[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
-            }
-            set_galaxy_random_field_grid(gal,gal->comp_turb_scale_inj[k],gal->comp_turb_scale_diss[k],gal->comp_turb_nspec[k],gal->comp_turb_seed[k]+2);
-            for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k]+gal->comp_npart[k]; ++i) {
-                gal->vel_z[i] += galaxy_gaussian_field_func(gal,gal->x[i],gal->y[i],gal->z[i])*gal->comp_turb_sigma[k];
-            }
-            deallocate_galaxy_gaussian_grid(gal);
-        }
-    }
 
     return 0;
 }
