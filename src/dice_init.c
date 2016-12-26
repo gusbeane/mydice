@@ -2754,9 +2754,9 @@ int set_galaxy_velocity(galaxy *gal) {
                                 }
 			    }
 			    // Cylindrical to cartesian coordinates
-                            vel_x += (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]));
-                            vel_y += (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
-                            vel_z += v_z;
+                            vel_x = (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]));
+                            vel_y = (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
+                            vel_z = v_z;
 			// ------ Spherical coordinates ------
 			} else {
 			    // Computing radial velocity dispersion
