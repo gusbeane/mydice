@@ -186,7 +186,6 @@ typedef struct {
     long                *comp_metal_seed;
     double              *comp_t_init;
     double              *comp_u_init;
-    int    		*comp_isobaric;
     double              *comp_cs_init;
     int                 *comp_turb_gradient;
     double              *comp_turb_sigma;
@@ -213,6 +212,7 @@ typedef struct {
     double              *comp_t_min;
     int                 *comp_compute_vel;
     int                 *comp_hydro_eq;
+    int                 *comp_hydro_eq_mode;
     int                 *comp_spherical_hydro_eq;
     int                 *comp_dens_fluct;
     double              *comp_cut_in;

@@ -265,6 +265,10 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_hydro_eq array\n");
         return -1;
     }
+    if (!(gal->comp_hydro_eq_mode = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_hydro_eq_mode array\n");
+        return -1;
+    }
     if (!(gal->comp_spherical_hydro_eq = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_spherical_hydro_eq array\n");
         return -1;
@@ -527,10 +531,6 @@ int allocate_component_arrays(galaxy *gal) {
     }
     if (!(gal->comp_turb_nspec = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_turb_nspec array\n");
-        return -1;
-    }
-    if (!(gal->comp_isobaric = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
-        fprintf(stderr,"[Error] Unable to allocate comp_isobaric array\n");
         return -1;
     }
     if (!(gal->comp_imf_model = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
@@ -1371,13 +1371,15 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
         if(gal->comp_type[i]==0 && (gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.) 
 	   && gal->comp_spherical_hydro_eq[i]==0 && gal->comp_hydro_eq[i]>0 && gal->hydro_eq_niter>0
-           && gal->comp_gamma_poly[i]<1.00001) {
+           && gal->comp_hydro_eq_mode[i]==1) {
+            // Allocate mdiplane density grid
             if(allocate_galaxy_midplane_dens(gal)!=0) {
                 fprintf(stderr,"[Error] Unable to allocate midplane gas density grid\n");
                 return -1;
             }
 	    break;
 	}
+        if(gal->hydro_eq_niter==0) gal->comp_hydro_eq[i] = 0;
     }
 
 
@@ -1622,10 +1624,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             gal->comp_u_init[i] *= unit_mass / unit_energy;
             gal->comp_u_init[i] *= (1.0 / gamma_minus1);
             gal->comp_u_init[i] /= mu_mol;
-            if(gal->comp_gamma_poly[i]<1.0) {
-                fprintf(stderr,"[Error] gamma_poly%d<1.0\n",i);
-		return -1;
-	    }
             if(gal->comp_hydro_eq[i]) gal->hydro_eq += gal->comp_hydro_eq[i]*gal->comp_bool[i];
 	    // Polytropic EoS case
 	    // The normalisation factor K is computed for T_init and dens_init
@@ -1912,7 +1910,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                     printf("/////\t\t-> f_stream  = %6.3le\n",gal->comp_stream_frac[j]);
 		}
             }
-            if(gal->comp_type[j]==0 && gal->comp_hydro_eq[j]>0) {
+            if(gal->comp_type[j]==0) {
                 printf("/////\t\t-> T_init    = %6.2le [K]\n",gal->comp_t_init[j]);
                 printf("/////\t\t-> S_init    = %6.2le [keV.cm^2]\n",boltzmann_kev*gal->comp_t_init[j]*pow(gal->comp_dens_init[j]/unit_nh*unit_ne,-2.0/3.0));
                 printf("/////\t\t-> rho_init  = %6.2le [H/cm^3]\n",gal->comp_dens_init[j]);
@@ -2158,10 +2156,6 @@ int create_stream(stream *st, char *fname, int info) {
             st->comp_u_init[i] *= (1.0 / gamma_minus1);
             st->comp_u_init[i] /= mu_mol;
 
-            if(st->comp_gamma_poly[i]<1.0) {
-                fprintf(stderr,"[Error] gamma_poly%d<1.0\n",i);
-		return -1;
-	    }
 	    // Polytropic EoS case
 	    // The normalisation factor K is computed for T_init and dens_init
 	    st->comp_k_poly[i] = st->comp_u_init[i]*pow(st->comp_dens[i]/unit_nh,1.0-st->comp_gamma_poly[i])*gamma_minus1;  
@@ -2309,7 +2303,7 @@ int set_galaxy_coords(galaxy *gal) {
             	    gal->boxsize_dens = 2.5*(gal->comp_cut[i]+3*gal->comp_scale_length[i]*gal->comp_sigma_cut[i]);
     		    gal->dx_dens = gal->boxsize_dens/((double)gal->ngrid_dens[0]);
             	    // Compute midplane density
-                    if(gal->comp_spherical_hydro_eq[i]==0 && gal->comp_gamma_poly[i]<1.00001) {	
+                    if(gal->comp_spherical_hydro_eq[i]==0 && fabs(gal->comp_gamma_poly[i]-1)<0.00001) {	
 		        fill_midplane_dens_grid(gal);
 		    }
 		    printf("/////\t\t\t- Component %2d [   m_tot=%4.2le Msol   ]",i+1,gal->comp_mass[i]*unit_mass/solarmass);
@@ -3148,6 +3142,7 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_t_min);
     free(gal->comp_compute_vel);
     free(gal->comp_hydro_eq);
+    free(gal->comp_hydro_eq_mode);
     free(gal->comp_spherical_hydro_eq);
     free(gal->comp_dens_fluct);
     free(gal->comp_cut_in);
@@ -3195,7 +3190,6 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_symmetry);
     free(gal->comp_jeans_dim);
     free(gal->comp_jeans_anisotropy_model);
-    free(gal->comp_isobaric);
     free(gal->comp_imf_model);
     free(gal->comp_mstar_min);
     free(gal->comp_mstar_max);

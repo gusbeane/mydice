@@ -353,7 +353,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
     double theta, phi, randval, smooth_factor;
     double step_r, step_x, step_y, step_z, step_r_sph, hx, hy, hz;
     double new_step_x, new_step_y, new_step_z, new_step_r, new_step_r_sph, min_step_z, max_step_z;
-    double acceptance, norm, ratio, rho_ref, rho_0, mean_metal, Tpart, Tmax, cs2, press_init;
+    double acceptance, norm, ratio, rho_ref, rho_0, mean_metal, Tpart, Tmax, cs2, press_init, rho_min_press;
     double *prop_x, *prop_y, *prop_z, *prop_r, *prop_theta, *prop_r_sph, *prop_phi_sph;
     double *pi_x, *pi_y, *q_x, *q_y, *weights, *w_x, *w_y;
     double *ref_x, *ref_y, *ref_z, *ref_r, *ref_theta, *ref_r_sph, *ref_phi_sph, *lambda_x, *lambda_y, *dv_x, *dv_y;
@@ -474,9 +474,11 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         min_step_z = 1e-3*gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
         max_step_z = gal->comp_cut[component]*gal->comp_mcmc_step_hydro[component];
     }
-    // Compute pressure for isobaric gas
-    if(gal->comp_isobaric[component]) {
-        press_init = gamma_minus1*gal->comp_dens_init[component]*gal->comp_u_init[component];
+    // Compute safety density for pressure computation
+    if(gal->pseudo[0]) {
+        rho_min_press = pseudo_density_gas_func(gal,0.99*gal->comp_cut[component],0.,0.,1,density_model,component,gal->comp_spherical_hydro_eq[component]);
+    } else {
+        rho_min_press = density_functions_pool(gal,0.99*gal->comp_cut[component],0.,0.,1,density_model,component);
     }
 
     i = gal->comp_start_part[component];
@@ -727,11 +729,6 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                 gal->phi_sph[i] = prop_phi_sph[selected];
                 gal->z[i] = prop_z[selected];
                 gal->rho[i] = pi_y[selected]/dv_y[selected];
-		if(gal->comp_type[component]==0) {
-		    d = gal->comp_spherical_hydro_eq[component]?sqrt(pow(gal->r_cyl[i],2)+pow(gal->z[i],2)):gal->z[i];
-		    k_poly = d>rc?gal->comp_k_poly[component]*pow(d/rc,gal->comp_alpha_entropy[component]):gal->comp_k_poly[component];
-		    gal->u[i] = k_poly*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
-		}
                 acceptance += 1.0;
             // Proposal rejected, the particle keeps the same postion
             } else {
@@ -749,24 +746,17 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                     gal->z[i] = gal->r_sph[i]*cos(gal->phi_sph[i-1]);
                 }
                 gal->rho[i] = pi_x[gal->mcmc_ntry-1]/dv_x[gal->mcmc_ntry-1];
-		// Set gas temperature
-		if(gal->comp_type[component]==0) {
-		    // Isobaric gas
-                    if(gal->comp_isobaric[component]==1) {
-		    	gal->u[i] = press_init/(gamma_minus1*gal->rho[i]);
-                    // Polytropic gas
-                    } else {
-			// Entropy core
-		    	d = gal->comp_spherical_hydro_eq[component]?gal->r_sph[i]:gal->z[i];
-		    	k_poly = d>rc?gal->comp_k_poly[component]*pow(d/rc,gal->comp_alpha_entropy[component]):gal->comp_k_poly[component];
-                        // Internal energy
-		    	gal->u[i] = k_poly*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
-                    }
-                    // Temperature
-		    Tpart = gal->u[i]*gamma_minus1*protonmass*mu_mol/boltzmann*unit_energy/unit_mass;
-		    if(Tpart>Tmax) Tmax = Tpart;
-		}
             }	
+	    if(gal->comp_type[component]==0) {
+                // Polytropic gas
+	        d = gal->comp_spherical_hydro_eq[component]?sqrt(pow(gal->r_cyl[i],2)+pow(gal->z[i],2)):gal->z[i];
+	        k_poly = d>rc?gal->comp_k_poly[component]*pow(d/rc,gal->comp_alpha_entropy[component]):gal->comp_k_poly[component];
+	        gal->u[i] = k_poly*pow(max(gal->rho[i],rho_min_press),gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
+                // Temperature
+	        Tpart = gal->u[i]*gamma_minus1*protonmass*mu_mol/boltzmann*unit_energy/unit_mass;
+	        if(Tpart>Tmax) Tmax = Tpart;
+	    }
+
 	    if(gal->rho[i]>gal->comp_dens_max[component]) gal->comp_dens_max[component] = gal->rho[i];
 	    if(gal->rho[i]<gal->comp_dens_min[component]) gal->comp_dens_min[component] = gal->rho[i];
             // Temporary assign metallicity to local density value
@@ -825,7 +815,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
         }
         if(acceptance<gal->comp_accept_max[component] && acceptance>gal->comp_accept_min[component]) {
             printf("[rho_min=%4.2le rho_max=%4.2le H/cc]",gal->comp_dens_min[component]*unit_nh,gal->comp_dens_max[component]*unit_nh);
-	    if(gal->comp_type[component]==0 && gal->comp_hydro_eq[component]==1) {
+	    if(gal->comp_type[component]==0) {
 	        printf("[Tmax=%4.2le K]",Tmax);
 	    }
 	    printf("\n");
@@ -1689,7 +1679,7 @@ double pseudo_density_gas_func(galaxy *gal, double r, double theta, double z, in
            delta_phi_core = galaxyz_potential_wrapper_func(rc,gal)-galaxyz_potential_wrapper_func(0.,gal);
 	}
         // Density in the xy-plane
-        if(gamma0<1.00001) {
+        if(gal->comp_hydro_eq_mode[component]==1) {
             rho_0 = get_midplane_density(gal,gal->x[gal->index[tid]],gal->y[gal->index[tid]]);
 	} else {
             rho_0 = density_functions_pool(gal,r,theta,0.,1,gal->comp_model[component],component);
@@ -1765,7 +1755,7 @@ double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, doub
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
         if(gal->comp_type[i]==0 && gal->comp_npart[i]>1) {
 	    // Planar density is defined by surface_density/integral(exp(phi/cs2)dz)
-	    if(gal->comp_gamma_poly[i]<1.00001) {
+	    if(fabs(gal->comp_gamma_poly[i]-1.0)<0.00001) {
 	        gal->selected_comp[tid] = i;
     	        zmax = gal->comp_scale_height[i];
     	        F.function = &dmidplane_density_gas_func;

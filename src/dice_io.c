@@ -1131,6 +1131,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = INT;
 
+        n = sprintf(temp_tag,"hydro_eq_mode%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_hydro_eq_mode[j] = 0;
+        addr[nt] = &gal->comp_hydro_eq_mode[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+
         n = sprintf(temp_tag,"spherical_hydro_eq%d",j+1);
         strcpy(tag[nt], temp_tag);
         gal->comp_spherical_hydro_eq[j] = 0;
@@ -1362,14 +1370,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
-
-        n = sprintf(temp_tag,"isobaric%d",j+1);
-        strcpy(tag[nt], temp_tag);
-        addr[nt] = &gal->comp_isobaric[j];
-        gal->comp_isobaric[j] = 0;
-        read[nt] = 0;
-        mandatory[nt] = 0;
-        id[nt++] = INT;
 
 	n = sprintf(temp_tag,"accept_min%d",j+1);
         strcpy(tag[nt], temp_tag);
