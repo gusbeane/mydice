@@ -151,8 +151,9 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
     // Nodes coordinates
     int node_x, node_y, node_z;
     int ngrid_padded[3];
+    int sc;
     double dx, dy, dz, tx, ty, tz, n;
-    double x, y, z;
+    double x, y, z, r, theta;
     double S_diss,S_inj,K_diss,K_inj,stddev,mean;
     // The particle-mesh grid size and the Green's function and potential
     // storage buffers. Global to keep from hitting the stack limit for large grid
@@ -237,6 +238,15 @@ int set_galaxy_random_field_grid(galaxy *gal, double scale_inj, double scale_dis
         for (j = 0; j < ngrid_padded[1]; ++j) {
             for (k = 0; k < ngrid_padded[2]; ++k) {
                 gal->gaussian_field[i][j][k] = gsl_ran_gaussian(rng,1.0);
+                sc = gal->selected_comp[0];
+		if(gal->comp_turb_gradient[sc]==1){
+                    x = ((double)i-(double)(ngrid_padded[0]/2)+0.5)*gal->dx_gauss;
+                    y = ((double)j-(double)(ngrid_padded[1]/2)+0.5)*gal->dx_gauss;
+                    z = ((double)k-(double)(ngrid_padded[2]/2)+0.5)*gal->dx_gauss;
+	            r = sqrt(x*x+y*y);
+	            theta = atan2(y,x);
+                    gal->gaussian_field[i][j][k] *= density_functions_pool(gal,r,theta,z,1,gal->comp_model[sc],sc);
+                }
             }
         }
     }
@@ -399,8 +409,9 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
     // Nodes coordinates
     int node_x, node_y, node_z;
     int ngrid_padded[3];
+    int sc;
     double dx, dy, dz, tx, ty, tz, n;
-    double x, y, z;
+    double x, y, z, r, theta;
     double S_diss,S_inj,K_diss,K_inj,stddev,mean;
     // The particle-mesh grid size and the Green's function and potential
     // storage buffers. Global to keep from hitting the stack limit for large grid
@@ -485,6 +496,15 @@ int set_stream_random_field_grid(stream *st, double scale_inj, double scale_diss
         for (j = 0; j < ngrid_padded[1]; ++j) {
             for (k = 0; k < ngrid_padded[2]; ++k) {
                 st->gaussian_field[i][j][k] = gsl_ran_gaussian(rng,1.0);
+                sc = st->selected_comp[0];
+		if(st->comp_turb_gradient[sc]==1){
+                    x = ((double)i-(double)(ngrid_padded[0]/2)+0.5)*st->dx_gauss;
+                    y = ((double)j-(double)(ngrid_padded[1]/2)+0.5)*st->dx_gauss;
+                    z = ((double)k-(double)(ngrid_padded[2]/2)+0.5)*st->dx_gauss;
+	            r = sqrt(x*x+y*y);
+	            theta = atan2(y,x);
+                    st->gaussian_field[i][j][k] *= density_functions_stream_pool(st,r,theta,z,st->comp_model[sc],sc);
+                }
             }
         }
     }

@@ -406,7 +406,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 100*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+12
+#define MAXTAGS 108*AllVars.MaxCompNumber+4*AllVars.MaxNlevel+18
 
     FILE *fd;
     int i,j,n;
@@ -1043,6 +1043,14 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
+        n = sprintf(temp_tag,"turb_gradient%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_turb_gradient[j] = 0;
+        addr[nt] = &gal->comp_turb_gradient[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+
         n = sprintf(temp_tag,"turb_sigma%d",j+1);
         strcpy(tag[nt], temp_tag);
         gal->comp_turb_sigma[j] = 0.;
@@ -1434,6 +1442,39 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = INT;
+
+	n = sprintf(temp_tag,"imf_model%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_imf_model[j];
+        gal->comp_imf_model[j] = 0;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
+
+	n = sprintf(temp_tag,"mstar_min%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_mstar_min[j];
+        gal->comp_mstar_min[j] = 0.1;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"mstar_max%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_mstar_max[j];
+        gal->comp_mstar_max[j] = 120.;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
+	n = sprintf(temp_tag,"mcmc_step_mass%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        addr[nt] = &gal->comp_mcmc_step_mass[j];
+        gal->comp_mcmc_step_mass[j] = 0.01;
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = DOUBLE;
+
     }
 
     if((fd = fopen(fname, "r"))) {
@@ -1497,14 +1538,14 @@ int parse_stream_file(stream *st, char *fname) {
 #define STRING  2
 #define INT     3
 #define LONG    4
-#define MAXTAGS 25*AllVars.MaxCompNumber+6
+#define MAXTAGS 30*AllVars.MaxCompNumber+9
 
     FILE    *fd;
     int i,j,n;
     char buf[400], buf1[400], buf2[400];
     int nt;
     int id[MAXTAGS];
-    void    *addr[MAXTAGS];
+    void *addr[MAXTAGS];
     char tag[MAXTAGS][400];
     char temp_tag[400];
     int read[MAXTAGS];
@@ -1644,6 +1685,14 @@ int parse_stream_file(stream *st, char *fname) {
         if(j==0) mandatory[nt] = 1;
         else mandatory[nt] = 0;
         id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"turb_gradient%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        st->comp_turb_gradient[j] = 0.;
+        addr[nt] = &st->comp_turb_gradient[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = INT;
 
         n = sprintf(temp_tag,"turb_sigma%d",j+1);
         strcpy(tag[nt], temp_tag);

@@ -141,6 +141,7 @@ typedef struct {
     double		maxrad_gas;
     // Component quantities
     char                **comp_profile_name;
+    char                **comp_imf_name;
     unsigned long int   *comp_npart;
     unsigned long int   *comp_npart_pot;
     unsigned long int   *comp_start_part;
@@ -187,6 +188,7 @@ typedef struct {
     double              *comp_u_init;
     int    		*comp_isobaric;
     double              *comp_cs_init;
+    int                 *comp_turb_gradient;
     double              *comp_turb_sigma;
     double              *comp_turb_frac;
     double              *comp_turb_scale;
@@ -258,6 +260,10 @@ typedef struct {
     double 		*comp_alpha_entropy;
     double 		*comp_cut_hydro_eq;
     int              	*comp_symmetry;
+    int              	*comp_imf_model;
+    double              *comp_mstar_min;
+    double              *comp_mstar_max;
+    double              *comp_mcmc_step_mass;
     // Virial quantities
     double v200;
     double r200;
@@ -384,6 +390,7 @@ typedef struct {
     double              *comp_mass;
     double              *comp_dens;
     double              *comp_opening_angle;
+    int                 *comp_turb_gradient;
     double              *comp_turb_sigma;
     double              *comp_turb_scale_inj;
     double              *comp_turb_scale_diss;
@@ -606,8 +613,10 @@ int position_stream(galaxy *, int);
 
 // Structure functions
 double density_functions_pool(galaxy *, double, double, double, int, int, int);
+double imf_functions_pool(galaxy *, double, int, int);
 void mcmc_metropolis_hasting_ntry(galaxy *, int, int);
 void mcmc_metropolis_hasting_ntry_stream(stream *, int, int);
+void mcmc_metropolis_hasting_ntry_mass(galaxy *, int, int);
 double density_functions_stream_pool(stream *, double, double, double, int, int);
 
 double surface_density_func(galaxy *, double, double, int, int);

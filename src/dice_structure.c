@@ -294,6 +294,58 @@ double density_functions_stream_pool(stream *st, double radius, double theta, do
     return density;
 }
 
+double imf_functions_pool(galaxy *gal, double mass, int model, int component) {
+    double alpha, density, m;
+
+    m = mass*unit_mass/solarmass;
+
+    if(m<gal->comp_mstar_min[component]) return 0.;
+    if(m>gal->comp_mstar_max[component]) return 0.;
+    // Select a disk model
+    switch(model) {
+        case 1:
+            // Salpeter
+            if(strcmp(gal->comp_imf_name[component],"")==0)
+                strcpy(gal->comp_imf_name[component],"        Salpeter         ");
+	    alpha = 2.35;
+            density = pow(m,-alpha);
+            break;
+        case 2:
+            // Miller-Scalo
+            if(strcmp(gal->comp_imf_name[component],"")==0)
+                strcpy(gal->comp_imf_name[component],"      Miller-Scalo       ");
+            alpha = 2.35;
+            if(m<1.0) alpha = 1.0;
+            density = pow(m,-alpha);
+            break;
+        case 3:
+            // Chabrier
+            if(strcmp(gal->comp_imf_name[component],"")==0)
+                strcpy(gal->comp_imf_name[component],"        Chabrier         ");
+            if(m>1.0) {
+                alpha = 2.3;
+                density = pow(mass,-alpha);
+            } else {
+                density = 0.158*(1.0/(log(10.)*m))*exp(-pow(log10(m)-log10(0.08),2.)/(2.*pow(0.69,2.)));
+            }
+            break;
+        case 4:
+            // Kroupa
+            if(strcmp(gal->comp_imf_name[component],"")==0)
+                strcpy(gal->comp_imf_name[component],"         Kroupa          ");
+            if(m<0.08) alpha = 0.3;
+            if(m>=0.08 && m<0.5) alpha = 1.3;
+            if(m>0.5) alpha = 2.3;
+            density = pow(mass,-alpha);
+            break;
+        default:
+            fprintf(stderr,"/////\t\t\tSpecify a valid model for component %d\n",component);
+            exit(0);
+    }
+    return density;
+}
+
+
 void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model) {
     unsigned long int i,j,start_part,npart;
     int k, selected, tid;
@@ -709,10 +761,10 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 		    	k_poly = d>rc?gal->comp_k_poly[component]*pow(d/rc,gal->comp_alpha_entropy[component]):gal->comp_k_poly[component];
                         // Internal energy
 		    	gal->u[i] = k_poly*pow(gal->rho[i],gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
-                        // Temperature
-		    	Tpart = gal->u[i]*gamma_minus1*protonmass*mu_mol/boltzmann*unit_energy/unit_mass;
-		    	if(Tpart>Tmax) Tmax = Tpart;
                     }
+                    // Temperature
+		    Tpart = gal->u[i]*gamma_minus1*protonmass*mu_mol/boltzmann*unit_energy/unit_mass;
+		    if(Tpart>Tmax) Tmax = Tpart;
 		}
             }	
 	    if(gal->rho[i]>gal->comp_dens_max[component]) gal->comp_dens_max[component] = gal->rho[i];
@@ -819,6 +871,184 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 }
 
 
+void mcmc_metropolis_hasting_ntry_mass(galaxy *gal, int component, int imf_model) {
+    unsigned long int i,j,start_part,npart;
+    int k, selected, tid;
+    double prob, *radius, k_poly, d, rc;
+    double theta, phi, randval, smooth_factor;
+    double step_m, new_step_m, mass_min, mass_max;
+    double acceptance, norm, ratio;
+    double *prop_m, *ref_m;
+    double *pi_x, *pi_y, *q_x, *q_y, *weights, *w_x, *w_y;
+    double *lambda_x, *lambda_y, *dv_x, *dv_y;
+
+#if USE_THREADS == 1
+    tid = omp_get_thread_num();
+#else
+    tid = 0;
+#endif
+
+    if(!(prop_m = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate prop_x array\n");
+        exit(0);
+    }
+    if(!(pi_x = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate pi_x array\n");
+        exit(0);
+    }
+    if(!(pi_y = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate pi_y array\n");
+        exit(0);
+    }
+    if(!(q_x = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate q_x array\n");
+        exit(0);
+    }
+    if(!(q_y = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate q_y array\n");
+        exit(0);
+    }
+    if(!(weights = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate w array\n");
+        exit(0);
+    }
+    if(!(w_x = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate w_x array\n");
+        exit(0);
+    }
+    if(!(w_y = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate w_y array\n");
+        exit(0);
+    }
+    if(!(ref_m = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate ref_x array\n");
+        exit(0);
+    }
+    if(!(lambda_x = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate lambda_x array\n");
+        exit(0);
+    }
+    if(!(lambda_y = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate lambda_y array\n");
+        exit(0);
+    }
+    if(!(dv_x = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate dv_x array\n");
+        exit(0);
+    }
+    if(!(dv_y = calloc(gal->mcmc_ntry,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate dv_y array\n");
+        exit(0);
+    }
+
+    mass_min = gal->comp_mstar_min[component]*solarmass/unit_mass;
+    mass_max = gal->comp_mstar_max[component]*solarmass/unit_mass;
+
+    i = gal->comp_start_part[component];
+    if(gal->comp_npart[component]>1) {
+        // Use the Metropolis algorithm to place the disk particles.
+        // We start the Monte Carlo Markov Chain with a realistic particle position
+        step_m = (mass_max-mass_min)*gal->comp_mcmc_step_mass[component];
+        // Single particle always placed at the center
+        gal->mass[i] = mass_min;
+	gal->index[tid] = i;
+	
+	if(gal->comp_npart[component]==1) return;
+
+        acceptance = 0.;
+        // Filling the Markov Chain
+        for(i = gal->comp_start_part[component]+1; i < gal->comp_start_part[component]+gal->comp_npart_pot[component]; ++i) {
+            // Generating a proposal
+            for(k = 0; k<gal->mcmc_ntry; k++) {
+                prop_m[k] = gal->mass[i-1] + gsl_ran_gaussian(r[0],step_m);
+                q_y[k] = gsl_ran_gaussian_pdf(-gal->mass[i-1]+prop_m[k],step_m);
+                dv_y[k] = 1.0;
+                // Distribution function of the considered component
+                pi_y[k] = dv_y[k]*imf_functions_pool(gal,prop_m[k],imf_model,component);
+                weights[k] = pi_y[k];
+            }
+            // Normalize weights
+            norm = sum_dbl(weights,gal->mcmc_ntry);
+            for(k = 0; k<gal->mcmc_ntry; k++) if(norm != 0.) weights[k] /= norm;
+            // Select a proposal according to its probability
+            selected = 0;
+            randval = gsl_rng_uniform_pos(r[0]);
+            for(k = 0; k<gal->mcmc_ntry; k++) {
+                if(randval<weights[k]) {
+                    selected = k;
+                    break;
+                }
+                randval -= weights[k];
+            }
+
+            // Produce a reference set
+            for(k = 0; k<gal->mcmc_ntry; k++) {
+                new_step_m = step_m;
+                if(k == gal->mcmc_ntry-1) {
+                    ref_m[k] = gal->mass[i-1];
+                } else {
+                    ref_m[k] = prop_m[selected] + gsl_ran_gaussian(r[0],new_step_m);
+                }
+                q_x[k] = gsl_ran_gaussian_pdf(-prop_m[selected]+ref_m[k],new_step_m);
+                dv_x[k] = 1.0;
+                // Distribution function of the considered component
+                pi_x[k] = dv_x[k]*imf_functions_pool(gal,ref_m[k],imf_model,component);
+                lambda_x[k] = 1.0;///q_x[k];
+                lambda_y[k] = 1.0;///q_y[k];
+                w_x[k] = pi_x[k]*q_x[k]*lambda_x[k];
+                w_y[k] = pi_y[k]*q_y[k]*lambda_y[k];
+            }
+            prob = min(1.0,(sum_dbl(w_y,gal->mcmc_ntry)/sum_dbl(w_x,gal->mcmc_ntry)));
+            randval = gsl_rng_uniform_pos(r[0]);
+            // Proposal accepted
+            if(randval <= prob) {
+                gal->mass[i] = prop_m[selected];
+                acceptance += 1.0;
+            // Proposal rejected, the particle keeps the same postion
+            } else {
+                gal->mass[i] = gal->mass[i-1];
+            }
+        }
+        acceptance /= gal->comp_npart_pot[component];
+        printf("[  acceptance=%.2lf  ]",acceptance);
+        // Recursive calls if acceptance is outside the range [accept_min,accept_max]
+        if(acceptance<gal->comp_accept_min[component]) {
+            gal->comp_mcmc_step_mass[component] /= 2.0;
+            printf("\n/////\t\t---------------[         Warning         ][ Low MCMC acceptance->mcmc_step_mass%d=%.2le  ]\n",component+1,gal->comp_mcmc_step_mass[component]);
+            printf("/////\t\t- Component %2d [       recomputing       ]",component+1);
+            fflush(stdout);
+            mcmc_metropolis_hasting_ntry_mass(gal,component,imf_model);
+        }
+        if(acceptance>gal->comp_accept_max[component]) {
+            gal->comp_mcmc_step_mass[component] *= 2.0;
+            printf("\n/////\t\t---------------[         Warning         ][ High MCMC acceptance->mcmc_step_mass%d=%.2le ]\n",component+1,gal->comp_mcmc_step_mass[component]);
+            printf("/////\t\t- Component %2d [       recomputing       ]",component+1);
+            fflush(stdout);
+            mcmc_metropolis_hasting_ntry_mass(gal,component,imf_model);
+        }
+        if(acceptance<gal->comp_accept_max[component] && acceptance>gal->comp_accept_min[component]) {
+	    printf("\n");
+	}
+    } else {
+        gal->mass[i] = gal->comp_mstar_min[component];
+        printf("\n");
+    }
+    free(prop_m);
+    free(ref_m);
+    free(pi_x);
+    free(pi_y);
+    free(q_x);
+    free(q_y);
+    free(lambda_x);
+    free(lambda_y);
+    free(w_x);
+    free(w_y);
+    free(weights);
+    free(dv_x);
+    free(dv_y);
+
+    return;
+}
 
 void mcmc_metropolis_hasting_ntry_stream(stream *st, int component, int density_model) {
     unsigned long int i,j,start_part,npart;
@@ -1783,10 +2013,12 @@ void lower_resolution(galaxy *gal) {
 
     printf("/////\tLowering particule mass resolution\n");
     for(j = 0; j<AllVars.MaxCompNumber; j++) {
-        if(gal->comp_npart[j]>0) printf("/////\t\t- Component %2d -> m=%.2e Msol\n",j+1,(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]));
-        // Filling the arrays of the &galaxy structure
-        for(i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
-            gal->mass[i] = gal->comp_mass[j]/gal->comp_npart[j];
+        if(gal->comp_npart[j]>0 && gal->comp_imf_model[j]==0) {
+            printf("/////\t\t- Component %2d -> m=%.2e Msol\n",j+1,(gal->comp_mass[j]*unit_mass/solarmass)/(gal->comp_npart[j]));
+            // Filling the arrays of the &galaxy structure
+            for(i = gal->comp_start_part[j]; i < gal->comp_start_part[j] + gal->comp_npart_pot[j]; i++) {
+                gal->mass[i] = gal->comp_mass[j]/gal->comp_npart[j];
+            }
         }
     }
     return;

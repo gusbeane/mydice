@@ -55,6 +55,16 @@ int allocate_component_arrays(galaxy *gal) {
             return -1;
         }
     }
+    if (!(gal->comp_imf_name = (char **)malloc(AllVars.MaxCompNumber*sizeof(char *)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_imf_name array\n");
+        return -1;
+    }
+    for (i = 0; i < AllVars.MaxCompNumber; ++i) {
+        if(!(gal->comp_imf_name[i] = (char *)malloc(200))) {
+            fprintf(stderr,"[Error] Unable to allocate comp_imf_name array\n");
+            return -1;
+        }
+    }
     if (!(gal->comp_mass = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_mass array\n");
         return -1;
@@ -229,6 +239,10 @@ int allocate_component_arrays(galaxy *gal) {
     }
     if (!(gal->comp_Q_bar = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_Q_fixed array\n");
+        return -1;
+    }
+    if (!(gal->comp_turb_gradient = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_turb_gradient array\n");
         return -1;
     }
     if (!(gal->comp_turb_sigma = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -517,6 +531,22 @@ int allocate_component_arrays(galaxy *gal) {
     }
     if (!(gal->comp_isobaric = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_isobaric array\n");
+        return -1;
+    }
+    if (!(gal->comp_imf_model = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_imf_model array\n");
+        return -1;
+    }
+    if (!(gal->comp_mstar_min = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_mstar_min array\n");
+        return -1;
+    }
+    if (!(gal->comp_mstar_max = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_mstar_max array\n");
+        return -1;
+    }
+    if (!(gal->comp_mcmc_step_mass = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_mcmc_step_mass array\n");
         return -1;
     }
 
@@ -951,6 +981,10 @@ int allocate_component_arrays_stream(stream *st) {
     }
     if (!(st->comp_scale = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
         fprintf(stderr,"[Error] Unable to allocate particle comp_scale array\n");
+        return -1;
+    }
+    if (!(st->comp_turb_gradient = calloc(AllVars.MaxCompNumber,sizeof(int)))) {
+        fprintf(stderr,"[Error] Unable to allocate particle comp_turb_gradient array\n");
         return -1;
     }
     if (!(st->comp_turb_sigma = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -1446,8 +1480,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         if(AllVars.NormMassFact==1) gal->comp_mass_frac[i] = gal->comp_mass_frac[i]/effective_mass_factor;
 	// Set the angular momentum fraction if not defined
 	if(gal->comp_angmom_frac[i]==-1.0) gal->comp_angmom_frac[i] = gal->comp_mass_frac[i];
-        // Set the start index for each component
-        if(i>0) gal->comp_start_part[i] = gal->comp_start_part[i-1]+gal->comp_npart_pot[i-1];
         // Set scalelength according to concentration parameter if defined
         if(gal->comp_scale_length[i]==0. && gal->comp_type[i]!=1 && gal->comp_flatz[i]<0.4 && (gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.)) {
 	    gal->comp_scale_length[i] = disk_scale_length_func(gal,gal->comp_concentration[gal->index_halo],i);
@@ -1483,6 +1515,17 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             fprintf(stderr,"\n[Error] stream_method%d=%d is not a valid method\n",i+1,gal->comp_stream_method[i]);
             exit(0);
 	}
+        // Correct particle number for IMF computation
+        if(gal->comp_imf_model[i]>0 && (gal->comp_type[i]==0 || gal->comp_type[i]==1)) gal->comp_imf_model[i] = 0;
+        if(gal->comp_imf_model[i]>0) {
+            // Particle mass cannot be defined
+            gal->comp_part_mass[i] = 0.;
+            // Assume the maximum number of particles
+            gal->comp_npart[i] = (unsigned long int)(gal->comp_mass[i]/(gal->comp_mstar_min[i]*solarmass/unit_mass));
+	    gal->comp_npart_pot[i] = gal->comp_npart[i];
+        }
+        // Set the start index for each component
+        if(i>0) gal->comp_start_part[i] = gal->comp_start_part[i-1]+gal->comp_npart_pot[i-1];
 	// No anisotropy for gas component for the isotropic 1D Jeans equation
 	if(gal->comp_type[i]==0) gal->comp_jeans_anisotropy_model[i] = 0;
 	if(gal->comp_cut[i]<=0.) {
@@ -1806,6 +1849,43 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         fprintf(stderr,"[Error] Allocation of potential arrays failed\n");
     }
 
+    // Resampling particle masses according to IMF
+    for (j = 0; j<AllVars.MaxCompNumber; j++) {
+        if(gal->comp_imf_model[j]>0 && gal->comp_npart[j]>1) {
+            printf("/////\t--------------------------------------------------\n");
+            printf("/////\tIMF computation\n");
+            break;
+         }
+    }
+    for (j = 0; j<AllVars.MaxCompNumber; j++) {
+        if(gal->comp_imf_model[j]>0 && gal->comp_npart[j]>1) {
+            // Remove previous particle count
+            gal->num_part[gal->comp_type[j]] -= gal->comp_npart[j];
+            gal->ntot_part -= gal->comp_npart[j];
+            gal->ntot_part_stars -= gal->comp_npart[j];
+            // Fill comp_imf_name with a one time call
+            double junk = imf_functions_pool(gal,gal->comp_mstar_min[j]*solarmass/unit_mass,gal->comp_imf_model[j],j);
+            printf("/////\t\t- Component %2d [%s]",j+1,gal->comp_imf_name[j]);
+            fflush(stdout);
+            // Compute new masses
+            mcmc_metropolis_hasting_ntry_mass(gal,j,gal->comp_imf_model[j]);
+            // Compute cumulative mass
+            double mtot = 0.;
+            for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
+                mtot += gal->mass[k];
+                // Stop when the total mass of the component is reached
+                if(mtot>gal->comp_mass[j]) break;
+            }
+            // Assign new particle count
+            gal->comp_npart[j] = k-1;
+            gal->num_part[gal->comp_type[j]] += gal->comp_npart[j];
+            gal->ntot_part += gal->comp_npart[j];
+            gal->ntot_part_stars += gal->comp_npart[j];
+            // Shuffling masses to suppress MCMC autocorrelation
+            gsl_ran_shuffle (r[0], gal->mass, gal->comp_npart[j], sizeof (double));
+        }
+    }
+
     printf("/////\t--------------------------------------------------\n");
     printf("/////\tComponent informations\n");
     for (j = 0; j<AllVars.MaxCompNumber; j++) {
@@ -1847,15 +1927,17 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                 printf("/////\t\t-> <Z>       = %6.2le\n",gal->comp_metal[j]);
             }
         }
-        // Filling the arrays of the &galaxy structure
-        for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
-            gal->mass[k] = gal->comp_mass[j]/gal->comp_npart_pot[j];
-            gal->id[k] = k;
-            gal->metal[k] = gal->comp_metal[j];
-            // Age is actually stored as time of formation
-            // ICs are generated for t=0 therefore formation time is negative
-            gal->age[k] = -(2*gal->comp_mean_age[j]*gsl_rng_uniform_pos(r[0])+gal->comp_min_age[j]);
-        }
+        if(gal->comp_imf_model[j]==0) {
+            // Filling the arrays of the &galaxy structure
+            for (k = gal->comp_start_part[j]; k < gal->comp_start_part[j] + gal->comp_npart_pot[j]; k++) {
+                gal->mass[k] = gal->comp_mass[j]/gal->comp_npart_pot[j];
+                gal->id[k] = k;
+                gal->metal[k] = gal->comp_metal[j];
+                // Age is actually stored as time of formation
+                // ICs are generated for t=0 therefore formation time is negative
+                gal->age[k] = -(2*gal->comp_mean_age[j]*gsl_rng_uniform_pos(r[0])+gal->comp_min_age[j]);
+            }
+	}
     }
     printf("/////\t--------------------------------------------------\n");
     // Set up the particles positions, disk potential, and particle velocities of
@@ -2541,6 +2623,7 @@ int set_galaxy_velocity(galaxy *gal) {
 
 	    // Computing velocity turbulence
             if(gal->comp_turb_sigma[j]>0. && gal->comp_npart[j]>1 && gal->comp_compute_vel[j]==1) {
+                gal->selected_comp[0] = j;
                 gal->ngrid_gauss[0] = pow(2,gal->level_grid_turb);
                 gal->ngrid_gauss[1] = pow(2,gal->level_grid_turb);
                 gal->ngrid_gauss[2] = pow(2,gal->level_grid_turb);
@@ -2906,7 +2989,7 @@ int set_stream_velocity(stream *st) {
     int j,status,warning,k;
     double v_c, v_theta, v_r, v_z;
     double sigma_theta;
-    double v2a_r, v2a_theta, v2_theta, va_theta, vel_x, vel_y, vel_z;
+    double v2a_r, v2a_theta, v2_theta, va_theta, vel_x, vel_y, vel_z, stddev_vx, stddev_vy, stddev_vz;
 
     // Here we compute the velocity of the particles
     // assuming a Gaussian shaped velocity distribution function.
@@ -2935,6 +3018,7 @@ int set_stream_velocity(stream *st) {
     // Loop over components
     for(k = 0; k<AllVars.MaxCompNumber; k++) {
         if(st->comp_turb_sigma[k]>0.) {
+            st->selected_comp[0] = k;
 
             // Deallocate the gaussian field grid to be really nice to the memory.
             if(st->gaussian_field_defined) {
@@ -2953,18 +3037,29 @@ int set_stream_velocity(stream *st) {
             printf("/////\t\t                                     [grid scale=%.3lf kpc][seed=%ld]\n",st->dx_gauss,st->comp_turb_seed[k]);
             set_stream_random_field_grid(st,st->comp_turb_scale_inj[k],st->comp_turb_scale_diss[k],st->comp_turb_nspec[k],st->comp_turb_seed[k]);
             for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
-                st->vel_x[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
+                st->vel_x[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i]);
             }
             set_stream_random_field_grid(st,st->comp_turb_scale_inj[k],st->comp_turb_scale_diss[k],st->comp_turb_nspec[k],st->comp_turb_seed[k]+1);
             for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
-                st->vel_y[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
+                st->vel_y[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i]);
             }
             set_stream_random_field_grid(st,st->comp_turb_scale_inj[k],st->comp_turb_scale_diss[k],st->comp_turb_nspec[k],st->comp_turb_seed[k]+2);
             for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
-                st->vel_z[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i])*st->comp_turb_sigma[k];
+                st->vel_z[i] += stream_gaussian_field_func(st,st->x[i],st->y[i],st->z[i]);
             }
             // Deallocate the turbulence grid to be really nice to the memory.
             deallocate_stream_gaussian_grid(st);
+            // Computing standard deviations
+            stddev_vx = standard_dev(st->vel_x,st->comp_start_part[k],st->comp_start_part[k]+st->comp_npart[k]);
+            stddev_vy = standard_dev(st->vel_y,st->comp_start_part[k],st->comp_start_part[k]+st->comp_npart[k]);
+            stddev_vz = standard_dev(st->vel_z,st->comp_start_part[k],st->comp_start_part[k]+st->comp_npart[k]);
+            // Rescaling velocities to get the user specified dispersion
+            for (i = st->comp_start_part[k]; i < st->comp_start_part[k]+st->comp_npart[k]; ++i) {
+                st->vel_x[i] *= st->comp_turb_sigma[k]/stddev_vx;
+                st->vel_y[i] *= st->comp_turb_sigma[k]/stddev_vy;
+                st->vel_z[i] *= st->comp_turb_sigma[k]/stddev_vz;
+            }
+
         }
     }
 
@@ -2981,6 +3076,7 @@ void trash_galaxy(galaxy *gal, int info) {
 
     for (i = 0; i < AllVars.MaxCompNumber; i++) {
         free(gal->comp_profile_name[i]);
+        free(gal->comp_imf_name[i]);
     }
     free(gal->comp_profile_name);
     free(gal->comp_npart);
@@ -3028,6 +3124,7 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_t_init);
     free(gal->comp_u_init);
     free(gal->comp_cs_init);
+    free(gal->comp_turb_gradient);
     free(gal->comp_turb_sigma);
     free(gal->comp_turb_frac);
     free(gal->comp_turb_scale_inj);
@@ -3099,6 +3196,10 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_jeans_dim);
     free(gal->comp_jeans_anisotropy_model);
     free(gal->comp_isobaric);
+    free(gal->comp_imf_model);
+    free(gal->comp_mstar_min);
+    free(gal->comp_mstar_max);
+    free(gal->comp_mcmc_step_mass);
     // Deallocate the potential grid to be really nice to the memory.
     if(gal->potential_defined == 1) {
         for (n = 0; n < gal->nlevel; n++) {
@@ -3187,6 +3288,7 @@ void trash_stream(stream *st, int info) {
     free(st->comp_mass);
     free(st->comp_dens);
     free(st->comp_opening_angle);
+    free(st->comp_turb_gradient);
     free(st->comp_turb_sigma);
     free(st->comp_turb_scale_inj);
     free(st->comp_turb_scale_diss);
