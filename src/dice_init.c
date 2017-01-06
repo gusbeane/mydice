@@ -1916,6 +1916,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
                 printf("/////\t\t-> rho_init  = %6.2le [H/cm^3]\n",gal->comp_dens_init[j]);
                 printf("/////\t\t-> gamma     = %6.2le \n",gal->comp_gamma_poly[j]);
                 printf("/////\t\t-> cs        = %6.2le [%s]\n",gal->comp_cs_init[j],AllVars.UnitVelocityName);
+                if(gal->comp_cut_dens[j]>0) printf("/////\t\t-> cut_dens  = %6.2le [%s %s^-3]\n",gal->comp_cut_dens[j]/unit_nh,AllVars.UnitMassName,AllVars.UnitLengthName);
             }
             if(gal->comp_type[j]>1) {
                 printf("/////\t\t-> SFR       = %6.2le [Msol/yr]\n",gal->comp_sfr[j]);
@@ -2303,7 +2304,7 @@ int set_galaxy_coords(galaxy *gal) {
             	    gal->boxsize_dens = 2.5*(gal->comp_cut[i]+3*gal->comp_scale_length[i]*gal->comp_sigma_cut[i]);
     		    gal->dx_dens = gal->boxsize_dens/((double)gal->ngrid_dens[0]);
             	    // Compute midplane density
-                    if(gal->comp_spherical_hydro_eq[i]==0 && fabs(gal->comp_gamma_poly[i]-1)<0.00001) {	
+                    if(gal->comp_spherical_hydro_eq[i]==0 && gal->comp_hydro_eq_mode[i]==1) {	
 		        fill_midplane_dens_grid(gal);
 		    }
 		    printf("/////\t\t\t- Component %2d [   m_tot=%4.2le Msol   ]",i+1,gal->comp_mass[i]*unit_mass/solarmass);

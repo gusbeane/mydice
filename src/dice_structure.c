@@ -517,12 +517,24 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
 	} else {
             gal->phi_sph[i] = 0.;
 	}
+	if(gal->comp_type[component]==0) {
+            // Polytropic gas
+	    d = gal->comp_spherical_hydro_eq[component]?sqrt(pow(gal->r_cyl[i],2)+pow(gal->z[i],2)):gal->z[i];
+	    k_poly = d>rc?gal->comp_k_poly[component]*pow(d/rc,gal->comp_alpha_entropy[component]):gal->comp_k_poly[component];
+	    gal->u[i] = k_poly*pow(max(gal->rho[i],rho_min_press),gal->comp_gamma_poly[component]-1.0)/gamma_minus1;
+            // Temperature
+	    Tpart = gal->u[i]*gamma_minus1*protonmass*mu_mol/boltzmann*unit_energy/unit_mass;
+	    if(Tpart>Tmax) Tmax = Tpart;
+	}
+
 	gal->index[tid] = i;
 	// Initialize min max densities
 	if(gal->pseudo[0]) {
 	    gal->comp_dens_min[component] = pseudo_density_gas_func(gal,fabs(gal->x[i]),0.,0.,1,density_model,component,gal->comp_spherical_hydro_eq[component]);
+            gal->rho[i] = pseudo_density_gas_func(gal,gal->r_cyl[i],gal->theta_cyl[i],gal->z[i],1,density_model,component,gal->comp_spherical_hydro_eq[component]);
 	} else {
 	    gal->comp_dens_min[component] = density_functions_pool(gal,fabs(gal->x[i]),0.,0.,1,density_model,component);
+            gal->rho[i] = density_functions_pool(gal,gal->r_cyl[i],gal->theta_cyl[i],gal->z[i],1,density_model,component);
 	}
 	gal->comp_dens_max[component] = 0.0;
 	Tmax = 0.;
@@ -745,7 +757,7 @@ void mcmc_metropolis_hasting_ntry(galaxy *gal, int component, int density_model)
                     gal->r_cyl[i] = gal->r_sph[i]*sin(gal->phi_sph[i-1]);
                     gal->z[i] = gal->r_sph[i]*cos(gal->phi_sph[i-1]);
                 }
-                gal->rho[i] = pi_x[gal->mcmc_ntry-1]/dv_x[gal->mcmc_ntry-1];
+                gal->rho[i] = gal->rho[i-1];
             }	
 	    if(gal->comp_type[component]==0) {
                 // Polytropic gas
@@ -1755,7 +1767,7 @@ double midplane_density_gas_func(galaxy *gal, gsl_integration_workspace *w, doub
     for(i = 0; i<AllVars.MaxCompNumber; i++) {
         if(gal->comp_type[i]==0 && gal->comp_npart[i]>1) {
 	    // Planar density is defined by surface_density/integral(exp(phi/cs2)dz)
-	    if(fabs(gal->comp_gamma_poly[i]-1.0)<0.00001) {
+	    if(gal->comp_hydro_eq_mode[i]==1) {
 	        gal->selected_comp[tid] = i;
     	        zmax = gal->comp_scale_height[i];
     	        F.function = &dmidplane_density_gas_func;
