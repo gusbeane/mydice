@@ -30,10 +30,9 @@ dens_fluct_seed		    	1212
 # Seed for the random number generator
 seed			        1246
 # Switch to MCMC ntry algorithm to position particles for a value > 1
-mcmc_ntry		        1
+mcmc_ntry		        10
 # Number of iterations to reach hydrostatic equilibrium (zero to deactivate)
-hydro_eq_niter			6
-
+hydro_eq_niter			3
 
 #######################
 # Components parameters
@@ -45,7 +44,7 @@ hydro_eq_niter			6
 # Fraction of the virial mass in the component 1
 mass_frac1		        0.95
 # Number of particles for the component 1
-npart1			        1000000
+npart1			        4000000
 # Number of particles for the potential computation
 npart_pot1              	2000000
 # Component 1 density model
@@ -75,10 +74,6 @@ scale_length1		    	1.
 concentration1		    	13.0
 # Component 1 radial density cut [kpc] 
 cut1			        50.
-# Component 1 thickness parameters
-flatx1			        1.00
-flaty1			        0.70
-flatz1			        0.70
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm,
 # expressed in units of the component scale length. Default value is 0.5.
 mcmc_step1		        0.10
@@ -96,8 +91,6 @@ radius_nfw1		        1.0
 part_mass1		        0.0
 # Cut the density function in the Jeans equation integration
 jeans_mass_cut1		    	0
-# Compute component velocity (debug option)
-compute_vel1		    	1
 
 ################################
 # Component 2: Thin stellar disk
@@ -135,13 +128,12 @@ metal2                  	0.01
 # Gaussian fluctuations in the density field
 dens_fluct2		        0
 jeans_mass_cut2		    	1
-compute_vel2		    	1
 # Spiral winding angle [deg]
 spiral_theta_out2       	360.
 # Starting radius of the spiral arms [kpc]
 spiral_r_in2            	2.0
 # Ending radius of the spiral arms [kpc]
-spiral_r_out2           	8.0
+spiral_r_out2           	12.0
 # Power index of the spiral arms
 spiral_alpha2           	0.
 warp_scale2             	0.50
@@ -185,10 +177,9 @@ hydro_eq3			1
 # Gaussian step for the MCMC Metropolis-Hasting particle postionning algorithm
 # within the hydro equilibrium algorithm
 mcmc_step_hydro3	    	0.3
-compute_vel3		    	1
 spiral_theta_out3       	360.
 spiral_r_in3            	2.0
-spiral_r_out3           	8.0
+spiral_r_out3           	12.0
 spiral_alpha3           	0.
 warp_scale3             	0.50
 warp_mode3              	2
@@ -212,7 +203,6 @@ stream_fraction4	    	0.5
 min_age4                	50.
 metal4                  	0.001
 # Structural parameter specific to the Einasto density profile
-alpha5			        0.80
+alpha_struct5		        0.80
 Q_lim4			        1.5
-compute_vel4		    	1
 
