@@ -62,7 +62,7 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
         A = (2*CEDF)/(fabs(theta_out)+CEDF)-1.00001;
         B = (2-1./tanh(A))*(gal->comp_spiral_r_out[component]/(gal->comp_spiral_r_out[component]-gal->comp_spiral_r_in[component]));
         tanh_func = 0.5*(tanh(B*(radius/gal->comp_spiral_r_out[component]-1)+2)+1);
-        theta_shift = theta_out*tanh_func*pow(0.5*(radius/gal->comp_spiral_r_out[component]+1),gal->comp_spiral_alpha[component]);
+        theta_shift = -theta_out*tanh_func*pow(0.5*(radius/gal->comp_spiral_r_out[component]+1),gal->comp_spiral_alpha[component]);
     }
     // Warping
     if(gal->comp_warp_scale[component]>0.) {
