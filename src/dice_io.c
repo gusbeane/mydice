@@ -176,6 +176,27 @@ int parse_config_file(char *fname) {
         fclose(fd);
     }
 
+    if((fd = fopen(fname,"r"))) {
+        j = 0;
+        while(!feof(fd)) {
+            *buf = 0;
+            fgets(buf, 200, fd);
+            rd = sscanf(buf,"%s%s%s%s%s%s%s",buf1,buf2,buf3,buf4,buf5,buf6,buf7);
+            if(rd<7) continue;
+            if(buf1[0] == '%' || buf1[0] == '#') continue;
+            if(strcmp(buf1,"Circular") == 0) {
+                AllVars.Circular_Rinit[j] = atof(buf2);
+                AllVars.Circular_OrbitPlanePhi[j] = atof(buf3);
+                AllVars.Circular_OrbitPlaneTheta[j] = atof(buf4);
+                AllVars.Circular_Gal1[j] = atoi(buf5);
+                AllVars.Circular_Gal2[j] = atoi(buf6);
+                AllVars.Circular_GalCenter[j] = atoi(buf7);
+                j++;
+            }
+        }
+        fclose(fd);
+    }
+
     if(AllVars.Ngal+AllVars.Nstream == 0) {
         fprintf(stderr,"[Error] No galaxy/stream parameters files specified\n");
         return -1;
@@ -351,8 +372,7 @@ int parse_config_file(char *fname) {
             if(buf1[0] == '%' || buf1[0] == '#' || strcmp(buf1,"Galaxy") == 0
                     || strcmp(buf1,"Stream") == 0
                     || strcmp(buf1,"Kepler") == 0
-                    || strcmp(buf1,"Traj") == 0
-                    || strcmp(buf1,"StreamPos") == 0) continue;
+                    || strcmp(buf1,"Circular") == 0) continue;
             for(i = 0, j = -1; i < nt; i++)
                 if(strcmp(buf1, tag[i]) == 0) {
                     j = i;
@@ -988,18 +1008,18 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-        n = sprintf(temp_tag,"alpha%d",j+1);
+        n = sprintf(temp_tag,"alpha_struct%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_alpha[j] = 1.0;
-        addr[nt] = &gal->comp_alpha[j];
+        gal->comp_alpha_struct[j] = 1.0;
+        addr[nt] = &gal->comp_alpha_struct[j];
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
-        n = sprintf(temp_tag,"beta%d",j+1);
+        n = sprintf(temp_tag,"beta_struct%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_beta[j] = 1.0;
-        addr[nt] = &gal->comp_beta[j];
+        gal->comp_beta_struct[j] = 1.0;
+        addr[nt] = &gal->comp_beta_struct[j];
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
@@ -1961,23 +1981,30 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
     //We need to transfer in the order of particle type as defined in GADGET2. 0->Gas 1->Disk 2->Halo etc.
     for (ptype = 0; ptype<10; ptype++) {
         for (k = 0; k<AllVars.MaxCompNumber; k++) {
-            if(gal->comp_type[k]==ptype&&gal->comp_npart[k]>0&&gal->comp_delete[k]==0) {
-                for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k] + gal->comp_npart[k]; ++i) {
-                    P[j].Pos[0] = gal->x[i];
-                    P[j].Pos[1] = gal->y[i];
-                    P[j].Pos[2] = gal->z[i];
-                    P[j].Vel[0] = gal->vel_x[i];
-                    P[j].Vel[1] = gal->vel_y[i];
-                    P[j].Vel[2] = gal->vel_z[i];
-                    P[j].U = gal->u[i];
-                    P[j].Rho = gal->rho[i];
-                    P[j].Mass = gal->mass[i];
-                    P[j].Type = gal->comp_type[k];
-                    P[j].Metal = gal->metal[i];
-                    P[j].Age = gal->age[i];
-                    P[j].Id = j;
-                    ++j;
+            if(gal->comp_type[k]==ptype && gal->comp_npart[k]>0) {
+                if(gal->comp_delete[k]==0) {
+                    for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k] + gal->comp_npart[k]; ++i) {
+                        P[j].Pos[0] = gal->x[i];
+                        P[j].Pos[1] = gal->y[i];
+                        P[j].Pos[2] = gal->z[i];
+                        P[j].Vel[0] = gal->vel_x[i];
+                        P[j].Vel[1] = gal->vel_y[i];
+                        P[j].Vel[2] = gal->vel_z[i];
+                        P[j].U = gal->u[i];
+                        P[j].Rho = gal->rho[i];
+                        P[j].Mass = gal->mass[i];
+                        P[j].Type = gal->comp_type[k];
+                        P[j].Metal = gal->metal[i];
+                        P[j].Age = gal->age[i];
+                        P[j].Id = j;
+                        ++j;
+                    }
+                } else {
+                    header1.npart[ptype] -= gal->comp_npart[k];
+                    header1.npartTotal[ptype] -= gal->comp_npart[k];
+                    gal->ntot_part -= gal->comp_npart[k];
                 }
+
             }
         }
     }
@@ -2160,23 +2187,29 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
     //We need to transfer in the order of particle type as defined in GADGET2. 0->Gas 1->Disk 2->Halo etc.
     for (ptype = 0; ptype<10; ptype++) {
         for (k = 0; k<AllVars.MaxCompNumber; k++) {
-            if(gal->comp_type[k]==ptype&&gal->comp_npart[k]>0&&gal->comp_delete[k]==0) {
-                for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k] + gal->comp_npart[k]; ++i) {
-                    P[j].Pos[0] = gal->x[i];
-                    P[j].Pos[1] = gal->y[i];
-                    P[j].Pos[2] = gal->z[i];
-                    P[j].Vel[0] = gal->vel_x[i];
-                    P[j].Vel[1] = gal->vel_y[i];
-                    P[j].Vel[2] = gal->vel_z[i];
-                    P[j].U = gal->u[i];
-                    P[j].Rho = gal->rho[i];
-                    P[j].Mass = gal->mass[i];
-                    P[j].Type = gal->comp_type[k];
-                    P[j].Metal = gal->metal[i];
-                    P[j].Age = gal->age[i];
-                    P[j].Id = j;
-                    P[j].Hsml = 0.1;
-                    ++j;
+            if(gal->comp_type[k]==ptype && gal->comp_npart[k]>0) {
+                if(gal->comp_delete[k]==0) {
+                    for (i = gal->comp_start_part[k]; i < gal->comp_start_part[k] + gal->comp_npart[k]; ++i) {
+                        P[j].Pos[0] = gal->x[i];
+                        P[j].Pos[1] = gal->y[i];
+                        P[j].Pos[2] = gal->z[i];
+                        P[j].Vel[0] = gal->vel_x[i];
+                        P[j].Vel[1] = gal->vel_y[i];
+                        P[j].Vel[2] = gal->vel_z[i];
+                        P[j].U = gal->u[i];
+                        P[j].Rho = gal->rho[i];
+                        P[j].Mass = gal->mass[i];
+                        P[j].Type = gal->comp_type[k];
+                        P[j].Metal = gal->metal[i];
+                        P[j].Age = gal->age[i];
+                        P[j].Id = gal->id[i];
+                        P[j].Hsml = 0.1;
+                        ++j;
+                    }
+                } else {
+                    header1.npart[ptype] -= gal->comp_npart[k];
+                    header1.npartTotal[ptype] -= gal->comp_npart[k];
+                    gal->ntot_part -= gal->comp_npart[k];
                 }
             }
         }

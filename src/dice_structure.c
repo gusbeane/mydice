@@ -95,8 +95,8 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     hy = gal->comp_scale_length[component]*flaty;
     hz = gal->comp_scale_length[component]*flatz;
 
-    alpha = gal->comp_alpha[component];
-    beta = gal->comp_beta[component];
+    alpha = gal->comp_alpha_struct[component];
+    beta = gal->comp_beta_struct[component];
 
     k = sqrt(pow(z/hz,2.0));
     l = sqrt(pow(x/hx,2.0)+pow(y/hy,2.0));
@@ -223,6 +223,12 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
             if(strcmp(gal->comp_profile_name[component],"")==0)
                 strcpy(gal->comp_profile_name[component],"   Bissantz & Gerhard    ");
             density = gal->comp_scale_dens[component]*1/pow(1+m,alpha);
+            break;
+        case 19:
+            // Dehnen profile
+            if(strcmp(gal->comp_profile_name[component],"")==0)
+                strcpy(gal->comp_profile_name[component],"         Dehnen          ");
+            density = gal->comp_scale_dens[component]*1.0/(pow(m,alpha)*pow((m+1.0),4.0-alpha));
             break;
         default:
             fprintf(stderr,"[Error] model%d=%d is not a valid value\n",component+1,model);

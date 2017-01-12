@@ -205,12 +205,12 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_min_age array\n");
         return -1;
     }
-    if (!(gal->comp_alpha = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-        fprintf(stderr,"[Error] Unable to allocate comp_alpha array\n");
+    if (!(gal->comp_alpha_struct = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_alpha_struct array\n");
         return -1;
     }
-    if (!(gal->comp_beta = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
-        fprintf(stderr,"[Error] Unable to allocate comp_beta array\n");
+    if (!(gal->comp_beta_struct = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_beta_struct array\n");
         return -1;
     }
     if (!(gal->comp_scale_dens = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
@@ -2406,6 +2406,7 @@ int set_galaxy_velocity(galaxy *gal) {
     int tid = 0;
 #endif
 
+    // Computing maximum circular velocity
     v_cmax = 0.;
     gal->index[tid] = 0;
     save1 = gal->z[gal->index[tid]];
@@ -2422,6 +2423,19 @@ int set_galaxy_velocity(galaxy *gal) {
     printf("  [   vc_max = %5.1lf km/s   ]\n",v_cmax);
     gal->z[gal->index[tid]] = save1;
     gal->theta_cyl[gal->index[tid]] = save2;
+
+    // Checking for circular orbits
+    for(k = 0; k<AllVars.Ngal; k++) {
+        if(AllVars.Circular_Gal1[k]>0 && AllVars.Circular_Gal2[k]>0 && AllVars.Circular_GalCenter[k]-1==AllVars.CurrentGalaxy) {
+            gal->index[tid] = 0;
+            save1 = gal->z[gal->index[tid]];
+            save2 = gal->theta_cyl[gal->index[tid]];
+            gal->z[gal->index[tid]] = 0.;
+            gal->theta_cyl[gal->index[tid]] = 0.;
+            // Storing the circular velocity for later
+            AllVars.Circular_Vc[k] = v_c_func(gal,AllVars.Circular_Rinit[k]);
+        }
+    }
 
     double cmass[nbin],vcirc[nbin];
  
@@ -3131,8 +3145,8 @@ void trash_galaxy(galaxy *gal, int info) {
     free(gal->comp_age_scale);
     free(gal->comp_age_seed);
     free(gal->comp_min_age);
-    free(gal->comp_alpha);
-    free(gal->comp_beta);
+    free(gal->comp_alpha_struct);
+    free(gal->comp_beta_struct);
     free(gal->comp_scale_dens);
     free(gal->comp_radius_nfw);
     free(gal->comp_Q_lim);
@@ -3577,10 +3591,13 @@ int copy_galaxy(galaxy *gal_1, galaxy *gal_2, int info) {
     }
 
     for (j = 0; j < AllVars.MaxCompNumber; ++j) {
-        gal_2->comp_npart[j] = gal_1->comp_npart[j];
-        gal_2->comp_npart_pot[j] = gal_1->comp_npart[j];
-        gal_2->comp_type[j] = gal_1->comp_type[j];
-        gal_2->comp_start_part[j] = 0;
+        if(gal_1->comp_npart[j]>0) {
+            gal_2->comp_npart[j] = gal_1->comp_npart[j];
+            gal_2->comp_npart_pot[j] = gal_1->comp_npart[j];
+            gal_2->comp_type[j] = gal_1->comp_type[j];
+            gal_2->comp_start_part[j] = 0;
+            gal_2->comp_delete[j] = gal_1->comp_delete[j];
+        }
     }
 
     if(allocate_variable_arrays(gal_2)!=0) {
@@ -3632,6 +3649,7 @@ int add_galaxy_to_system(galaxy *gal_1, galaxy *gal_2) {
             gal_2->comp_npart[j] = gal_1->comp_npart[k];
             gal_2->comp_npart_pot[j] = gal_1->comp_npart[k];
             gal_2->comp_start_part[j] = gal_2->ntot_part_pot+gal_1->comp_start_part[k];
+            gal_2->comp_delete[j] = gal_1->comp_delete[k];
             if(l==0) {
                 gal_2->comp_start_part[j] = gal_2->ntot_part;
             } else {
@@ -4044,3 +4062,152 @@ void set_orbit_keplerian(int gal1, int gal2, double sep, double per, double e, d
     return;
 }
 
+void set_orbit_circular(int gal1, int gal2, double sep, double vc, double phi, double theta, int center) {
+    unsigned long int i;
+    double x_1, y_1, z_1, x_2, y_2, z_2, vx_1, vy_1, vz_1, vx_2, vy_2, vz_2;
+    double xt_1,yt_1,zt_1,vxt_1,vyt_1,vzt_1,xt_2,yt_2,zt_2,vxt_2,vyt_2,vzt_2;
+    double m1, m2, kappa, v_ini, r_ini, specific_orbital_energy, degtorad;
+
+    // Degrees to radian conversion factor
+    degtorad = pi/180.;
+    m1 = AllVars.GalMass[gal1];
+    m2 = AllVars.GalMass[gal2];
+    kappa = G*(m1+m2);
+
+    if(gal1==center-1) {
+        x_1 = 0.;
+        y_1 = 0.;
+        z_1 = 0.;
+        x_2 = sep;
+        y_2 = 0.;
+        z_2 = 0.;
+        vx_1 = 0.;
+        vy_1 = 0.;
+        vz_1 = 0.;
+        vx_2 = 0.;
+        vy_2 = vc;
+        vz_2 = 0.;
+    }
+    if(gal2==center-1) {
+        x_1 = sep;
+        y_1 = 0.;
+        z_1 = 0.;
+        x_2 = 0.;
+        y_2 = 0.;
+        z_2 = 0.;
+        vx_1 = 0.;
+        vy_1 = vc;
+        vz_1 = 0.;
+        vx_2 = 0.;
+        vy_2 = 0.;
+        vz_2 = 0.;
+    }
+
+    //Rotation around Y axis
+    if(theta!=0.) {
+        xt_1 = cos(theta*degtorad)*x_1+sin(theta*degtorad)*z_1;
+        zt_1 = cos(theta*degtorad)*z_1-sin(theta*degtorad)*x_1;
+        vxt_1 = cos(theta*degtorad)*vx_1+sin(theta*degtorad)*vz_1;
+        vzt_1 = cos(theta*degtorad)*vz_1-sin(theta*degtorad)*vx_1;
+        x_1 = xt_1;
+        z_1 = zt_1;
+        vx_1 = vxt_1;
+        vz_1 = vzt_1;
+
+        xt_2 = cos(theta*degtorad)*x_2+sin(theta*degtorad)*z_2;
+        zt_2 = cos(theta*degtorad)*z_2-sin(theta*degtorad)*x_2;
+        vxt_2 = cos(theta*degtorad)*vx_2+sin(theta*degtorad)*vz_2;
+        vzt_2 = cos(theta*degtorad)*vz_2-sin(theta*degtorad)*vx_2;
+        x_2 = xt_2;
+        z_2 = zt_2;
+        vx_2 = vxt_2;
+        vz_2 = vzt_2;
+    }
+    //Rotation around Z axis
+    if(phi!=0.) {
+        xt_1 = cos(phi*degtorad)*x_1+sin(phi*degtorad)*y_1;
+        yt_1 = cos(phi*degtorad)*y_1-sin(phi*degtorad)*x_1;
+        vxt_1 = cos(phi*degtorad)*vx_1+sin(phi*degtorad)*vy_1;
+        vyt_1 = cos(phi*degtorad)*vy_1-sin(phi*degtorad)*vx_1;
+        x_1 = xt_1;
+        y_1 = yt_1;
+        vx_1 = vxt_1;
+        vy_1 = vyt_1;
+
+        xt_2 = cos(phi*degtorad)*x_2+sin(phi*degtorad)*y_2;
+        yt_2 = cos(phi*degtorad)*y_2-sin(phi*degtorad)*x_2;
+        vxt_2 = cos(phi*degtorad)*vx_2+sin(phi*degtorad)*vy_2;
+        vyt_2 = cos(phi*degtorad)*vy_2-sin(phi*degtorad)*vx_2;
+        x_2 = xt_2;
+        y_2 = yt_2;
+        vx_2 = vxt_2;
+        vy_2 = vyt_2;
+    }
+
+    if(gal1==center-1) {
+        x_2 += AllVars.GalPos[gal1][0];
+        y_2 += AllVars.GalPos[gal1][1];
+        z_2 += AllVars.GalPos[gal1][2];
+        x_1 += AllVars.GalPos[gal1][0];
+        y_1 += AllVars.GalPos[gal1][1];
+        z_1 += AllVars.GalPos[gal1][2];
+        vx_2 = vx_2-vx_1+AllVars.GalVel[gal1][0];
+        vy_2 = vy_2-vy_1+AllVars.GalVel[gal1][1];
+        vz_2 = vz_2-vz_1+AllVars.GalVel[gal1][2];
+        vx_1 = AllVars.GalVel[gal1][0];
+        vy_1 = AllVars.GalVel[gal1][1];
+        vz_1 = AllVars.GalVel[gal1][2];
+    }
+    if(gal2==center-1) {
+        x_1 += AllVars.GalPos[gal2][0];
+        y_1 += AllVars.GalPos[gal2][1];
+        z_1 += AllVars.GalPos[gal2][2];
+        x_2 += AllVars.GalPos[gal2][0];
+        y_2 += AllVars.GalPos[gal2][1];
+        z_2 += AllVars.GalPos[gal2][2];
+        vx_1 = vx_1-vx_2+AllVars.GalVel[gal2][0];
+        vy_1 = vy_1-vy_2+AllVars.GalVel[gal2][1];
+        vz_1 = vz_1-vz_2+AllVars.GalVel[gal2][2];
+        vx_2 = AllVars.GalVel[gal2][0];
+        vy_2 = AllVars.GalVel[gal2][1];
+        vz_2 = AllVars.GalVel[gal2][2];
+    }
+    // Computing initial distance
+    r_ini = sqrt(pow(x_1-x_2,2)+pow(y_1-y_2,2)+pow(z_1-z_2,2));
+    // Computing initial relative velocity
+    v_ini = sqrt(pow(vx_1-vx_2,2)+pow(vy_1-vy_2,2)+pow(vz_1-vz_2,2));
+    // Computing specific orbital energy 
+    specific_orbital_energy = (0.5*v_ini*v_ini-kappa/sep);
+    // Setting the trajectory informations of the two galaxies
+    AllVars.GalPos[gal1][0] = x_1;
+    AllVars.GalPos[gal1][1] = y_1;
+    AllVars.GalPos[gal1][2] = z_1;
+    AllVars.GalVel[gal1][0] = vx_1;
+    AllVars.GalVel[gal1][1] = vy_1;
+    AllVars.GalVel[gal1][2] = vz_1;
+
+    AllVars.GalPos[gal2][0] = x_2;
+    AllVars.GalPos[gal2][1] = y_2;
+    AllVars.GalPos[gal2][2] = z_2;
+    AllVars.GalVel[gal2][0] = vx_2;
+    AllVars.GalVel[gal2][1] = vy_2;
+    AllVars.GalVel[gal2][2] = vz_2;
+
+    printf("/////\n");
+    printf("/////\t--------------------------------------------------\n");
+    printf("/////\tSetting circular orbit [galaxy %d / galaxy %d]\n",gal1+1,gal2+1);
+    printf("/////\t\t- Galaxy 1 mass                -> %8.3le Msol\n",m1*unit_mass/solarmass);
+    printf("/////\t\t- Galaxy 2 mass                -> %8.3le Msol\n",m2*unit_mass/solarmass);
+    printf("/////\t\t- Initial distance             -> %6.1lf %s\n",r_ini,AllVars.UnitLengthName);
+    printf("/////\t\t- Center of galaxy 1           -> [x=%5.1lf,y=%5.1lf,z=%5.1lf] %s\n",x_1,y_1,z_1,AllVars.UnitLengthName);
+    printf("/////\t\t- Center of galaxy 2           -> [x=%5.1lf,y=%5.1lf,z=%5.1lf] %s\n",x_2,y_2,z_2,AllVars.UnitLengthName);
+    printf("/////\t\t- Velocity of galaxy 1         -> [vx=%6.1lf,vy=%6.1lf,vz=%6.1lf] %s\n",vx_1,vy_1,vz_1,AllVars.UnitVelocityName);
+    printf("/////\t\t- Velocity of galaxy 2         -> [vx=%6.1lf,vy=%6.1lf,vz=%6.1lf] %s\n",vx_2,vy_2,vz_2,AllVars.UnitVelocityName);
+    printf("/////\t\t- Relative velocity            -> %6.2lf %s\n",v_ini,AllVars.UnitVelocityName);
+    printf("/////\t\t- Specific orbital energy      -> %6.2le (%s)^2\n",specific_orbital_energy,AllVars.UnitVelocityName);
+    printf("/////\t\t- Orbital azimuthal angle      -> %6.1lf deg\n",theta);
+    printf("/////\t\t- Orbital polar angle          -> %6.1lf deg\n",phi);
+    printf("/////\t--------------------------------------------------\n");
+
+    return;
+}

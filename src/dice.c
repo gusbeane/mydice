@@ -208,6 +208,11 @@ int main (int argc, char **argv) {
                         AllVars.Kepler_OrbitPlanePhi[k],AllVars.Kepler_OrbitPlaneTheta[k],AllVars.Kepler_GalCenter[k]);
             }
         }
+        if(AllVars.Circular_Gal1[k]>0 && AllVars.Circular_Gal2[k]>0) {
+                set_orbit_circular(AllVars.Circular_Gal1[k]-1,AllVars.Circular_Gal2[k]-1,
+                        AllVars.Circular_Rinit[k],AllVars.Circular_Vc[k],
+                        AllVars.Circular_OrbitPlanePhi[k],AllVars.Circular_OrbitPlaneTheta[k],AllVars.Circular_GalCenter[k]);
+        }
     }
     // Position galaxies
     printf("/////\t--------------------------------------------------\n");
