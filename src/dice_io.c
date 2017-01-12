@@ -2202,7 +2202,7 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
                         P[j].Type = gal->comp_type[k];
                         P[j].Metal = gal->metal[i];
                         P[j].Age = gal->age[i];
-                        P[j].Id = gal->id[i];
+                        P[j].Id = j;
                         P[j].Hsml = 0.1;
                         ++j;
                     }
