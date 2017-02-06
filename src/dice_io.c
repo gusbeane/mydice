@@ -1194,7 +1194,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 
         n = sprintf(temp_tag,"t_min%d",j+1);
         strcpy(tag[nt], temp_tag);
-        gal->comp_t_min[j] = 1e4;
+        gal->comp_t_min[j] = 10;
         addr[nt] = &gal->comp_t_min[j];
         read[nt] = 0;
         mandatory[nt] = 0;
