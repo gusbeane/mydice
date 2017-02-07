@@ -2912,6 +2912,9 @@ int set_galaxy_velocity(galaxy *gal) {
 			        +cos(gal->theta_cyl[i])*v_theta
 			        +cos(gal->phi_sph[i])*sin(gal->theta_cyl[i])*v_phi;
 			    vel_z = cos(gal->phi_sph[i])*v_r-sin(gal->phi_sph[i])*v_phi;
+                            // Add streaming velocity
+                            vel_x += -va_theta*sin(gal->theta_cyl[i]);
+                            vel_y += va_theta*cos(gal->theta_cyl[i]);
 			}
 
                         if(fabs(vel_x)>maxvel_x) maxvel_x = fabs(vel_x);
