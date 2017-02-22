@@ -1421,7 +1421,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         // Rescale the mass fractions
         if(gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.) effective_mass_factor = effective_mass_factor+gal->comp_mass_frac[i];
         // Disk fraction - count only flat components
-        if(gal->comp_flatz[i]<0.4 && gal->comp_type[i]!=1 && gal->comp_npart[i]>0) gal->m_d += gal->comp_mass_frac[i];
+        if(gal->comp_flatz[i]<0.4 && gal->comp_type[i]!=1 && (gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0)) gal->m_d += gal->comp_mass_frac[i];
         // Find the main halo
         if(gal->comp_type[i]==1 && gal->index_halo==-1) gal->index_halo = i;
         if(gal->comp_type[i]==2 && gal->comp_flatz[i]<0.4 &&gal->index_disk==-1) gal->index_disk = i;
