@@ -325,17 +325,28 @@ double imf_functions_pool(galaxy *gal, double mass, int model, int component) {
             density = pow(m,-alpha);
             break;
         case 3:
-            // Chabrier
+            // Chabrier for individual stars
             if(strcmp(gal->comp_imf_name[component],"")==0)
-                strcpy(gal->comp_imf_name[component],"        Chabrier         ");
+                strcpy(gal->comp_imf_name[component],"   Chabrier-individual   ");
             if(m>1.0) {
                 alpha = 2.3;
-                density = pow(mass,-alpha);
+                density = 1.93351e-02*pow(mass,-alpha);
             } else {
                 density = 0.158*(1.0/(log(10.)*m))*exp(-pow(log10(m)-log10(0.08),2.)/(2.*pow(0.69,2.)));
             }
             break;
         case 4:
+            // Chabrier for systems
+            if(strcmp(gal->comp_imf_name[component],"")==0)
+                strcpy(gal->comp_imf_name[component],"    Chabrier-systems     ");
+            if(m>1.0) {
+                alpha = 2.3;
+                density = 1.91175e-02*pow(mass,-alpha);
+            } else {
+                density = 0.086*(1.0/(log(10.)*m))*exp(-pow(log10(m)-log10(0.22),2.)/(2.*pow(0.57,2.)));
+            }
+            break;
+        case 5:
             // Kroupa
             if(strcmp(gal->comp_imf_name[component],"")==0)
                 strcpy(gal->comp_imf_name[component],"         Kroupa          ");
