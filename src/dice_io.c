@@ -691,8 +691,6 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_scale_length[j];
         read[nt] = 0;
-        //if(gal->comp_npart[j]>0) mandatory[nt] = 1;
-        //else mandatory[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
@@ -700,8 +698,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         strcpy(tag[nt], temp_tag);
         addr[nt] = &gal->comp_cut[j];
         read[nt] = 0;
-        if(gal->comp_npart[j]>0) mandatory[nt] = 1;
-        else mandatory[nt] = 0;
+        mandatory[nt] = 0;
         id[nt++] = DOUBLE;
 
         n = sprintf(temp_tag,"cut_hydro_eq%d",j+1);
