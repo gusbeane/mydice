@@ -376,6 +376,12 @@ typedef struct {
     int index_first;
     // Copy tag
     int copy;
+    // Masses per type
+    double gas_mass;
+    double halo_mass;
+    double disk_mass;
+    double bulge_mass;
+    double stellar_mass;
 } galaxy;
 
 // This is a type definition of a stream. The thought here is to create streams
@@ -646,6 +652,7 @@ void fill_midplane_dens_grid(galaxy *);
 double get_midplane_density(galaxy *, double, double);
 
 double disk_scale_length_func(galaxy *, double, int);
+double disk_scale_length_obs_func(galaxy *, int);
 double f_c_func(double);
 double g_c_func(double);
 static double dg_c_func(double, void *);

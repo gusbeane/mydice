@@ -1482,11 +1482,17 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         if(AllVars.NormMassFact==1) gal->comp_mass_frac[i] = gal->comp_mass_frac[i]/effective_mass_factor;
 	// Set the angular momentum fraction if not defined
 	if(gal->comp_angmom_frac[i]==-1.0) gal->comp_angmom_frac[i] = gal->comp_mass_frac[i];
+        // Computing the mass of the component
+        if(gal->comp_mass_frac[i]>0.) {
+            gal->comp_mass[i] = gal->m200*gal->comp_mass_frac[i];
+        }
         // Set scalelength according to concentration parameter if defined
         if(gal->comp_scale_length[i]==0. && gal->comp_type[i]!=1 && gal->comp_flatz[i]<0.4 && (gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.)) {
-	    gal->comp_scale_length[i] = disk_scale_length_func(gal,gal->comp_concentration[gal->index_halo],i);
+	    //gal->comp_scale_length[i] = disk_scale_length_func(gal,gal->comp_concentration[gal->index_halo],i);
+            // Use Dutton+2011 Mass size relation for the disk scalelength assuming an exponential profile
+	    gal->comp_scale_length[i] = disk_scale_length_obs_func(gal,i);
 	}
-        if(gal->comp_concentration[i]>0. && gal->comp_radius_nfw[i]==-1.0) {
+        if(gal->comp_concentration[i]>0. && gal->comp_radius_nfw[i]==-1.0 && gal->comp_type[i]==1) {
             gal->comp_scale_length[i] = gal->r200/gal->comp_concentration[i];
         }
         if(gal->comp_concentration[i]==0.&&gal->comp_scale_length[i]>0.) {
@@ -1496,10 +1502,6 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
         if(gal->comp_concentration[i]<=0.&&gal->comp_scale_length[i]<=0.) {
             gal->comp_concentration[i] = halo_concentration(gal->m200,AllVars.redshift);
             gal->comp_scale_length[i] = gal->r200/gal->comp_concentration[i];
-        }
-        // Computing the mass of the component
-        if(gal->comp_mass_frac[i]>0.) {
-            gal->comp_mass[i] = gal->m200*gal->comp_mass_frac[i];
         }
         if(gal->comp_npart[i]>0 && gal->comp_concentration[i]<=0. && gal->comp_scale_length[i]<=0.) {
             fprintf(stderr,"\n[Error] Component %d scale not properly defined\n",i+1);
@@ -1756,6 +1758,13 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	}
     }
 
+    // Saving total masses
+    gal->gas_mass = cutted_gas_mass;
+    gal->halo_mass = cutted_halo_mass;
+    gal->disk_mass = cutted_disk_mass;
+    gal->bulge_mass = cutted_bulge_mass;
+    gal->stellar_mass = cutted_bulge_mass+cutted_disk_mass;
+
     printf("]\n");
     printf("/////\t--------------------------------------------------\n");
 
@@ -1901,14 +1910,12 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             printf("/////\t\t-> scale     = %6.2le [%s]\n",gal->comp_scale_length[j],AllVars.UnitLengthName);
             printf("/////\t\t-> cut       = %6.2le [%s]\n",gal->comp_cut[j],AllVars.UnitLengthName);
             printf("/////\t\t-> softening = %6.2le [%s]\n",gal->comp_softening[j],AllVars.UnitLengthName);
+            printf("/////\t\t-> f_stream  = %6.3le\n",gal->comp_stream_frac[j]);
             if(gal->comp_jeans_dim[j]>0) printf("/////\t\t-> jeans dim = %d \n",gal->comp_jeans_dim[j]);
             if(gal->comp_cut_in[j]>0) printf("/////\t\t-> cut_in    = %6.2le [%s]\n",gal->comp_cut_in[j],AllVars.UnitLengthName);
             if(gal->comp_type[j]==1) {
                 printf("/////\t\t-> c         = %6.2le\n",gal->comp_concentration[j]);
                 if(gal->comp_jeans_dim[j]>1)printf("/////\t\t-> lambda    = %6.3le\n",gal->lambda);
-            	if(gal->comp_stream_method[j]==0) {
-                    printf("/////\t\t-> f_stream  = %6.3le\n",gal->comp_stream_frac[j]);
-		}
             }
             if(gal->comp_type[j]==0) {
                 printf("/////\t\t-> T_init    = %6.2le [K]\n",gal->comp_t_init[j]);

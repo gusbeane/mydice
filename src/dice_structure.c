@@ -87,8 +87,8 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
 	   +gal->comp_flatx_out[component]*smooth_in(x,gal->comp_flatx_rt[component],gal->comp_flatx_st[component]);
     flaty = gal->comp_flaty[component]*smooth_out(y,gal->comp_flaty_rt[component],gal->comp_flaty_st[component])
 	   +gal->comp_flaty_out[component]*smooth_in(y,gal->comp_flaty_rt[component],gal->comp_flaty_st[component]);
-    flatz = gal->comp_flatz[component]*smooth_out(z,gal->comp_flatz_rt[component],gal->comp_flatz_st[component])
-	   +gal->comp_flatz_out[component]*smooth_in(z,gal->comp_flatz_rt[component],gal->comp_flatz_st[component]);
+    flatz = gal->comp_flatz[component]*smooth_out(radius,gal->comp_flatz_rt[component],gal->comp_flatz_st[component])
+	   +gal->comp_flatz_out[component]*smooth_in(radius,gal->comp_flatz_rt[component],gal->comp_flatz_st[component]);
 
     h = gal->comp_scale_length[component];
     hx = gal->comp_scale_length[component]*flatx;
@@ -1910,6 +1910,38 @@ double disk_scale_length_func(galaxy *gal, double c, int component) {
 
     return disk_scale;
 }
+
+// This function determines the scale length of a stellar disk using
+// the fitting formula provided in Dutton et al. 2011, if the user want to use it.
+// Otherwise, the user chose himself the value for the disk scale length.
+double disk_scale_length_obs_func(galaxy *gal, int component) {
+
+    int i;
+    double Alpha, Beta, Gamma, m, m0, r, r0, rs, shift, disk_scale;
+
+    Alpha = 0.18;
+    Beta = 0.52;
+    Gamma = 1.80;
+    m0 = pow(10.0,10.44);
+    r0 = pow(10.0,0.72);
+
+    m = 0.;
+    for(i = 0; i<AllVars.MaxCompNumber; i++) {
+         if(gal->comp_type[i]>1 && gal->comp_type[i]<4) {
+             m += gal->comp_mass[i];
+         }
+    }
+    m = m*unit_mass/solarmass;
+    // Half light radius in kpc, assuming a constant mass to light ratio
+    r = r0*pow(m/m0,Alpha)*pow(0.5+0.5*pow(m/m0,Gamma),(Beta-Alpha)/Gamma);
+    shift = 0.018-0.44*log(1+(AllVars.redshift-0.1));
+    rs = r-shift;
+    // Assuming exponential disk profile to convert from half-mass radius to scalelength
+    disk_scale = r/1.67835;
+
+    return disk_scale;
+}
+
 
 // This function returns the energy fraction function of MMW for the
 // angular momentum.
