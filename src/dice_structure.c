@@ -1934,7 +1934,11 @@ double disk_scale_length_obs_func(galaxy *gal, int component) {
     m = m*unit_mass/solarmass;
     // Half light radius in kpc, assuming a constant mass to light ratio
     r = r0*pow(m/m0,Alpha)*pow(0.5+0.5*pow(m/m0,Gamma),(Beta-Alpha)/Gamma);
-    shift = 0.018-0.44*log(1+(AllVars.redshift-0.1));
+    if(AllVars.redshift>0.1) {
+        shift = 0.018-0.44*log(1+AllVars.redshift);
+    } else {
+        shift = 0.;
+    }
     rs = r-shift;
     // Assuming exponential disk profile to convert from half-mass radius to scalelength
     disk_scale = r/1.67835;
