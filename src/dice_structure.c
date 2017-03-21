@@ -45,14 +45,15 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     double h, hx, hy, hz, h_cut, hx_cut, hy_cut, hz_cut, hx_cut_in, hy_cut_in, hz_cut_in;
     double density, w, k, l, m, n, o, r, s, alpha, beta, smooth_factor1, smooth_factor2, sigma1, sigma2, r_sph;
     double x, y, flatx, flaty, flatz, x2, y2, z2;
-
-    if(fabs(radius)>0.) {
-	radius = (fabs(radius)/radius)*max(gal->comp_rcore[component],fabs(radius));
-    } else {
- 	radius = max(gal->comp_rcore[component],fabs(radius));
-    }
     double theta_shift, theta_out, A, B, CEDF, tanh_func;
-    double z_shift;
+    double z_shift, rcore;
+
+    rcore = fabs(radius)*smooth_in(fabs(radius),gal->comp_rcore[component],0.1*gal->comp_rcore[component])
+	     +gal->comp_rcore[component]*smooth_out(fabs(radius),gal->comp_rcore[component],0.1*gal->comp_rcore[component]);
+
+    if(gal->comp_rcore[component]>0.) {
+	radius = (fabs(radius)/radius)*rcore;
+    }
 
     // The spiral galaxy model is inspired from  the GALFIT software (Peng et al. 2010)
     theta_shift = 0.;
@@ -69,6 +70,9 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
         z_shift = gal->comp_warp_scale[component]*gal->comp_scale_length[component]*gal->comp_flatz[component]*(cos(gal->comp_warp_mode[component]*theta)-0.5)*radius/gal->comp_cut[component];
         z += z_shift;
     }
+
+    radius = radius*smooth_in(radius,gal->comp_rcore[component],0.1*gal->comp_rcore[component])
+	     +gal->comp_rcore[component]*smooth_out(radius,gal->comp_rcore[component],0.1*gal->comp_rcore[component]);
 
     x = radius*cos(theta+theta_shift);
     y = radius*sin(theta+theta_shift);
