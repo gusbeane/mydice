@@ -1487,10 +1487,18 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             gal->comp_mass[i] = gal->m200*gal->comp_mass_frac[i];
         }
         // Set scalelength according to concentration parameter if defined
-        if(gal->comp_scale_length[i]==0. && gal->comp_type[i]!=1 && gal->comp_flatz[i]<0.4 && (gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.)) {
+        if(gal->comp_scale_length[i]==0. && (gal->comp_type[i]==2 || gal->comp_type[i]==0)
+               && gal->comp_flatz[i]<0.4 && (gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.)) {
 	    //gal->comp_scale_length[i] = disk_scale_length_func(gal,gal->comp_concentration[gal->index_halo],i);
             // Use Dutton+2011 Mass size relation for the disk scalelength assuming an exponential profile
 	    gal->comp_scale_length[i] = disk_scale_length_obs_func(gal,i);
+	}
+        if(gal->comp_scale_length[i]==0. && gal->comp_type[i]==3 && gal->comp_flatz[i]>0.4 && (gal->comp_npart[i]>0 || gal->comp_part_mass[i]>0.)) {
+	    if(gal->index_disk>-1) {
+                // Compute the disk scale length if it has not been done yet
+                if(gal->comp_scale_length[gal->index_disk]==0.) gal->comp_scale_length[gal->index_disk] = disk_scale_length_obs_func(gal,gal->index_disk);
+                gal->comp_scale_length[i] = 0.333*gal->comp_scale_length[gal->index_disk];
+            }
 	}
         if(gal->comp_concentration[i]>0. && gal->comp_radius_nfw[i]==-1.0 && gal->comp_type[i]==1) {
             gal->comp_scale_length[i] = gal->r200/gal->comp_concentration[i];
@@ -1533,13 +1541,28 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
 	// No anisotropy for gas component for the isotropic 1D Jeans equation
 	if(gal->comp_type[i]==0) gal->comp_jeans_anisotropy_model[i] = 0;
 	if(gal->comp_cut[i]<=0.) {
-	    // DM halo default cut
-	    if(gal->comp_type[i]==1) {
-	        gal->comp_cut[i] = gal->r200;
-	    // Baryonic component component default cut
-	    } else {
-	        gal->comp_cut[i] = 3.0*gal->comp_scale_length[i];
-	    }
+            switch(gal->comp_type[i]) {
+	        // Gas disk default cut
+                case 0:
+	            gal->comp_cut[i] = 4.5*gal->comp_scale_length[i];
+                    break;
+	        // DM halo default cut
+                case 1:
+	            gal->comp_cut[i] = gal->r200;
+                    break;
+	        // disk default cut
+                case 2:
+	            gal->comp_cut[i] = 3.0*gal->comp_scale_length[i];
+                    break;
+	        // Bulge default cut
+                case 3:
+	            gal->comp_cut[i] = 4.0*gal->comp_scale_length[i];
+                    break;
+                // default cut for other types
+                default:
+	            gal->comp_cut[i] = 3.0*gal->comp_scale_length[i];
+                    break;
+            }
 	}
 	// Define default gravitational softening
         if(gal->comp_softening[i]==0.0) gal->comp_softening[i] = 0.05*gal->comp_scale_length[i];
