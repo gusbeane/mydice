@@ -46,14 +46,12 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     double density, w, k, l, m, n, o, r, s, alpha, beta, smooth_factor1, smooth_factor2, sigma1, sigma2, r_sph;
     double x, y, flatx, flaty, flatz, x2, y2, z2;
     double theta_shift, theta_out, A, B, CEDF, tanh_func;
-    double z_shift, rcore;
+    double z_shift, rcore, xvar, yvar, zvar, usex, usey, usez;
+
+    radius = fabs(radius);
 
     rcore = fabs(radius)*smooth_in(fabs(radius),gal->comp_rcore[component],0.1*gal->comp_rcore[component])
 	     +gal->comp_rcore[component]*smooth_out(fabs(radius),gal->comp_rcore[component],0.1*gal->comp_rcore[component]);
-
-    if(gal->comp_rcore[component]>0.) {
-	radius = (fabs(radius)/radius)*rcore;
-    }
 
     // The spiral galaxy model is inspired from  the GALFIT software (Peng et al. 2010)
     theta_shift = 0.;
@@ -87,12 +85,72 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     hz_cut_in = max(gal->comp_cut_in[component],0.01*gal->comp_scale_length[component])*gal->comp_flatz_cut[component];
 
     // Component flattening at [x,y,z] coordinate
-    flatx = gal->comp_flatx[component]*smooth_out(x,gal->comp_flatx_rt[component],gal->comp_flatx_st[component])
-	   +gal->comp_flatx_out[component]*smooth_in(x,gal->comp_flatx_rt[component],gal->comp_flatx_st[component]);
-    flaty = gal->comp_flaty[component]*smooth_out(y,gal->comp_flaty_rt[component],gal->comp_flaty_st[component])
-	   +gal->comp_flaty_out[component]*smooth_in(y,gal->comp_flaty_rt[component],gal->comp_flaty_st[component]);
-    flatz = gal->comp_flatz[component]*smooth_out(radius,gal->comp_flatz_rt[component],gal->comp_flatz_st[component])
-	   +gal->comp_flatz_out[component]*smooth_in(radius,gal->comp_flatz_rt[component],gal->comp_flatz_st[component]);
+    switch(gal->comp_flatx_var[component]) {
+        case 'x':
+            xvar = x;
+            break;
+        case 'y':
+            xvar = y;
+            break;
+        case 'z':
+            xvar = z;
+            break;
+        case 'r':
+            xvar = radius;
+            break;
+        case 'R':
+            xvar = r_sph;
+            break;
+	default:
+	    xvar = x;
+            break;
+    }
+    switch(gal->comp_flaty_var[component]) {
+        case 'x':
+            yvar = x;
+            break;
+        case 'y':
+            yvar = y;
+            break;
+        case 'z':
+            yvar = z;
+            break;
+        case 'r':
+            yvar = radius;
+            break;
+        case 'R':
+            yvar = r_sph;
+            break;
+	default:
+	    yvar = y;
+            break;
+    }
+    switch(gal->comp_flatz_var[component]) {
+        case 'x':
+            zvar = x;
+            break;
+        case 'y':
+            zvar = y;
+            break;
+        case 'z':
+            zvar = z;
+            break;
+        case 'r':
+            zvar = radius;
+            break;
+        case 'R':
+            zvar = r_sph;
+            break;
+	default:
+	    zvar = z;
+            break;
+    }
+    flatx = gal->comp_flatx[component]*smooth_out(xvar,gal->comp_flatx_rt[component],gal->comp_flatx_st[component])
+	   +gal->comp_flatx_out[component]*smooth_in(xvar,gal->comp_flatx_rt[component],gal->comp_flatx_st[component]);
+    flaty = gal->comp_flaty[component]*smooth_out(yvar,gal->comp_flaty_rt[component],gal->comp_flaty_st[component])
+	   +gal->comp_flaty_out[component]*smooth_in(yvar,gal->comp_flaty_rt[component],gal->comp_flaty_st[component]);
+    flatz = gal->comp_flatz[component]*smooth_out(zvar,gal->comp_flatz_rt[component],gal->comp_flatz_st[component])
+	   +gal->comp_flatz_out[component]*smooth_in(zvar,gal->comp_flatz_rt[component],gal->comp_flatz_st[component]);
 
     h = gal->comp_scale_length[component];
     hx = gal->comp_scale_length[component]*flatx;
@@ -102,10 +160,15 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
     alpha = gal->comp_alpha_struct[component];
     beta = gal->comp_beta_struct[component];
 
+    usex = 1.; usey = 1.; usez = 1.;
+    if(gal->comp_flatx_cut[component]<=0.) usex = 0.;
+    if(gal->comp_flaty_cut[component]<=0.) usey = 0.;
+    if(gal->comp_flatz_cut[component]<=0.) usez = 0.;
+
     k = sqrt(pow(z/hz,2.0));
     l = sqrt(pow(x/hx,2.0)+pow(y/hy,2.0));
     m = sqrt(pow(x/hx,2.0)+pow(y/hy,2.0)+pow(z/hz,2.0));
-    n = sqrt(pow(x/hx_cut,2.0)+pow(y/hy_cut,2.0)+pow(z/hz_cut,2.0));
+    n = sqrt(pow(usex*x/hx_cut,2.0)+pow(usey*y/hy_cut,2.0)+pow(usez*z/hz_cut,2.0));
     o = sqrt(pow(x/hx_cut,2.0)+pow(y/hy_cut,2.0));
     r = sqrt(pow(x*flatx,2.0)+pow(y*flaty,2.0));
     if(gal->comp_symmetry[component]==1) {
@@ -256,6 +319,15 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
         density *= smooth_factor1;
         if(density<gal->comp_cut_dens[component]/unit_nh) density = 0.;
         if(gal->comp_cut_in[component]>0.) density *= smooth_factor2;
+	if(gal->comp_flatx_cut[component]<0){
+            if(fabs(x)>fabs(gal->comp_flatx_cut[component]*h)) density = 0.;
+        }
+	if(gal->comp_flaty_cut[component]<0){
+            if(fabs(y)>fabs(gal->comp_flaty_cut[component]*h)) density = 0.;
+        }
+	if(gal->comp_flatz_cut[component]<0){
+            if(fabs(z)>fabs(gal->comp_flatz_cut[component]*h)) density = 0.;
+        }
     }
 
     return density;

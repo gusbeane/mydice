@@ -852,6 +852,30 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
         read[nt] = 0;
         mandatory[nt] = 0;
         id[nt++] = DOUBLE;
+
+        n = sprintf(temp_tag,"flatx_var%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flatx_var[j] = 'x';
+        addr[nt] = &gal->comp_flatx_var[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = STRING;
+
+        n = sprintf(temp_tag,"flaty_var%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flaty_var[j] = 'y';
+        addr[nt] = &gal->comp_flaty_var[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = STRING;
+
+        n = sprintf(temp_tag,"flatz_var%d",j+1);
+        strcpy(tag[nt], temp_tag);
+        gal->comp_flatz_var[j] = 'z';
+        addr[nt] = &gal->comp_flatz_var[j];
+        read[nt] = 0;
+        mandatory[nt] = 0;
+        id[nt++] = STRING;
 	
         n = sprintf(temp_tag,"mcmc_step%d",j+1);
         strcpy(tag[nt], temp_tag);
@@ -1543,6 +1567,7 @@ int parse_galaxy_file(galaxy *gal, char *fname) {
 #undef DOUBLE
 #undef STRING
 #undef INT
+#undef LONG
 #undef MAXTAGS
 
     return 0;
@@ -1906,6 +1931,7 @@ int parse_stream_file(stream *st, char *fname) {
 #undef DOUBLE
 #undef STRING
 #undef INT
+#undef LONG
 #undef MAXTAGS
 
     return 0;

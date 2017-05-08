@@ -357,6 +357,18 @@ int allocate_component_arrays(galaxy *gal) {
         fprintf(stderr,"[Error] Unable to allocate comp_flatz_st array\n");
         return -1;
     }
+    if (!(gal->comp_flatx_var = calloc(AllVars.MaxCompNumber,sizeof(char)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_flatx_var array\n");
+        return -1;
+    }
+    if (!(gal->comp_flaty_var = calloc(AllVars.MaxCompNumber,sizeof(char)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_flaty_var array\n");
+        return -1;
+    }
+    if (!(gal->comp_flatz_var = calloc(AllVars.MaxCompNumber,sizeof(char)))) {
+        fprintf(stderr,"[Error] Unable to allocate comp_flatz_var array\n");
+        return -1;
+    }
     if (!(gal->comp_t_min = calloc(AllVars.MaxCompNumber,sizeof(double)))) {
         fprintf(stderr,"[Error] Unable to allocate comp_t_min array\n");
         return -1;

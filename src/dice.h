@@ -169,6 +169,9 @@ typedef struct {
     double              *comp_flatx_st;
     double              *comp_flaty_st;
     double              *comp_flatz_st;
+    char                *comp_flatx_var;
+    char                *comp_flaty_var;
+    char                *comp_flatz_var;
     double              *comp_mcmc_step;
     double              *comp_mcmc_step_slope;
     double              *comp_mcmc_step_hydro;
