@@ -300,7 +300,7 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
         case 20:
             // Beta-Model
             if(strcmp(gal->comp_profile_name[component],"")==0)
-                strcpy(gal->comp_profile_name[component],"         Beta-Model          ");
+                strcpy(gal->comp_profile_name[component],"       Beta-Model        ");
             density = gal->comp_scale_dens[component]*(pow(1.0+m*m,-3.0*alpha/2.0));
             break;
         default:
