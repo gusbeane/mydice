@@ -279,13 +279,13 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
                 strcpy(gal->comp_profile_name[component],"     Pseudo-Isothermal   ");
             density = gal->comp_scale_dens[component]*1.0/(1.0+pow(m,2.0));
             break;
-	case 17:
+	    case 17:
 	    // Power law
             if(strcmp(gal->comp_profile_name[component],"")==0)
                 strcpy(gal->comp_profile_name[component],"         Power law       ");
             density = gal->comp_scale_dens[component]*-pow(m,alpha);
             break;
-	case 18:
+	    case 18:
 	    // Bissantz & Gerhard
             if(strcmp(gal->comp_profile_name[component],"")==0)
                 strcpy(gal->comp_profile_name[component],"   Bissantz & Gerhard    ");
@@ -296,6 +296,12 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
             if(strcmp(gal->comp_profile_name[component],"")==0)
                 strcpy(gal->comp_profile_name[component],"         Dehnen          ");
             density = gal->comp_scale_dens[component]*1.0/(pow(m,alpha)*pow((m+1.0),4.0-alpha));
+            break;
+        case 20:
+            // Beta-Model
+            if(strcmp(gal->comp_profile_name[component],"")==0)
+                strcpy(gal->comp_profile_name[component],"         Beta-Model          ");
+            density = gal->comp_scale_dens[component]*(pow(1.0+m*m,-3.0*alpha/2.0));
             break;
         default:
             fprintf(stderr,"[Error] model%d=%d is not a valid value\n",component+1,model);
