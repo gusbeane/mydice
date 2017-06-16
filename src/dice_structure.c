@@ -279,14 +279,14 @@ double density_functions_pool(galaxy *gal, double radius, double theta, double z
                 strcpy(gal->comp_profile_name[component],"     Pseudo-Isothermal   ");
             density = gal->comp_scale_dens[component]*1.0/(1.0+pow(m,2.0));
             break;
-	    case 17:
-	    // Power law
+        case 17:
+            // Power law
             if(strcmp(gal->comp_profile_name[component],"")==0)
                 strcpy(gal->comp_profile_name[component],"         Power law       ");
             density = gal->comp_scale_dens[component]*-pow(m,alpha);
             break;
-	    case 18:
-	    // Bissantz & Gerhard
+        case 18:
+            // Bissantz & Gerhard
             if(strcmp(gal->comp_profile_name[component],"")==0)
                 strcpy(gal->comp_profile_name[component],"   Bissantz & Gerhard    ");
             density = gal->comp_scale_dens[component]*1/pow(1+m,alpha);
