@@ -2763,7 +2763,7 @@ int set_galaxy_velocity(galaxy *gal) {
 	    	            va_theta = gal->comp_stream_frac[j]*vcirc_interp;
 	    	            break;
 	            }
-		    if(va_theta>v_stream_max) v_stream_max = va_theta; 
+		    if(va_theta>v_stream_max && gal->comp_type[j]>0) v_stream_max = va_theta; 
                     // Specific case of gas particles
                     if(gal->comp_type[j]==0) {
                         v2_theta = v2_theta_gas_func(gal,gal->r_cyl[i],gal->z[i],j);
@@ -2785,6 +2785,7 @@ int set_galaxy_velocity(galaxy *gal) {
                                 warning2 = 1;
                             }
                         }
+		        if(v_theta>v_stream_max) v_stream_max = v_theta; 
 			// Cylindrical to cartesian coordinates
                         gal->vel_x[i] += (v_r*cos(gal->theta_cyl[i])-v_theta*sin(gal->theta_cyl[i]));
                         gal->vel_y[i] += (v_r*sin(gal->theta_cyl[i])+v_theta*cos(gal->theta_cyl[i]));
