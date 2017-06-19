@@ -1973,14 +1973,14 @@ int write_gadget1_ics(galaxy *gal, char *fname) {
     header1.mass[5] = 0.0;
 
     // Set the header values to some defaults.
-    header1.npart[0] = gal->num_part[0];
-    header1.npart[1] = gal->num_part[1];
-    header1.npart[2] = gal->num_part[2];
-    header1.npart[3] = gal->num_part[3];
-    header1.npartTotal[0] = gal->num_part[0];
-    header1.npartTotal[1] = gal->num_part[1];
-    header1.npartTotal[2] = gal->num_part[2];
-    header1.npartTotal[3] = gal->num_part[3];
+    header1.npart[0] = (int)gal->num_part[0];
+    header1.npart[1] = (int)gal->num_part[1];
+    header1.npart[2] = (int)gal->num_part[2];
+    header1.npart[3] = (int)gal->num_part[3];
+    header1.npartTotal[0] = (int)gal->num_part[0];
+    header1.npartTotal[1] = (int)gal->num_part[1];
+    header1.npartTotal[2] = (int)gal->num_part[2];
+    header1.npartTotal[3] = (int)gal->num_part[3];
     header1.time = 1.0/(1.0+AllVars.redshift);
     header1.redshift = AllVars.redshift;
     header1.flag_sfr = 0.0;
@@ -2179,14 +2179,14 @@ int write_gadget2_ics(galaxy *gal, char *fname) {
     header1.mass[5] = 0.0;
 
     // Set the header values to some defaults.
-    header1.npart[0] = gal->num_part[0];
-    header1.npart[1] = gal->num_part[1];
-    header1.npart[2] = gal->num_part[2];
-    header1.npart[3] = gal->num_part[3];
-    header1.npartTotal[0] = gal->num_part[0];
-    header1.npartTotal[1] = gal->num_part[1];
-    header1.npartTotal[2] = gal->num_part[2];
-    header1.npartTotal[3] = gal->num_part[3];
+    header1.npart[0] = (int)gal->num_part[0];
+    header1.npart[1] = (int)gal->num_part[1];
+    header1.npart[2] = (int)gal->num_part[2];
+    header1.npart[3] = (int)gal->num_part[3];
+    header1.npartTotal[0] = (int)gal->num_part[0];
+    header1.npartTotal[1] = (int)gal->num_part[1];
+    header1.npartTotal[2] = (int)gal->num_part[2];
+    header1.npartTotal[3] = (int)gal->num_part[3];
     header1.time = 0.0;
     header1.redshift = AllVars.redshift;
     header1.flag_sfr = 0.0;
