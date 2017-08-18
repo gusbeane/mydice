@@ -1523,7 +1523,7 @@ int create_galaxy(galaxy *gal, char *fname, int info) {
             gal->comp_concentration[i] = halo_concentration(gal->m200,AllVars.redshift);
             gal->comp_scale_length[i] = gal->r200/gal->comp_concentration[i];
         }
-        if(gal->comp_npart[i]>0 && gal->comp_concentration[i]<=0. && gal->comp_scale_length[i]<=0.) {
+        if(gal->comp_npart[i]>0 && gal->comp_scale_length[i]<=0.) {
             fprintf(stderr,"\n[Error] Component %d scale not properly defined\n",i+1);
             exit(0);
         }
