@@ -2423,14 +2423,13 @@ int set_galaxy_velocity(galaxy *gal) {
         if(fabs(gal->r_sph[i])>gal->maxrad) gal->maxrad = fabs(gal->r_sph[i]);
     }
     for(j = 0; j<AllVars.MaxCompNumber; j++) {
-        if(gal->comp_cut[j]>gal->maxrad) gal->maxrad = gal->comp_cut[j];
+        if(gal->comp_cut[j]>gal->maxrad && gal->comp_npart[j]>1) gal->maxrad = gal->comp_cut[j];
         if(gal->comp_type[j]==0) {
             for (i = gal->comp_start_part[j]; i<gal->comp_start_part[j]+gal->comp_npart_pot[j]; ++i) {
 	        if(fabs(gal->r_sph[i])>gal->maxrad_gas) gal->maxrad_gas = fabs(gal->r_sph[i]);
 	    }
         }
     }
-
 
     // Warning init
     warning1 = 0;
@@ -2455,7 +2454,7 @@ int set_galaxy_velocity(galaxy *gal) {
     save2 = gal->theta_cyl[gal->index[tid]];
     gal->z[gal->index[tid]] = 0.;
     gal->theta_cyl[gal->index[tid]] = 0.;
-    interval = 0.251*gal->dx[gal->nlevel-1];
+    interval = 0.25*gal->dx[gal->nlevel-1];
     nbin = (int)(gal->maxrad/interval);
     for (n = 0; n < nbin; ++n) {
         radius = n*interval;
